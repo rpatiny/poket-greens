@@ -118,6 +118,47 @@ O mockup acima tem 54 plantas numa única tela de 640×360, sem zoom: 3 vasos, 3
 - Balão "!" e barra de progresso por módulo, não por planta.
 - Equipamentos ficam em pontos fixos do cenário e não competem com os módulos pelo chão.
 
+## 7b. Progressão visual: da gambiarra à alta tecnologia
+
+![Progressão](arte/progressao.png)
+
+O visual conta a história do jogador. **No começo tudo é improvisado; com dinheiro, tudo fica
+profissional; no fim, é ficção científica.**
+
+| Fase | Imóveis | Visual | Recipientes | Exemplos de equipamento |
+|---|---|---|---|---|
+| **Gambiarra** | Armário, Garagem, Porão | Fita silver tape, papel alumínio, madeira de caixote, ferrugem, coisas tortas e amassadas | Lata de tinta reaproveitada, vaso rachado com fita, floreira de pallet com tábua quebrada | Regador de garrafa PET, ventilador com grade torta, termômetro preso numa tábua, adubo em saco rasgado escrito à mão, lâmpada com refletor de alumínio |
+| **Profissional** | Container, Sobrado, Galpão, Sítio | Metal escovado, plástico, cores neutras, organizado | Vaso de barro novo, bancada de cultivo | Medidor de pH, mini estufa, drone, filtro de carbono, painel LED, hidropônico, CO2, câmeras |
+| **Alta tecnologia** | Fazenda, Ilha, Mina, Bunker, Estação | Escuro, luzes verde-água e roxas, vidro, brilho | Rack hidropônico, torre de vidro | Osmose reversa, Controlador IA (com rosto), porta de bunker, laboratório de DNA |
+
+Regras:
+- **Gambiarra sempre tem uma "marca"**: um pedaço de fita, um amassado, uma lasca, um prego torto
+  ou uma emenda no fio. Nunca é só "sujo".
+- **Os equipamentos do começo** usam rampas quentes (madeira, terra, barro) e prata de fita.
+  **Os do fim** usam `teal`, `plum` e `stone` escuro, com 1–2 pixels de brilho.
+
+## 7c. Catálogo de sprites (v2)
+
+![Plantas](arte/catalogo-plantas.png)
+
+| Arquivo (`assets/sprites/v2/`) | Célula | Conteúdo |
+|---|---|---|
+| `plantas.png` | 32×40 | broto, muda e as 18 plantas adultas (uma por semente, na ordem do catálogo) |
+| `plantas_compactas.png` | 32×40 | as mesmas a 62%, para racks e torres |
+| `vasos.png` | 32×24 | lata de tinta, vaso rachado, vaso de barro |
+| `equipamentos.png` | 32×32 | os 18 equipamentos, na ordem de preço |
+| `floreira_caixote.png`, `bancada.png`, `rack_hidroponico.png`, `torre_vertical.png` | — | módulos |
+| `index.json` | — | nomes de cada quadro e pontos de encaixe |
+
+- **Encaixe:** a base do caule da planta fica no pixel (16, 39) da célula. Ela se apoia na
+  terra do vaso (linha 5 do vaso) ou na bandeja do módulo.
+- Tudo é gerado por `tools/arte/*.py` (`python3 tools/arte/build.py`), na paleta do projeto.
+  Vasos, equipamentos e plantas também estão no Pixelwright para retoque à mão.
+- **A retocar à mão:** as versões compactas da orquídea, dos esporos e da mandrágora perdem
+  detalhe na redução. Também falta tirar o degradê em faixas das moitas maiores.
+
+![Equipamentos](arte/equipamentos.png)
+
 ## 8. Interface
 
 - **Fonte pixel** de altura 8 (a Press Start 2P serve por enquanto). Avaliar uma fonte mais
@@ -133,7 +174,8 @@ O mockup acima tem 54 plantas numa única tela de 640×360, sem zoom: 3 vasos, 3
 | 0 – Guia de estilo | Paleta, protagonista (frente + idle + walk), mockup da garagem | ✅ |
 | 1 – Protagonista completo | Costas e perfil, walk nas 3 direções, talk | a fazer |
 | 2 – Garagem jogável | Tileset interior (piso, parede, rodapé, janela), vasos, 3 estágios, equipamentos | a fazer |
-| 2b – Módulos | Floreira, bancada, rack hidropônico, torre; plantas em tamanho de módulo | rascunho ✅ |
+| 2b – Módulos | Floreira de caixote, bancada, rack hidropônico, torre; plantas compactas | ✅ (1ª versão) |
+| 2c – Plantas e equipamentos | 18 plantas + broto/muda, 18 equipamentos, 3 vasos (da gambiarra ao high-tech) | ✅ (1ª versão) |
 | 3 – Vila Clorofila | Tileset exterior (grama, calçada, rua, árvores), fachadas da Avó, Growshop e garagem | a fazer |
 | 4 – NPCs | Vó Dita, Zé e Vendedor (rig com variações de rampa + acessório próprio) | a fazer |
 | 5 – UI | Caixa de diálogo, HUD, ícones dos recursos | a fazer |

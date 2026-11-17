@@ -1,0 +1,145 @@
+{
+ "plantas.png": {
+  "cell": [
+   32,
+   40
+  ],
+  "cols": 10,
+  "frames": [
+   "broto",
+   "muda",
+   "alface_mistica",
+   "hortela_selvagem",
+   "manjericao_do_olimpo",
+   "tomate_atomico",
+   "carolina_reaper",
+   "esporos_especiais",
+   "lavanda_hipnotica",
+   "cacto_san_pedro",
+   "lotus_azul",
+   "cipo_ayahuasca",
+   "orquidea_fantasma",
+   "trufa_negra",
+   "mandragora",
+   "bonsai_milenar",
+   "rafflesia",
+   "aurora_boreal",
+   "fruto_do_eden",
+   "broto_de_yggdrasil"
+  ]
+ },
+ "plantas_compactas.png": {
+  "cell": [
+   32,
+   40
+  ],
+  "cols": 10,
+  "frames": [
+   "broto",
+   "muda",
+   "alface_mistica",
+   "hortela_selvagem",
+   "manjericao_do_olimpo",
+   "tomate_atomico",
+   "carolina_reaper",
+   "esporos_especiais",
+   "lavanda_hipnotica",
+   "cacto_san_pedro",
+   "lotus_azul",
+   "cipo_ayahuasca",
+   "orquidea_fantasma",
+   "trufa_negra",
+   "mandragora",
+   "bonsai_milenar",
+   "rafflesia",
+   "aurora_boreal",
+   "fruto_do_eden",
+   "broto_de_yggdrasil"
+  ]
+ },
+ "equipamentos.png": {
+  "cell": [
+   32,
+   32
+  ],
+  "cols": 9,
+  "frames": [
+   "regador_automatico",
+   "tesoura_de_poda",
+   "ventilador_silencioso",
+   "termometro_digital",
+   "fertilizante_el_secreto",
+   "lampada_uv",
+   "medidor_de_ph",
+   "mini_estufa",
+   "drone",
+   "filtro_de_carbono",
+   "painel_led",
+   "sistema_hidroponico",
+   "gerador_co2",
+   "cameras_4k",
+   "osmose_reversa",
+   "controlador_ia",
+   "kit_bunker",
+   "lab_genetica"
+  ]
+ },
+ "vasos.png": {
+  "cell": [
+   32,
+   24
+  ],
+  "cols": 3,
+  "frames": [
+   "lata_de_tinta",
+   "vaso_rachado",
+   "vaso_de_barro"
+  ]
+ },
+ "floreira_caixote.png": {
+  "cell": [
+   64,
+   28
+  ],
+  "cols": 1,
+  "frames": [
+   "floreira_caixote"
+  ]
+ },
+ "bancada.png": {
+  "cell": [
+   96,
+   40
+  ],
+  "cols": 1,
+  "frames": [
+   "bancada"
+  ]
+ },
+ "rack_hidroponico.png": {
+  "cell": [
+   64,
+   76
+  ],
+  "cols": 1,
+  "frames": [
+   "rack_hidroponico"
+  ]
+ },
+ "torre_vertical.png": {
+  "cell": [
+   64,
+   100
+  ],
+  "cols": 1,
+  "frames": [
+   "torre_vertical"
+  ]
+ },
+ "_notas": {
+  "plantas": "base da planta (caule) no pixel (16,39) de cada célula; encaixa na terra do vaso (linha 5 do vaso)",
+  "plantas_compactas": "62% do tamanho, para racks e torres; algumas precisam de retoque manual",
+  "equipamentos": "32x32, chão na última linha",
+  "fonte": "tools/arte/*.py geram tudo; rode python3 tools/arte/build.py"
+ }
+}
