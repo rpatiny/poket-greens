@@ -1,0 +1,215 @@
+{
+ "name": "MAP_RUA",
+ "music": "",
+ "outdoor": true,
+ "ground": [
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+  "tttttttttttttttttttttttttttttttt",
+  "T,UUUUUU,,,,*,,,,,,,,RRRRRRRRR,T",
+  "t,uuuuuu,,,,,,,b,,,,,rrrrrrrrr,t",
+  "T,sossos,,*,,,,,,,,,,BOBAAABOB,T",
+  "t,sodsosM,,,,,,,,,,,,BOBBGBBOB,t",
+  "T,,,,,,,S,,,,,*,,,,,S,,,,,,,,,,T",
+  "t,,b,,,,,,,,,,S,,,,,,,,,,,,,,,,t",
+  "::::::::::::::::::::::::::::::::",
+  "################################",
+  "--------------------------------",
+  "################################",
+  "::::::::::::::::::::::::::::::::",
+  "T,,,,,,,,,,,b,,,,,,,,,,,,,*,,,,T",
+  "t,RRRRRRRR,,,,,,,,,,RRRRRRRRR,,t",
+  "T,rrrrrrrr,,,b,,,,,,rrrrrrrrr,,T",
+  "t,BOBggBOB,,,,,,,,,,BOBBABBOB,,t",
+  "T,BBBggDBB,,,,,*,,,,BOBBGBBOB,,T",
+  "t,,,,,,,,,S,,,,,,*,,,,,,,,,,,,,t",
+  "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+  "tttttttttttttttttttttttttttttttt"
+ ],
+ "warps": [
+  {
+   "cell": [
+    7,
+    17
+   ],
+   "to": "garagem",
+   "to_cell": [
+    4,
+    7
+   ],
+   "facing": "up"
+  }
+ ],
+ "objects": [
+  {
+   "type": "npc",
+   "id": "avo",
+   "sprite": "npc_avo",
+   "cell": [
+    6,
+    7
+   ],
+   "facing": "down",
+   "name": "NAME_AVO",
+   "dialog": [
+    "AVO_1",
+    "AVO_2",
+    "AVO_3"
+   ]
+  },
+  {
+   "type": "npc",
+   "id": "ze",
+   "sprite": "npc_ze",
+   "cell": [
+    16,
+    12
+   ],
+   "facing": "left",
+   "name": "NAME_ZE",
+   "dialog": [
+    "ZE_1",
+    "ZE_2"
+   ],
+   "wander": [
+    10,
+    6,
+    22,
+    13
+   ]
+  },
+  {
+   "type": "npc",
+   "id": "vendedor",
+   "sprite": "npc_vendedor",
+   "cell": [
+    27,
+    6
+   ],
+   "facing": "down",
+   "name": "NAME_VENDEDOR",
+   "dialog": [
+    "VENDEDOR_1"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    8,
+    6
+   ],
+   "dialog": [
+    "SIGN_AVO"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    20,
+    6
+   ],
+   "dialog": [
+    "SIGN_GROWSHOP"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    14,
+    7
+   ],
+   "dialog": [
+    "SIGN_VILA"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    10,
+    18
+   ],
+   "dialog": [
+    "SIGN_GARAGEM"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    8,
+    5
+   ],
+   "dialog": [
+    "MAILBOX"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    5,
+    16
+   ],
+   "dialog": [
+    "GATE"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    6,
+    16
+   ],
+   "dialog": [
+    "GATE"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    5,
+    17
+   ],
+   "dialog": [
+    "GATE"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    6,
+    17
+   ],
+   "dialog": [
+    "GATE"
+   ]
+  },
+  {
+   "type": "door",
+   "cell": [
+    4,
+    5
+   ],
+   "dialog": [
+    "DOOR_LOCKED"
+   ]
+  },
+  {
+   "type": "door",
+   "cell": [
+    25,
+    5
+   ],
+   "dialog": [
+    "DOOR_SOON"
+   ]
+  },
+  {
+   "type": "door",
+   "cell": [
+    24,
+    17
+   ],
+   "dialog": [
+    "DOOR_SOON"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,205 @@
+{
+ "name": "MAP_GARAGEM",
+ "music": "",
+ "outdoor": false,
+ "ground": [
+  "WWNWWWWNWW",
+  "wwnwwwwnww",
+  "==========",
+  "==========",
+  "==========",
+  "==========",
+  "==========",
+  "====m====="
+ ],
+ "spawn": {
+  "cell": [
+   4,
+   5
+  ],
+  "facing": "down"
+ },
+ "warps": [
+  {
+   "cell": [
+    4,
+    7
+   ],
+   "dir": "down",
+   "to": "rua",
+   "to_cell": [
+    7,
+    18
+   ],
+   "facing": "down"
+  }
+ ],
+ "objects": [
+  {
+   "type": "prop",
+   "id": "vaso_1",
+   "cell": [
+    3,
+    3
+   ],
+   "layers": [
+    {
+     "frame": 0
+    },
+    {
+     "frame": 3,
+     "offset": [
+      0,
+      -8
+     ]
+    },
+    {
+     "frame": 4,
+     "offset": [
+      0,
+      -24
+     ],
+     "bob": true
+    }
+   ],
+   "dialog": [
+    "POT_READY",
+    "SOON_HARVEST"
+   ]
+  },
+  {
+   "type": "prop",
+   "id": "vaso_2",
+   "cell": [
+    5,
+    3
+   ],
+   "layers": [
+    {
+     "frame": 0
+    },
+    {
+     "frame": 1,
+     "offset": [
+      0,
+      -8
+     ]
+    }
+   ],
+   "dialog": [
+    "POT_GROWING",
+    "SOON_HARVEST"
+   ]
+  },
+  {
+   "type": "prop",
+   "cell": [
+    1,
+    2
+   ],
+   "layers": [
+    {
+     "frame": 6
+    }
+   ],
+   "dialog": [
+    "LAMP"
+   ]
+  },
+  {
+   "type": "prop",
+   "cell": [
+    8,
+    2
+   ],
+   "layers": [
+    {
+     "frame": 7
+    }
+   ],
+   "dialog": [
+    "FAN"
+   ]
+  },
+  {
+   "type": "prop",
+   "cell": [
+    7,
+    3
+   ],
+   "layers": [
+    {
+     "frame": 5
+    }
+   ],
+   "dialog": [
+    "BOX"
+   ]
+  },
+  {
+   "type": "prop",
+   "cell": [
+    8,
+    6
+   ],
+   "layers": [
+    {
+     "frame": 10
+    }
+   ],
+   "dialog": [
+    "BOX"
+   ]
+  },
+  {
+   "type": "prop",
+   "cell": [
+    1,
+    6
+   ],
+   "layers": [
+    {
+     "frame": 9
+    }
+   ],
+   "dialog": [
+    "BAG"
+   ]
+  },
+  {
+   "type": "prop",
+   "cell": [
+    2,
+    6
+   ],
+   "layers": [
+    {
+     "frame": 8
+    }
+   ],
+   "dialog": [
+    "BAG"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    2,
+    1
+   ],
+   "dialog": [
+    "WINDOW"
+   ]
+  },
+  {
+   "type": "inspect",
+   "cell": [
+    7,
+    1
+   ],
+   "dialog": [
+    "WINDOW"
+   ]
+  }
+ ]
+}

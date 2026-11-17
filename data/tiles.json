@@ -1,0 +1,284 @@
+{
+ "_comment": "Legenda dos mapas: caractere -> tile. 'variants' sorteia por posição; 'under' desenha outro tile por baixo.",
+ "textures": {
+  "cenario": "res://assets/sprites/cenario.png",
+  "cidade": "res://assets/sprites/cidade.png"
+ },
+ "legend": {
+  " ": {
+   "solid": true
+  },
+  "=": {
+   "tex": "cenario",
+   "variants": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ]
+  },
+  "W": {
+   "tex": "cenario",
+   "at": [
+    2,
+    0
+   ],
+   "solid": true
+  },
+  "w": {
+   "tex": "cenario",
+   "at": [
+    2,
+    1
+   ],
+   "solid": true
+  },
+  "N": {
+   "tex": "cenario",
+   "at": [
+    3,
+    0
+   ],
+   "solid": true
+  },
+  "n": {
+   "tex": "cenario",
+   "at": [
+    3,
+    1
+   ],
+   "solid": true
+  },
+  "m": {
+   "tex": "cenario",
+   "at": [
+    0,
+    1
+   ],
+   "under": "="
+  },
+  ",": {
+   "tex": "cidade",
+   "variants": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "*": {
+   "tex": "cidade",
+   "at": [
+    1,
+    0
+   ]
+  },
+  "b": {
+   "tex": "cidade",
+   "at": [
+    2,
+    0
+   ],
+   "solid": true
+  },
+  ":": {
+   "tex": "cidade",
+   "at": [
+    3,
+    0
+   ]
+  },
+  "#": {
+   "tex": "cidade",
+   "at": [
+    4,
+    0
+   ]
+  },
+  "-": {
+   "tex": "cidade",
+   "at": [
+    5,
+    0
+   ]
+  },
+  "|": {
+   "tex": "cidade",
+   "at": [
+    6,
+    0
+   ]
+  },
+  "M": {
+   "tex": "cidade",
+   "at": [
+    7,
+    0
+   ],
+   "solid": true
+  },
+  "T": {
+   "tex": "cidade",
+   "at": [
+    0,
+    1
+   ],
+   "solid": true
+  },
+  "B": {
+   "tex": "cidade",
+   "at": [
+    1,
+    1
+   ],
+   "solid": true
+  },
+  "O": {
+   "tex": "cidade",
+   "at": [
+    2,
+    1
+   ],
+   "solid": true
+  },
+  "R": {
+   "tex": "cidade",
+   "at": [
+    3,
+    1
+   ],
+   "solid": true
+  },
+  "r": {
+   "tex": "cidade",
+   "at": [
+    4,
+    1
+   ],
+   "solid": true
+  },
+  "D": {
+   "tex": "cidade",
+   "at": [
+    5,
+    1
+   ]
+  },
+  "A": {
+   "tex": "cidade",
+   "at": [
+    6,
+    1
+   ],
+   "solid": true
+  },
+  "F": {
+   "tex": "cidade",
+   "at": [
+    7,
+    1
+   ],
+   "solid": true
+  },
+  "t": {
+   "tex": "cidade",
+   "at": [
+    0,
+    2
+   ],
+   "solid": true
+  },
+  "S": {
+   "tex": "cidade",
+   "at": [
+    1,
+    2
+   ],
+   "solid": true
+  },
+  "s": {
+   "tex": "cidade",
+   "at": [
+    2,
+    2
+   ],
+   "solid": true
+  },
+  "o": {
+   "tex": "cidade",
+   "at": [
+    3,
+    2
+   ],
+   "solid": true
+  },
+  "d": {
+   "tex": "cidade",
+   "at": [
+    4,
+    2
+   ],
+   "solid": true
+  },
+  "U": {
+   "tex": "cidade",
+   "at": [
+    5,
+    2
+   ],
+   "solid": true
+  },
+  "u": {
+   "tex": "cidade",
+   "at": [
+    6,
+    2
+   ],
+   "solid": true
+  },
+  "G": {
+   "tex": "cidade",
+   "at": [
+    7,
+    2
+   ],
+   "solid": true
+  },
+  "g": {
+   "tex": "cidade",
+   "at": [
+    0,
+    3
+   ],
+   "solid": true
+  },
+  "P": {
+   "tex": "cidade",
+   "at": [
+    1,
+    3
+   ],
+   "solid": true
+  }
+ }
+}

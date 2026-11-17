@@ -1,0 +1,30 @@
+keys,pt_BR,en,es
+MAP_GARAGEM,Garagem do Vizinho,Neighbor's Garage,Garaje del Vecino
+MAP_RUA,Vila Clorofila,Chlorophyll Village,Villa Clorofila
+POT_EMPTY,Um vaso vazio. Aqui vai a sua primeira semente.,An empty pot. Your first seed goes here.,Una maceta vacía. Aquí va tu primera semilla.
+POT_GROWING,A Alface Mística está crescendo... Paciência.,The Mystic Lettuce is growing... Patience.,La Lechuga Mística está creciendo... Paciencia.
+POT_READY,A planta está pronta para colher!,The plant is ready to harvest!,¡La planta está lista para cosechar!
+SOON_HARVEST,(Plantar e colher chegam no próximo marco.),(Planting and harvesting arrive in the next milestone.),(Plantar y cosechar llegan en el próximo hito.)
+LAMP,Uma luminária velha. Ainda acende.,An old lamp. It still turns on.,Una lámpara vieja. Todavía enciende.
+FAN,Um ventilador barulhento. Precisa de um silencioso...,A noisy fan. You'll need a quiet one...,Un ventilador ruidoso. Hará falta uno silencioso...
+BOX,Caixas de papelão. Tralha do vizinho.,Cardboard boxes. The neighbor's junk.,Cajas de cartón. Trastos del vecino.
+BAG,Um saco de terra adubada.,A bag of fertilized soil.,Una bolsa de tierra abonada.
+WINDOW,Lá fora a rua está tranquila. Por enquanto.,The street outside is quiet. For now.,La calle está tranquila. Por ahora.
+GATE,O portão da garagem está emperrado. Use a porta.,The garage gate is stuck. Use the door.,El portón del garaje está trabado. Usa la puerta.
+DOOR_LOCKED,Está trancado.,It's locked.,Está cerrado con llave.
+DOOR_SOON,Fechado para reforma. Volte em breve!,Closed for renovation. Come back soon!,Cerrado por reformas. ¡Vuelve pronto!
+SIGN_GARAGEM,GARAGEM DO VIZINHO - Não estacione.,NEIGHBOR'S GARAGE - No parking.,GARAJE DEL VECINO - No estacionar.
+SIGN_GROWSHOP,GROWSHOP RAIZ FORTE - Sementes e equipamentos.,STRONG ROOT GROWSHOP - Seeds and gear.,GROWSHOP RAÍZ FUERTE - Semillas y equipos.
+SIGN_AVO,Casa da Vó Dita. Entre sem bater.,Grandma Dita's house. Come right in.,Casa de la Abuela Dita. Pasa sin llamar.
+SIGN_VILA,VILA CLOROFILA - Onde tudo começa.,CHLOROPHYLL VILLAGE - Where it all begins.,VILLA CLOROFILA - Donde todo empieza.
+MAILBOX,A caixa de correio está vazia.,The mailbox is empty.,El buzón está vacío.
+NAME_AVO,Vó Dita,Grandma Dita,Abuela Dita
+NAME_ZE,Zé,Zé,Zé
+NAME_VENDEDOR,Vendedor,Shopkeeper,Vendedor
+AVO_1,"Bom dia, meu bem! Dormiu bem na garagem do vizinho?","Morning, sweetie! Did you sleep well in the neighbor's garage?","¡Buenos días, cariño! ¿Dormiste bien en el garaje del vecino?"
+AVO_2,"Você só tem dois vasos e umas sementes, mas todo império começa pequeno.","You only have two pots and a few seeds, but every empire starts small.","Solo tienes dos macetas y unas semillas, pero todo imperio empieza pequeño."
+AVO_3,"Plante, venda com juízo e não deixe a polícia desconfiar. E coma direito!","Plant, sell wisely and don't let the police get suspicious. And eat properly!","Planta, vende con cuidado y que la policía no sospeche. ¡Y come bien!"
+ZE_1,"E aí! Tá novo no bairro? Aqui na Vila todo mundo se conhece.","Hey! New around here? Everybody knows everybody in the Village.","¡Ey! ¿Eres nuevo en el barrio? En la Villa todos se conocen."
+ZE_2,"O Growshop ali vende sementes. Dizem que tem até Alface Mística.","The Growshop over there sells seeds. They say they even have Mystic Lettuce.","El Growshop de allí vende semillas. Dicen que hasta tiene Lechuga Mística."
+VENDEDOR_1,"A loja abre amanhã! Ainda estou arrumando as prateleiras.","The shop opens tomorrow! I'm still stocking the shelves.","¡La tienda abre mañana! Todavía estoy ordenando los estantes."
+TREE,Uma árvore frondosa. Boa sombra.,A leafy tree. Nice shade.,Un árbol frondoso. Buena sombra.
