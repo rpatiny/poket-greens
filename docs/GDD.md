@@ -313,6 +313,10 @@ Português (padrão), inglês, espanhol, alemão, chinês e japonês. Todos os t
 ---
 
 ## 11. Arte
+
+> **Atualizado:** a direção de arte foi refeita do zero, com tiles de 32 px, personagem de 48 px e paleta própria de 62 cores.
+> Veja [`ARTE.md`](ARTE.md). O texto abaixo descreve a arte do protótipo e fica só como histórico.
+
 - Grade de **16×16**, personagem de **16×24**, contorno escuro `#1d1922`, poucos tons por material.
 - Já desenhado no **Pixelwright** (projeto "El Cartel – Quarto", https://studio.pixelwright.app/?cloud=prj_438c8d82839a76b4):
   - Avatar: frente, costas e perfil (o lado direito é o perfil espelhado), cada um parado e com 2 passos.
