@@ -106,6 +106,18 @@ detalhe carmim; cabelo castanho bagunçado com franja. O verde é a cor do jogo 
 - Cada semente do catálogo tem uma planta adulta própria (forma e cor diferentes), partindo
   desse vaso.
 
+### Módulos de cultivo (escala do fim de jogo)
+
+![Galpão com módulos](arte/galpao-modulos.png)
+
+O mockup acima tem 54 plantas numa única tela de 640×360, sem zoom: 3 vasos, 3 floreiras,
+2 bancadas e 4 racks hidropônicos.
+- **Plantas dos módulos** usam versões menores da planta adulta (cerca de 60% do tamanho), para
+  caber de 3 a 5 por módulo.
+- **Vaso:** 1 planta grande. **Floreira:** 3. **Bancada:** 5. **Rack:** 8 em 2 andares com LED.
+- Balão "!" e barra de progresso por módulo, não por planta.
+- Equipamentos ficam em pontos fixos do cenário e não competem com os módulos pelo chão.
+
 ## 8. Interface
 
 - **Fonte pixel** de altura 8 (a Press Start 2P serve por enquanto). Avaliar uma fonte mais
@@ -121,6 +133,7 @@ detalhe carmim; cabelo castanho bagunçado com franja. O verde é a cor do jogo 
 | 0 – Guia de estilo | Paleta, protagonista (frente + idle + walk), mockup da garagem | ✅ |
 | 1 – Protagonista completo | Costas e perfil, walk nas 3 direções, talk | a fazer |
 | 2 – Garagem jogável | Tileset interior (piso, parede, rodapé, janela), vasos, 3 estágios, equipamentos | a fazer |
+| 2b – Módulos | Floreira, bancada, rack hidropônico, torre; plantas em tamanho de módulo | rascunho ✅ |
 | 3 – Vila Clorofila | Tileset exterior (grama, calçada, rua, árvores), fachadas da Avó, Growshop e garagem | a fazer |
 | 4 – NPCs | Vó Dita, Zé e Vendedor (rig com variações de rampa + acessório próprio) | a fazer |
 | 5 – UI | Caixa de diálogo, HUD, ícones dos recursos | a fazer |

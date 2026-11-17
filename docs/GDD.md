@@ -103,6 +103,32 @@
 - **[novo]** No RPG cada vaso é um objeto no quarto: andar até ele e apertar o botão de ação para plantar ou colher.
   As plantas mostram 3 estágios de crescimento e um balão "!" quando estão prontas (já desenhado).
 
+#### Módulos de cultivo [novo]
+Com tiles de 32 px, um vaso por tile não escala: a Estação Espacial teria 60 vasos espalhados e
+colher um por um seria tedioso. Por isso, a **capacidade do imóvel conta plantas, não vasos**, e as
+plantas ficam em **módulos** que ficam mais densos conforme o jogador progride.
+
+| Módulo | Ocupa | Plantas | Como libera |
+|---|---|---|---|
+| Vaso de barro | 1×1 tile | 1 | Início do jogo |
+| Floreira de madeira | 2×1 | 3 | Porão Abandonado em diante |
+| Bancada de cultivo | 3×1 | 5 | Container Marítimo em diante |
+| Rack hidropônico (2 andares) | 2×2 | 8 | Ter o Sistema Hidropônico |
+| Torre vertical / câmara (fim de jogo) | 2×3 | 16 | Ter o Lab. de Genética |
+
+- **Interação por módulo:** apertar ação num módulo abre "Plantar em tudo / Colher tudo / Ver
+  plantas". Um vaso sozinho continua com a ação direta (plantar ou colher).
+- **Leitura de longe:** cada módulo mostra um balão "!" quando tem algo pronto e uma barra com
+  quantas plantas estão prontas.
+- **Equipamentos não ocupam o chão:** aparecem em pontos fixos de cada imóvel (ventilador na
+  parede, cilindros de CO2, filtro pendurado, painel da IA). Alguns também mudam o visual dos
+  módulos (LED em cima da bancada, por exemplo).
+- **Automação (ideia):** o Controlador IA replanta sozinho a mesma semente ao colher. Isso
+  premia o fim de jogo sem exigir 60 cliques.
+- Na tabela de imóveis abaixo, a coluna "Vasos" passa a significar **plantas** (vagas).
+
+![Galpão com módulos](arte/galpao-modulos.png)
+
 #### Catálogo de sementes [protótipo]
 | Semente | Preço | Venda | Produção | ⚡ | Botânica | Equipamentos exigidos | Tempo (s) |
 |---|---|---|---|---|---|---|---|
