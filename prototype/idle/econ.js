@@ -264,7 +264,7 @@
       s.stock[i] -= q; left -= q; units += q; value += q * SEEDS[i].sell;
     }
     s.saleCd = saleCooldown(s);
-    if (rand(s) < riskOf(s, lvlIdx)) {
+    if (!(s.cheat && s.cheat.noPolice) && rand(s) < riskOf(s, lvlIdx)) {
       // flagrante: perde a mercadoria, multa na grana suja, +Paranoia
       const fine = s.dirty * Math.max(0.05, 0.25 - s.attrs.seg * 0.01);
       s.dirty -= fine;
@@ -398,6 +398,7 @@
   const legendFor = (earned) => (earned < 1e5 ? 0 : Math.floor(Math.pow(Math.log10(earned) - 4, 2)));
 
   function checkBust(s) {
+    if (s.cheat && s.cheat.noPolice) { s.para = Math.min(s.para, 99); return; }
     if (s.para >= 100) bust(s, "A Paranoia chegou a 100%.");
   }
   function bust(s, why) {
@@ -418,7 +419,7 @@
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -449,7 +450,7 @@
     s.raidT += dt;
     if (s.raidT >= R.raidEvery) {
       s.raidT = 0;
-      if (s.para > R.raidAt && rand(s) < R.raidChance) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
+      if (!(s.cheat && s.cheat.noPolice) && s.para > R.raidAt && rand(s) < R.raidChance) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
     }
     checkBust(s);
   }

@@ -86,6 +86,17 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 .modal .card{max-width:360px;text-align:center}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);z-index:25;background:#fffbef;color:#1a1420;border:3px solid #1a1420;padding:8px 12px;font-size:14px;max-width:92vw;box-shadow:0 4px 0 #0006;pointer-events:none}
 .toast.bad{background:#f2918a}
+#master{left:8px;bottom:8px;color:#fff0a6;border-color:#d1952e;pointer-events:none}
+.sheet{position:fixed;inset:0;background:#1a1420d0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet .in{background:var(--panel);border-top:3px solid var(--dirty);width:100%;max-width:520px;max-height:86%;overflow-y:auto;
+  padding-block:12px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
+.sheet .top{display:flex;justify-content:space-between;align-items:center}
+.sheet .top b{font-size:18px;color:var(--dirty)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.grid button{background:var(--panel-2);border:2px solid var(--bg);padding:8px 4px;font-size:13px;line-height:1.2;box-shadow:inset 0 -3px 0 #0006}
+.grid button.on{background:var(--leaf);color:#14292b;font-weight:700}
+.grid button.warn{background:#6e1b3d}
+.grid button:active{transform:translateY(2px)}
 @media (prefers-reduced-motion:reduce){.status.danger{animation:none}}
 </style>
 
@@ -105,6 +116,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     <div class="tag" id="place">Quartinho</div>
     <div class="tag" id="busy" hidden></div>
     <div class="tag" id="hint">toque para regar as plantas</div>
+    <div class="tag" id="master" hidden>MASTER</div>
   </div>
   <div class="sell pad">
     <div class="stockline"><span>Estoque: <b id="units">0</b> un · vale <b id="value">$0</b></span><span id="cdtext"></span></div>
@@ -388,7 +400,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
       s.stock[i] -= q; left -= q; units += q; value += q * SEEDS[i].sell;
     }
     s.saleCd = saleCooldown(s);
-    if (rand(s) < riskOf(s, lvlIdx)) {
+    if (!(s.cheat && s.cheat.noPolice) && rand(s) < riskOf(s, lvlIdx)) {
       // flagrante: perde a mercadoria, multa na grana suja, +Paranoia
       const fine = s.dirty * Math.max(0.05, 0.25 - s.attrs.seg * 0.01);
       s.dirty -= fine;
@@ -522,6 +534,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
   const legendFor = (earned) => (earned < 1e5 ? 0 : Math.floor(Math.pow(Math.log10(earned) - 4, 2)));
 
   function checkBust(s) {
+    if (s.cheat && s.cheat.noPolice) { s.para = Math.min(s.para, 99); return; }
     if (s.para >= 100) bust(s, "A Paranoia chegou a 100%.");
   }
   function bust(s, why) {
@@ -542,7 +555,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -573,7 +586,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     s.raidT += dt;
     if (s.raidT >= R.raidEvery) {
       s.raidT = 0;
-      if (s.para > R.raidAt && rand(s) < R.raidChance) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
+      if (!(s.cheat && s.cheat.noPolice) && s.para > R.raidAt && rand(s) < R.raidChance) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
     }
     checkBust(s);
   }
@@ -985,6 +998,8 @@ function perfil() {
   b.disabled = gain < 1;
   b.onclick = () => { const got = E.retire(S); if (got) { modal("Você passou o ponto", `Recomeçou com <span class="big">${S.legend}</span> de Lenda e ${$$(S.dirty)} de grana suja.`); renderPanel(); refresh(); } };
   c.appendChild(b); panel.appendChild(c);
+  const mb = el(`<button class="danger" style="background:#94592a">🛠 Modo master (para testar)</button>`);
+  mb.onclick = openMaster; panel.appendChild(mb);
   h3("Diário");
   const lg = el(`<div class="card log"></div>`);
   lg.innerHTML = S.log.slice(-15).reverse().map((l) => `<div class="${l.kind}">${dur(S.time - l.t)} atrás · ${l.text}</div>`).join("") || "Nada ainda.";
@@ -1026,6 +1041,10 @@ function refresh() {
   if (S.city) { busy.hidden = false; busy.textContent = `${E.CITY.find((x) => x.id === S.city.id).name} ${dur(S.city.end - S.time)}`; }
   else if (S.laundry.length) { busy.hidden = false; busy.textContent = `Lavando ${S.laundry.length}`; }
   else busy.hidden = true;
+  const ch = S.cheat || {};
+  const mt = $("master");
+  mt.hidden = !ch.on;
+  if (ch.on) mt.textContent = "MASTER" + (ch.speed > 1 ? ` ×${ch.speed}` : "") + (ch.noPolice ? " · imune" : "");
   if (keyNow() !== structKey) renderPanel();
   binds.forEach((f) => f());
 }
@@ -1044,12 +1063,95 @@ function toast(text, bad) {
   clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 2600);
 }
 
+
+// ---------------------------------------------------------------- modo master (testes)
+function closeSheet(sh) { sh.parentNode && sh.parentNode.removeChild(sh); }
+function openMaster() {
+  S.cheat = Object.assign({ on: true, speed: 1, noPolice: false }, S.cheat || {}, { on: true });
+  const sh = el(`<div class="sheet"><div class="in pad"><div class="top"><b>🛠 Modo master</b><button class="buy" data-close>Fechar</button></div>
+    <p style="font-size:13px;color:var(--muted);margin:0">Atalhos para testar. Tudo aqui vale só neste navegador.</p></div></div>`);
+  const box = sh.querySelector(".in");
+  const best = () => { for (let i = E.SEEDS.length - 1; i >= 0; i--) if (E.seedOk(S, i)) return i; return 0; };
+  function skip(t) {
+    const r = E.offline(S, t);
+    toast(`Pulou ${dur(t)}: +${$$(r.dirty)} suja, +${$$(r.clean)} limpa, +${fmt(r.units)} un${r.busted ? " · BATIDA!" : ""}`);
+  }
+  const groups = [
+    ["Dinheiro", [
+      ["+$1 mil suja", () => (S.dirty += 1e3)], ["+$1 mi suja", () => (S.dirty += 1e6)], ["+$1 bi suja", () => (S.dirty += 1e9)],
+      ["+$1 mil limpa", () => (S.clean += 1e3)], ["+$1 mi limpa", () => (S.clean += 1e6)], ["+$1 bi limpa", () => (S.clean += 1e9)],
+    ]],
+    ["Polícia", [
+      ["Paranoia 0%", () => (S.para = 0)], ["Paranoia 85% (ronda)", () => (S.para = 85)],
+      [() => (S.cheat.noPolice ? "Imune: LIGADO" : "Imune à polícia"), () => (S.cheat.noPolice = !S.cheat.noPolice), () => S.cheat.noPolice],
+      ["Forçar batida", () => { const n = S.cheat.noPolice; S.cheat.noPolice = false; S.para = 150; E.tick(S, 0.01); S.cheat.noPolice = n; }, null, "warn"],
+      ["Próxima ronda já", () => (S.raidT = E.R.raidEvery - 1)],
+      ["Quitar agiota", () => (S.debt = 0)],
+    ]],
+    ["Personagem", [
+      ["Estamina 100", () => (S.sta = 100)],
+      ["Atributos +5", () => { for (const k in S.attrs) S.attrs[k] += 5; }],
+      ["Botânica 30", () => (S.attrs.bot = Math.max(30, S.attrs.bot))],
+      ["Lábia 10", () => (S.attrs.lab = Math.max(10, S.attrs.lab))],
+      ["+10 Lenda", () => (S.legend += 10)],
+      ["+1000 Respeito", () => (S.resp += 1000)],
+    ]],
+    ["Progresso", [
+      ["Todos os equipamentos", () => E.EQUIP.forEach((e) => (S.equip[e.id] = Math.max(1, E.lvl(S, e.id))))],
+      ["Próximo imóvel", () => { if (E.PLACES[S.place + 1]) S.place++; }],
+      ["Último imóvel", () => (S.place = E.PLACES.length - 1)],
+      ["Encher de vasos", () => { while (S.pots.length < E.maxPots(S)) S.pots.push({ g: 0, s: S.seed, on: false }); }],
+      ["Melhor semente", () => E.chooseSeed(S, best())],
+      ["Tudo pronto p/ colher", () => S.pots.forEach((p) => { p.on = true; p.g = E.SEEDS[p.s].time * 0.999; })],
+      ["+100 un no estoque", () => (S.stock[best()] += 100)],
+      ["Venda sem espera", () => (S.saleCd = 0)],
+      ["Concluir lavagem e cidade", () => { S.laundry.forEach((l) => (l.done = S.time)); if (S.city) S.city.end = S.time; S.avoT = S.time; }],
+    ]],
+    ["Tempo", [
+      ["Velocidade ×1", () => (S.cheat.speed = 1), () => S.cheat.speed === 1],
+      ["Velocidade ×10", () => (S.cheat.speed = 10), () => S.cheat.speed === 10],
+      ["Velocidade ×60", () => (S.cheat.speed = 60), () => S.cheat.speed === 60],
+      ["Pular 10 min", () => skip(600)], ["Pular 1 hora", () => skip(3600)], ["Pular 8 horas", () => skip(8 * 3600)],
+    ]],
+  ];
+  const paints = [];
+  for (const [title, items] of groups) {
+    box.appendChild(el(`<h3>${title}</h3>`));
+    const grid = el(`<div class="grid"></div>`);
+    for (const [label, fn, isOn, cls] of items) {
+      const b = el(`<button${cls ? ` class="${cls}"` : ""}></button>`);
+      const paint = () => { b.textContent = typeof label === "function" ? label() : label; if (isOn) b.classList.toggle("on", !!isOn()); };
+      b.onclick = () => { fn(); paints.forEach((f) => f()); renderPanel(); refresh(); checkEvents(); save(); };
+      paint(); paints.push(paint); grid.appendChild(b);
+    }
+    box.appendChild(grid);
+  }
+  box.appendChild(el(`<h3>Save</h3>`));
+  const wipe = el(`<button class="danger" style="background:#6e1b3d">Apagar progresso e começar do zero</button>`);
+  wipe.onclick = () => {
+    if (!wipe.dataset.sure) { wipe.dataset.sure = "1"; wipe.textContent = "Toque de novo para confirmar"; return; }
+    try { localStorage.setItem(SAVE_KEY, ""); } catch (e) {}
+    S = E.newState(Math.floor(Math.random() * 1e9));
+    S.cheat = { on: true, speed: 1, noPolice: false };
+    seenBusts = 0; seenLog = 0;
+    closeSheet(sh); renderPanel(); refresh(); save(); toast("Progresso zerado.");
+  };
+  box.appendChild(wipe);
+  const off = el(`<button class="buy" style="align-self:flex-start;margin-top:6px">Desligar modo master</button>`);
+  off.onclick = () => { S.cheat = { on: false, speed: 1, noPolice: false }; closeSheet(sh); refresh(); save(); };
+  box.appendChild(off);
+  sh.querySelector("[data-close]").onclick = () => closeSheet(sh);
+  sh.addEventListener("click", (e) => { if (e.target === sh) closeSheet(sh); });
+  document.body.appendChild(sh);
+}
+
 // ---------------------------------------------------------------- laço
 let last = performance.now(), acc = 0, saveT = 0;
 function loop(now) {
   const dt = Math.min(0.25, (now - last) / 1000);
   last = now; lastTime = now / 1000;
-  E.tick(S, dt);
+  const speedUp = (S.cheat && S.cheat.speed) || 1;
+  E.tick(S, dt * speedUp);
   checkEvents();
   acc += dt; saveT += dt;
   if (acc > 0.15) { refresh(); acc = 0; }
@@ -1064,6 +1166,7 @@ Promise.all(Object.keys(IMG).map(loadImg)).then(() => {
   load();
   seenBusts = S.busts; seenLog = S.log.length;
   renderPanel(); refresh();
+  if (location.hash === "#master") openMaster();
   requestAnimationFrame(loop);
 });
 </script>
