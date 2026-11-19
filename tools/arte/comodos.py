@@ -70,6 +70,7 @@ class Room:
         s.r = random.Random(seed * 13)
         s.anims = []
         s.bulb = None
+        s.extra_busy = []
 
     @property
     def room(s):
@@ -97,6 +98,36 @@ class Room:
 
     def add(s, sp, x, y, height=0.5):
         s.objs.append((sp, s.x0 + x, s.fy + y, height))
+
+    def slots(s, pots, n=12):
+        """Lugares livres no chão para os equipamentos comprados (sprite 32x32, canto de cima à esquerda)."""
+        px, py, pw, ph = pots
+        busy = [(px - 22, py - 42, px + pw + 22, py + ph + 32)]          # vasos/calhas e a altura das plantas
+        for sp, xx, yy, hh in s.objs:
+            busy.append((xx - 2, yy - 2, xx + sp.w + 2, yy + sp.h + 2))
+        busy += s.extra_busy
+        x0, y0, w, h, fy = s.x0, s.y0, s.w, s.h, s.fy
+        hit = lambda r, a: not (r[2] <= a[0] or r[0] >= a[2] or r[3] <= a[1] or r[1] >= a[3])
+        cx, cy = px + pw / 2, py + ph / 2
+        cands = []
+        for y in range(fy - 18, y0 + h - 31, 2):
+            for x in range(x0 + 1, x0 + w - 31, 2):
+                body = (x + 4, y + 4, x + 28, y + 32)
+                if y + 20 < fy + 2:                                      # o pé tem que estar no chão
+                    continue
+                if any(hit(body, b) for b in busy):
+                    continue
+                d = max(abs(x + 16 - cx) - pw / 2, 0) + max(abs(y + 28 - cy) - ph / 2, 0) * 1.4
+                cands.append((d, x, y))
+        cands.sort()
+        out = []
+        for d, x, y in cands:
+            r = (x + 2, y + 2, x + 30, y + 32)
+            if all(not hit(r, (a, b, a + 28, b + 30)) for a, b in out):
+                out.append((x, y))
+            if len(out) >= n:
+                break
+        return out
 
     def finish(s, main_light, lights, pots, dark=False, wall_lights=None):
         """Sombras dos objetos pela luz principal, luz sobre tudo, oclusão; salva as 3 camadas."""
@@ -129,7 +160,7 @@ class Room:
         px, py, pw, ph = pots
         return {
             "w": FW, "h": FH, "room": [x0, y0, w, h], "floor": fy,
-            "pots": [x0 + px, fy + py, pw, ph], "light": list(L),
+            "pots": [x0 + px, fy + py, pw, ph], "light": list(L), "busy": [[xx - 1, yy - 1, xx + sp.w + 1, yy + sp.h + 1] for sp, xx, yy, hh in s.objs] + s.extra_busy,
             "anims": s.anims, **({"bulb": s.bulb} if s.bulb else {}), **({"glow": s.glow} if getattr(s, "glow", None) else {}),
         }
 

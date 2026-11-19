@@ -279,7 +279,9 @@ function plantArea() {
 // do Container em diante: calhas de hidroponia. Cabem mais plantas (22 px entre elas, contra 30-44 dos vasos)
 const HYDRO_SP = 22;
 function layoutHydro(n) {
-  const [ax, ay, aw, ah] = plantArea();
+  const m = SCENES.roomMeta(S.place);
+  let [ax, ay, aw, ah] = plantArea();
+  if (m) ah = Math.max(0, Math.min(ah, m.room[1] + m.room[3] - 8 - GUTTER_H - ay));
   const maxPer = Math.max(1, Math.floor((aw + 10) / HYDRO_SP));
   const rows = Math.ceil(n / maxPer), per = Math.ceil(n / rows);
   const rs = rows > 1 ? Math.min(34, ah / (rows - 1)) : 0;
@@ -293,21 +295,160 @@ function layoutHydro(n) {
   return out;
 }
 // calha: tampo com os copinhos de rede, frente, pés. tier 1 = PVC branco, tier 2 = high-tech escura com LED verde
+const GUTTER_H = 24;
 function paintGutter(c, w, count, tier) {
   const R = (x, y, ww, hh, col) => { c.fillStyle = col; c.fillRect(x, y, ww, hh); };
   const OL = "#1a1420";
   const hi = tier === 2;
   const top = hi ? "#646379" : "#bfbfc8", lip = hi ? "#8f90a2" : "#ebe9e1", front = hi ? "#403d54" : "#ebe9e1", fdark = hi ? "#272436" : "#bfbfc8";
-  R(2, 9, 2, 5, "#646379"); R(w - 4, 9, 2, 5, "#646379"); R(2, 13, 2, 1, OL); R(w - 4, 13, 2, 1, OL);   // pés
+  // cavalete: um par de pés a cada ~44 px, com travessa e sapatinha
+  const legs = [3]; for (let x = 47; x < w - 12; x += 44) legs.push(x); legs.push(w - 6);
+  R(3, 15, w - 6, 3, OL); R(4, 16, w - 8, 1, "#646379");
+  for (const lx of legs) {
+    R(lx - 1, 9, 5, 14, OL); R(lx, 9, 3, 13, "#8f90a2"); R(lx, 9, 1, 13, "#bfbfc8"); R(lx + 2, 9, 1, 13, "#646379");
+    R(lx - 2, 21, 7, 3, OL); R(lx - 1, 21, 5, 2, "#646379");
+  }
   R(0, 0, w, 10, OL);
   R(1, 1, w - 2, 5, top); R(1, 1, w - 2, 1, lip);
   R(1, 6, w - 2, 3, front); R(1, 8, w - 2, 1, fdark);
   if (hi) R(2, 7, w - 4, 1, "#48a38a");
-  else { R(w - 9, 6, 4, 3, "#bfbfc8"); R(w - 8, 7, 2, 1, "#646379"); }                             // tampa da ponta
-  R(w - 2, 3, 2, 3, hi ? "#2a7470" : "#3a5ea3");                                                   // mangueira de retorno
-  for (let k = 0; k < count; k++) {                                                                 // copinhos de rede
+  else { R(w - 9, 6, 4, 3, "#bfbfc8"); R(w - 8, 7, 2, 1, "#646379"); }
+  R(w - 2, 3, 2, 3, hi ? "#2a7470" : "#3a5ea3");
+  for (let k = 0; k < count; k++) {
     const cx = 4 + HYDRO_SP / 2 + k * HYDRO_SP;
     R(cx - 3, 2, 6, 3, OL); R(cx - 2, 2, 4, 2, "#47292b"); R(cx - 2, 2, 4, 1, "#272436");
+  }
+}
+
+// ---------------------------------------------------------------- equipamentos na cena
+// onde cada um fica: pendurado em cima das plantas, voando, na parede ou no chão (lugar livre)
+const EQ_HANG = { regador: 1, lampada: 1, led: 1 };
+const EQ_BOTTOM = [32, 31, 32, 30, 31, 29, 32, 32, 22, 31, 23, 31, 32, 18, 31, 32, 32, 32];   // última linha pintada de cada sprite
+const hitR = (a, b) => !(a[2] <= b[0] || a[0] >= b[2] || a[3] <= b[1] || a[1] >= b[3]);
+let slotCache = { sig: "", slots: [] };
+function findSlots(m, busy) {
+  const sig = S.place + "|" + busy.map((r) => r.join(",")).join(";");
+  if (slotCache.sig === sig) return slotCache.slots;
+  const [x0, y0, w, h] = m.room, fy = m.floor, [ax, ay, aw, ah] = m.pots, cx = ax + aw / 2, cy = ay + ah / 2;
+  const cands = [];
+  for (let y = fy - 18; y <= y0 + h - 33; y += 2) for (let x = x0 + 1; x <= x0 + w - 33; x += 2) {
+    const body = [x + 5, y + 6, x + 27, y + 31];
+    if (busy.some((b) => hitR(body, b))) continue;
+    const d = Math.max(Math.abs(x + 16 - cx) - aw / 2, 0) + Math.max(Math.abs(y + 28 - cy) - ah / 2, 0) * 1.4;
+    cands.push([d, x, y]);
+  }
+  cands.sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const [, x, y] of cands) {
+    if (out.every(([a, b]) => !hitR([x + 3, y + 3, x + 29, y + 31], [a + 3, b + 3, a + 29, b + 31]))) out.push([x, y]);
+    if (out.length >= 16) break;
+  }
+  slotCache = { sig, slots: out };
+  return out;
+}
+const eqPaint = (e) => (c) => { if (sprites.equip) c.drawImage(sprites.equip, (e.frame % 9) * 32, Math.floor(e.frame / 9) * 32, 32, 32, 0, 0, 32, 32); };
+// coloca os equipamentos comprados; devolve itens (luz e sombra da cena) e as animações
+function placeEquip(m, plantItems, firstPlant) {
+  const owned = E.EQUIP.filter((e) => E.lvl(S, e.id) > 0);
+  const floor = [], hang = [], anim = [];
+  if (!m || !owned.length) return { floor, hang, anim };
+  const [x0, y0, w] = m.room;
+  const busy = m.busy.map((r) => r.slice()).concat(plantItems.map((it) => [it.x + 2, it.y + 6, it.x + it.w - 2, it.y + it.h + 2]));
+  const slots = findSlots(m, busy);
+  const top = plantItems.length ? Math.min(...plantItems.map((it) => it.y)) : m.pots[1] - 40;
+  const pcx = m.pots[0] + m.pots[2] / 2;
+  const onFloor = owned.filter((e) => !EQ_HANG[e.id] && e.id !== "drone" && e.id !== "cameras").reverse();   // os mais avançados primeiro
+  onFloor.slice(0, Math.min(slots.length, 3 + S.place)).forEach((e, k) => {
+    const [x, y] = slots[k];
+    floor.push({ x, y, w: 32, h: 32, foot: 32 - EQ_BOTTOM[e.frame], key: "eq:" + e.id, paint: eqPaint(e) });
+    anim.push([e.id, x, y]);
+  });
+  const hangs = owned.filter((e) => EQ_HANG[e.id]);
+  const lamps = hangs.filter((e) => e.id !== "regador");
+  lamps.forEach((e, k) => {
+    const x = Math.round(pcx - 16 + (lamps.length > 1 ? (k ? 26 : -26) : 0)), y = Math.max(y0 - 2, top - 26);
+    hang.push({ x, y, w: 32, h: 32, key: "eq:" + e.id, paint: eqPaint(e), noShadow: true, cord: [x + 16, y0 - 2, y + 1] });
+    anim.push([e.id, x, y]);
+  });
+  if (hangs.some((e) => e.id === "regador") && firstPlant) {
+    const x = firstPlant.x + 2, y = Math.max(y0 + 1, firstPlant.y - 12);
+    hang.push({ x, y, w: 32, h: 32, key: "eq:regador", paint: eqPaint(E.EQUIP[0]), noShadow: true, cord: [x + 16, y0 - 2, y] });
+    anim.push(["regador", x, y, firstPlant.y + 36]);
+  }
+  if (owned.some((e) => e.id === "cameras")) {
+    const x = x0 + w - 32, y = y0 - 2;
+    hang.push({ x, y, w: 32, h: 32, key: "eq:cameras", paint: eqPaint(E.EQUIP[13]), noShadow: true });
+    anim.push(["cameras", x, y]);
+  }
+  if (owned.some((e) => e.id === "drone")) anim.push(["drone"]);
+  return { floor, hang, anim };
+}
+// animações de cada equipamento (desenhadas por cima, em pixels inteiros)
+function eqAnim(a, t, m) {
+  const [id, x, y, extra] = a;
+  const P = (px, py, pw, ph, col) => { g.fillStyle = col; g.fillRect(Math.round(px), Math.round(py), pw, ph); };
+  const blink = (hz, off = 0) => Math.floor(t * hz + off) % 2 === 0;
+  switch (id) {
+    case "regador": {                                  // gotas caindo da garrafa até a terra
+      for (let k = 0; k < 2; k++) {
+        const f = (t * 0.9 + k * 0.5) % 1, yy = y + 27 + f * (extra - y - 27);
+        if (f < 0.92) P(x + 15, yy, 1, 2, "#a6cbeb"); else P(x + 13, extra, 4, 1, "#6590cc");
+      }
+      break;
+    }
+    case "tesoura": if (Math.floor(t * 0.7) % 4 === 0) { P(x + 11, y + 10, 1, 1, "#fffbef"); P(x + 10, y + 11, 3, 1, "#fffbef"); } break;
+    case "ventilador": {                               // hélice girando e ventinho indo para as plantas
+      const cx = x + 14, cy = y + 12;
+      for (let dy = -7; dy <= 7; dy++) { const hw = Math.floor(Math.sqrt(49 - dy * dy)); P(cx - hw, cy + dy, hw * 2 + 1, 1, "#403d54"); }
+      const a0 = t * 14;
+      for (let k = 0; k < 3; k++) {
+        const an = a0 + (k * Math.PI * 2) / 3;
+        for (let r = 2; r <= 6; r++) P(cx + Math.cos(an) * r, cy + Math.sin(an) * r, 2, 2, "#bfbfc8");
+      }
+      P(cx - 1, cy - 1, 3, 3, "#8f90a2"); P(cx, cy, 1, 1, "#fffbef");
+      const dir = m && m.pots[0] + m.pots[2] / 2 > x ? 1 : -1;
+      for (let k = 0; k < 3; k++) { const f = (t * 0.8 + k / 3) % 1; P(cx + dir * (12 + f * 30), cy - 4 + k * 4 + Math.sin(t * 3 + k) * 2, 4, 1, "rgba(255,251,239," + (0.55 * (1 - f)) + ")"); }
+      break;
+    }
+    case "termometro": { const lv = Math.round(2 + Math.sin(t * 0.8) * 2); P(x + 15, y + 9, 2, 7 + lv, "#ebe9e1"); P(x + 15, y + 16 + lv, 2, 9 - lv, "#d95463"); break; }
+    case "lampada": {                                  // cone de luz quente que treme um pouco
+      const al = 0.1 + (Math.sin(t * 9) > 0.92 ? 0.05 : 0);
+      g.fillStyle = "rgba(255,240,166," + al + ")";
+      g.beginPath(); g.moveTo(x + 8, y + 18); g.lineTo(x + 24, y + 18); g.lineTo(x + 40, y + 70); g.lineTo(x - 8, y + 70); g.fill();
+      if (blink(1.5)) P(x + 15, y + 20, 2, 1, "#fffbef");
+      break;
+    }
+    case "ph": P(x + 14, y + 15, 5, 1, blink(2) ? "#f2918a" : "#d95463"); P(x + 14, y + 19, 5, 1, blink(2, 1) ? "#bcd95e" : "#4a8f40"); break;
+    case "estufa": { const f = (t * 0.25) % 1; P(x + 6, y + 8 + f * 16, 1, 2, "rgba(255,251,239,0.8)"); P(x + 24, y + 12 + ((f + 0.5) % 1) * 12, 1, 2, "rgba(255,251,239,0.6)"); break; }
+    case "drone": {                                    // voa em oito pelo cômodo, com sombra no chão
+      const [rx, ry, rw, rh] = m.room, cx = rx + rw / 2 + Math.sin(t * 0.35) * rw * 0.32, cy = ry + rh * 0.42 + Math.sin(t * 0.7) * rh * 0.16;
+      g.fillStyle = "rgba(26,20,32,0.28)"; g.beginPath(); g.ellipse(Math.round(cx), Math.round(cy + 30), 10, 3, 0, 0, 7); g.fill();
+      const bob = Math.round(Math.sin(t * 5) * 1.5), dx = Math.round(cx - 16), dy = Math.round(cy - 14 + bob);
+      if (sprites.equip) g.drawImage(sprites.equip, 8 * 32, 0, 32, 32, dx, dy, 32, 32);
+      const sp = Math.floor(t * 20) % 2;
+      P(dx + 1, dy + 8, 11, 1, sp ? "#bfbfc8" : "#646379"); P(dx + 21, dy + 8, 11, 1, sp ? "#646379" : "#bfbfc8");
+      if (blink(2)) P(dx + 13, dy + 15, 2, 1, "#ff6b6b");
+      break;
+    }
+    case "filtro": for (let k = 0; k < 3; k++) { const f = (t * 0.6 + k / 3) % 1; P(x + 12 + k * 3 + Math.sin(t * 2 + k) * 1.5, y - f * 10, 2, 1, "rgba(191,191,200," + (0.7 * (1 - f)) + ")"); } break;
+    case "led": {                                      // brilho rosa e roxo que pulsa nas plantas
+      const al = 0.07 + 0.04 * Math.sin(t * 2);
+      g.fillStyle = "rgba(201,110,190," + al + ")";
+      g.beginPath(); g.moveTo(x + 2, y + 16); g.lineTo(x + 30, y + 16); g.lineTo(x + 48, y + 72); g.lineTo(x - 16, y + 72); g.fill();
+      for (let k = 0; k < 9; k++) if ((k + Math.floor(t * 4)) % 5 === 0) P(x + 4 + k * 3, y + 7 + (k % 3) * 3, 1, 1, "#fffbef");
+      break;
+    }
+    case "hidro": for (let k = 0; k < 4; k++) { const f = (t * 0.7 + k / 4) % 1; P(x + 6 + k * 5, y + 15 - f * 3, 1, 1, "#fffbef"); } if (blink(1)) P(x + 21, y + 18, 3, 2, "#8fd4a8"); break;
+    case "co2": for (let k = 0; k < 3; k++) { const f = (t * 0.5 + k / 3) % 1; P(x + 15 + Math.sin(t + k * 2) * 3, y + 1 - f * 12, 2 + Math.round(f * 2), 2, "rgba(235,233,225," + (0.6 * (1 - f)) + ")"); } break;
+    case "cameras": P(x + 14, y + 11, 1, 1, blink(1.5) ? "#ff6b6b" : "#6e1b3d"); break;
+    case "osmose": for (let k = 0; k < 4; k++) { const f = (t * 0.5 + k / 4) % 1; P(x + (k % 2 ? 16 : 7), y + 28 - f * 19, 1, 1, "rgba(255,251,239,0.85)"); } break;
+    case "ia": {
+      for (let k = 0; k < 5; k++) P(x + 9 + k * 3, y + 22, 1, 1, Math.floor(t * 5) % 5 === k ? "#bcd95e" : "#2c6a40");
+      const sy = y + 3 + (Math.floor(t * 8) % 10); P(x + 8, sy, 17, 1, "rgba(143,212,168,0.25)");
+      break;
+    }
+    case "bunker": for (let k = 0; k < 7; k++) P(x + 3 + k * 4, y + 29, 2, 2, (k + Math.floor(t * 4)) % 3 === 0 ? "#fff0a6" : "#d1952e"); break;
+    case "lab": for (let k = 0; k < 3; k++) { const f = (t * 0.4 + k / 3) % 1; P(x + 13 + k * 3, y + 22 - f * 18, 1, 1, "#fffbef"); } if (blink(1)) P(x + 6, y + 26, 1, 1, "#ff6b6b"); break;
   }
 }
 function layout(n) {
@@ -342,13 +483,15 @@ function draw() {
   const plantOf = (i) => { const p = S.pots[i]; return { p, f: p.on ? p.g / E.SEEDS[p.s].time : 0, st: p.on ? stageCell(p.s, p.on ? p.g / E.SEEDS[p.s].time : 0) : null }; };
   const paintPlant = (st) => (c) => { if (st && sprites.estagios) c.drawImage(sprites.estagios, st[0] * 32, st[1] * 40, 32, 40, 0, 0, 32, 40); };
   const items = [], marks = [];
+  let first = null;
   if (hydro) {
     // cada calha, e logo depois as plantas dela (a calha da frente cobre o pé das de trás)
     for (const gt of layoutHydro(S.pots.length)) {
-      items.push({ x: gt.x, y: gt.y, w: gt.w, h: 14, foot: 0, key: "calha:" + gt.count + ":" + tier, paint: (c) => paintGutter(c, gt.w, gt.count, tier) });
+      items.push({ x: gt.x, y: gt.y, w: gt.w, h: GUTTER_H, foot: 0, key: "calha:" + gt.count + ":" + tier, paint: (c) => paintGutter(c, gt.w, gt.count, tier) });
       for (let k = 0; k < gt.count; k++) {
         const i = gt.first + k, { p, f, st } = plantOf(i), cx = gt.x + 4 + HYDRO_SP / 2 + k * HYDRO_SP;
-        if (st) items.push({ x: cx - 16, y: gt.y + 4 - 40, w: 32, h: 40, foot: -9, key: "p:" + st.join(","), paint: paintPlant(st) });
+        if (st) items.push({ x: cx - 16, y: gt.y + 4 - 40, w: 32, h: 40, foot: -19, key: "p:" + st.join(","), paint: paintPlant(st) });
+        if (st && !first) first = items[items.length - 1];
         marks.push({ on: p.on, f, x: cx, top: gt.y + 4 - 26, bar: [cx - 4, gt.y + 7, 8] });
       }
     }
@@ -360,10 +503,18 @@ function draw() {
       items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-"),
         paint(c) { if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24); paintPlant(st)(c); } });
       marks.push({ on: p.on, f, x: x + 16, top: y - 25, bar: [x + 8, y + 22, 16], pot: true });
+      if (!first) first = { x, y: y - 34 };
     });
   }
   // a cena acende cada sprite pelo mapa de luz e projeta a sombra
-  if (sprites.vasos && sprites.estagios) SCENES.plants(g, S.place, items);
+  // equipamentos comprados entram na cena: no chão (com as plantas, por profundidade), pendurados e voando
+  const room = SCENES.roomMeta(S.place);
+  const EQ = placeEquip(room, items, first);
+  const ground = (it) => it.y + it.h - 1 - (it.foot || 0);
+  const all = items.concat(EQ.floor).map((it, k) => [it, k]).sort((a, b) => ground(a[0]) - ground(b[0]) || a[1] - b[1]).map((a) => a[0]);
+  for (const hg of EQ.hang) if (hg.cord) { g.fillStyle = "#1a1420"; g.fillRect(hg.cord[0], hg.cord[1], 1, Math.max(0, hg.cord[2] - hg.cord[1])); }
+  if (sprites.vasos && sprites.estagios) SCENES.plants(g, S.place, all.concat(EQ.hang));
+  for (const a of EQ.anim) eqAnim(a, lastTime, room);
   for (const m of marks) {
     if (!m.on) { g.fillStyle = "#d95463"; g.font = "bold 9px monospace"; g.fillText("$", m.x - 3, m.top + 27); }
     else if (m.f > 0.92 && Math.floor(lastTime * 4) % 2 === 0) { g.fillStyle = "#fff0a6"; g.fillRect(m.x + 8, m.top, 1, 3); g.fillRect(m.x + 7, m.top + 1, 3, 1); }

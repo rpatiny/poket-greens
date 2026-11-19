@@ -216,3 +216,13 @@ profissionais, calha escura com LED verde nos high-tech. As calhas são desenhad
 mesma luz e sombra dos vasos. A Praia tem uma palmeira só (`tools/arte/palmeira.py`), com tronco curvo
 de anéis e folhas serrilhadas que caem.
 
+
+**Equipamentos na cena.** Cada equipamento comprado aparece no esconderijo, com luz, sombra e animação
+própria. A garrafa PET fica pendurada sobre a primeira planta e pinga na terra; a lâmpada e o painel
+LED ficam pendurados sobre as plantas, com um cone de luz quente ou um brilho rosa que pulsa; o drone
+voa em oito pelo cômodo, com sombra no chão; a câmera fica no canto da parede, com LED piscando. O resto
+vai para o chão, nos lugares livres mais perto das plantas: o ventilador gira e sopra vento para as
+plantas, o termômetro sobe e desce, o CO2 solta fumaça, a hidroponia, a osmose e o laboratório fazem
+bolhas, a IA tem LEDs correndo, e assim por diante. Os lugares livres são calculados no jogo a partir dos
+móveis do cômodo (`busy` no `meta.json`) e das plantas que você tem. Cabem até 3 + o número do
+esconderijo no chão; quando falta lugar, aparecem os mais avançados. As calhas ficam em cavaletes com pés.

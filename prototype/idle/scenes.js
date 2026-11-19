@@ -583,6 +583,7 @@
     const m = x.createImageData(W0, H0), d = m.data;
     const mark = (px, py) => { if (px >= 0 && py >= 0 && px < W0 && py < H0) d[(py * W0 + px) * 4 + 3] = 255; };
     for (const it of items) {
+      if (it.noShadow) continue;
       const raw = rawSprite(r, it); if (!raw.data) continue;
       const src = raw.data.data, ground = it.y + it.h - 1 - (it.foot || 0), cxo = it.x + it.w / 2;
       const kx = Math.max(-0.7, Math.min(0.7, (cxo - lx) / 70)), ky = 0.45;
