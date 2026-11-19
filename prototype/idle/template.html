@@ -987,14 +987,35 @@ function cidade() {
 
 function perfil() {
   const lvl = E.level(S);
-  const mode = el(`<div class="card"><p>Modo: <b>${S.easy ? "⚡ Fácil" : "🌱 Normal"}</b>. ${S.easy ? "Cresce 3× mais rápido, vende 2× mais caro e tudo custa 30%." : "O ritmo de verdade do jogo."}</p>
-    <button class="buy" data-sw style="margin-top:6px">Recomeçar no modo ${S.easy ? "normal" : "fácil"}</button></div>`);
+  // modo de jogo: troca na hora (mantém o progresso) ou recomeça do zero. Sem confirm() do navegador,
+  // que fica bloqueado quando o jogo roda dentro de outra página.
+  const other = S.easy ? "normal" : "fácil";
+  const mode = el(`<div class="card" style="border-color:${S.easy ? "#4a8f40" : "var(--line)"}">
+    <p>Modo de jogo: <b class="big">${S.easy ? "⚡ FÁCIL" : "🌱 NORMAL"}</b></p>
+    <p style="font-size:12px">${S.easy ? "Cresce 3× mais rápido, vende 2× mais caro, tudo custa 30%, atributos sobem 3× mais rápido e a Paranoia cai 2× mais rápido." : "O ritmo de verdade do jogo. O modo fácil é para testar com os amigos: dá para zerar em ~2 h."}</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <button class="buy" data-sw>${S.easy ? "Voltar ao modo normal" : "⚡ Ligar o modo fácil"}</button>
+      <button class="buy" data-new style="background:#403d54;color:#fffbef">Recomeçar do zero no ${other}</button>
+    </div></div>`);
   mode.querySelector("[data-sw]").onclick = () => {
-    if (!confirm(`Apagar este jogo e começar do zero no modo ${S.easy ? "normal" : "fácil"}?`)) return;
-    const easy = !S.easy;
-    S = E.newState(Math.floor(Math.random() * 1e9));
-    S.easy = easy;
+    S.easy = !S.easy;
     save(); renderPanel(); refresh();
+    toast(S.easy ? "Modo fácil ligado: tudo mais rápido e mais barato." : "Modo normal de volta.");
+  };
+  mode.querySelector("[data-new]").onclick = () => {
+    const m = el(`<div class="modal"><div class="card"><b style="font-size:18px">Recomeçar do zero?</b>
+      <p>Isso apaga este jogo e começa um novo no modo <b>${other}</b>.</p>
+      <div style="display:flex;gap:8px;justify-content:center"><button class="buy" data-y>Apagar e recomeçar</button><button class="buy" data-n style="background:#403d54;color:#fffbef">Cancelar</button></div></div></div>`);
+    const close = () => m.parentNode && m.parentNode.removeChild(m);
+    m.querySelector("[data-n]").onclick = close;
+    m.querySelector("[data-y]").onclick = () => {
+      const easy = !S.easy;
+      S = E.newState(Math.floor(Math.random() * 1e9));
+      S.easy = easy;
+      close(); save(); renderPanel(); refresh();
+      toast(easy ? "Jogo novo no modo fácil!" : "Jogo novo no modo normal.");
+    };
+    document.body.appendChild(m);
   };
   panel.appendChild(mode);
   panel.appendChild(el(`<div class="card"><p>Nível <b class="big">${lvl}</b> · Respeito ${fmt(S.resp)} · preso ${S.timesArrested} vez(es)</p><p>Cada nível dá +1% no preço de venda.</p></div>`));
