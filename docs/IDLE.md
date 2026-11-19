@@ -40,7 +40,7 @@ Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 | 6 estágios por planta | Semente na terra → broto → muda → jovem → crescida → adulta, com desenho próprio de cada planta. |
 | 18 equipamentos | Preços e bônus do GDD. O 1º nível libera sementes, os seguintes repetem o bônus (custo ×2,4). Alguns têm efeito extra: velocidade, toque, menos Paranoia, proteção contra batida. |
 | 13 imóveis | Do Quartinho (2 vasos) à Estação Espacial (60 vasos). O visual muda: gambiarra → profissional → high-tech. |
-| 5 níveis de venda | Discreto, Normal, Ousado, Agressivo e All-in, com quantidade máxima, Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
+| 5 níveis de venda | Por porcentagem do estoque: Discreto 5%, Normal 15%, Ousado 35%, Agressivo 70% e All-in 100% (maior risco). Cada nível tem Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
 | Flagrante | Perde a mercadoria, paga multa de 5–25% da grana suja, −20⚡, +15 Paranoia. |
 | Batida | Perde tudo (fora atributos e Lenda), Furtividade e Segurança voltam a 1; ganha metade da Lenda. Câmeras e bunker salvam parte da grana limpa. |
 | Lavagem | Laranjas, NFTs, Crypto e Consultoria, com taxa, tempo, Paranoia e Lábia do GDD. Vários processos ao mesmo tempo. |
@@ -62,7 +62,7 @@ lava dinheiro, vai à cidade e compra os equipamentos exigidos):
 | Perfil | Resultado |
 |---|---|
 | Ativo cauteloso (8 h) | chega à semente 18 sem nenhuma batida |
-| Ativo arriscado (8 h) | 34 batidas e 55 flagrantes; termina na semente 12. Viver acima de 80% de Paranoia não compensa |
+| Ativo arriscado (8 h) | ~33 batidas e ~64 flagrantes; mais Lenda que antes, mas preso sem parar |
 | Casual (15 min a cada 4 h, 5 dias) | semente 18 |
 | Idle (só joga 2 min, 24 h) | semente 18 em ~19 h |
 

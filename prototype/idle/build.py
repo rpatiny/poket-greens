@@ -19,5 +19,11 @@ html = html.replace("/*SCENES*/", (HERE / "scenes.js").read_text())
 html = html.replace("__ESTAGIOS__", data_uri("plantas_estagios.png"))
 html = html.replace("__EQUIP__", data_uri("equipamentos.png"))
 html = html.replace("__VASOS__", data_uri("vasos.png"))
+import json
+cen = {}
+meta = json.loads((SPR / "cenarios" / "meta.json").read_text())
+for k, m in meta.items():
+    cen[int(k)] = {"src": data_uri(f"cenarios/{int(k):02d}.png"), "meta": m}
+html = html.replace("__CENARIOS__", json.dumps(cen))
 (HERE / "index.html").write_text(html)
 print("index.html:", len(html) // 1024, "KB")

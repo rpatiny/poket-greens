@@ -70,12 +70,14 @@
   ].map(([name, cost, pots, tier], id) => ({ id, name, cost, pots, tier }));
 
   // Venda (GDD): quantidade máxima, Paranoia, chance de flagrante e bônus de preço.
+  // Venda: fatia do estoque que sai (pct), Paranoia, chance de flagrante e bônus de preço.
+  // Quanto maior a fatia, maior o risco; o All-in vende tudo com o maior risco.
   const SALES = [
-    { name: "Discreto", max: 5, para: 5, risk: 0, bonus: 0 },
-    { name: "Normal", max: 20, para: 15, risk: 0.03, bonus: 0.1 },
-    { name: "Ousado", max: 50, para: 25, risk: 0.08, bonus: 0.25 },
-    { name: "Agressivo", max: 100, para: 40, risk: 0.15, bonus: 0.5 },
-    { name: "All-in", max: Infinity, para: 60, risk: 0.3, bonus: 1 },
+    { name: "Discreto", pct: 0.05, para: 5, risk: 0, bonus: 0 },
+    { name: "Normal", pct: 0.15, para: 15, risk: 0.03, bonus: 0.1 },
+    { name: "Ousado", pct: 0.35, para: 25, risk: 0.08, bonus: 0.25 },
+    { name: "Agressivo", pct: 0.7, para: 40, risk: 0.15, bonus: 0.5 },
+    { name: "All-in", pct: 1, para: 60, risk: 0.3, bonus: 1 },
   ];
 
   // Lavagem (GDD): taxa, tempo (s), Paranoia e Lábia mínima.
@@ -257,7 +259,8 @@
   function sell(s, lvlIdx, auto = false) {
     if (s.saleCd > 0 || stockUnits(s) <= 0) return null;
     const L = SALES[lvlIdx];
-    let left = L.max, units = 0, value = 0;
+    // vende a fatia do estoque (no mínimo 1 unidade), começando pelas plantas mais valiosas
+    let left = Math.max(1, Math.ceil(stockUnits(s) * L.pct)), units = 0, value = 0;
     for (let i = SEEDS.length - 1; i >= 0 && left > 0; i--) {
       const q = Math.min(left, s.stock[i]);
       if (q <= 0) continue;
@@ -281,7 +284,7 @@
     s.runEarned += money;
     s.para += paraOf(s, lvlIdx);
     s.resp += Math.ceil(units / 3);
-    gainXp(s, "lab", units * (lvlIdx + 1) / 2);
+    gainXp(s, "lab", Math.sqrt(units) * (lvlIdx + 1));   // raiz: vender muito não dispara a Lábia
     if (lvlIdx >= 1) gainXp(s, "fur", lvlIdx);
     checkBust(s);
     return { units, money, caught: false };

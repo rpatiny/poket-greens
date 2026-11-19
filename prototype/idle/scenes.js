@@ -508,18 +508,29 @@
     3: { a: 0.6, tint: "26,20,32", lights: [[160, 30, 115]], flicker: true },
     11: { a: 0.5, tint: "26,20,32", lights: [[62, 34, 80], [254, 34, 80]], flicker: true },
   };
+  // cenários desenhados em PNG (tools/arte/cenarios.py): substituem os desenhados em código
+  const PNG = {};
+  function register(map) {
+    for (const id in map) { const img = new Image(); img.src = map[id].src; PNG[id] = { img, meta: map[id].meta }; }
+  }
+  function size(id) {
+    const p = PNG[id];
+    return p ? { w: p.meta.w, h: p.meta.h, floor: p.meta.floor } : { w: W, h: H, floor: F };
+  }
+
   let darkCanvas = null;
   function lighting(g, id, t) {
-    const L = LIGHT[id];
+    const L = (PNG[id] && PNG[id].meta.dark) || (!PNG[id] && LIGHT[id]);
     if (!L) return;
-    if (!darkCanvas) { darkCanvas = document.createElement("canvas"); darkCanvas.width = W; darkCanvas.height = H; }
+    const { w: RW, h: RH } = size(id);
+    if (!darkCanvas || darkCanvas.width !== RW) { darkCanvas = document.createElement("canvas"); darkCanvas.width = RW; darkCanvas.height = RH; }
     const d = darkCanvas.getContext("2d");
     d.globalCompositeOperation = "source-over";
-    d.clearRect(0, 0, W, H);
+    d.clearRect(0, 0, RW, RH);
     let a = L.a;
     if (L.flicker && Math.sin(t * 23) > 0.93) a += 0.15;
     d.fillStyle = `rgba(${L.tint},${a})`;
-    d.fillRect(0, 0, W, H);
+    d.fillRect(0, 0, RW, RH);
     d.globalCompositeOperation = "destination-out";
     for (const [x, y, r] of L.lights) {
       for (const [k, al] of [[1, 0.35], [0.72, 0.5], [0.45, 1]]) {
@@ -531,6 +542,10 @@
     d.globalAlpha = 1;
     d.globalCompositeOperation = "source-over";
     g.drawImage(darkCanvas, 0, 0);
+    if (PNG[id]) {
+      if (L.bulb) { const { R } = T(g); const [bx, by] = L.bulb; R(bx - 4, by - 4, 9, 8, "#1a1420"); R(bx - 3, by - 3, 7, 6, Math.sin(t * 23) > 0.93 ? "#d1952e" : "#fff0a6"); R(bx - 1, by - 2, 2, 2, "#fffbef"); }
+      return;
+    }
     if (id === 3 || id === 1) { // a lâmpada
       const { R } = T(g);
       R(156, 24, 8, 7, "#1a1420"); R(157, 25, 6, 5, id === 3 ? "#fff0a6" : "#8160a8");
@@ -539,6 +554,18 @@
 
   const cache = {};
   function background(g, id) {
+    const png = PNG[id];
+    if (png) {
+      if (png.img.complete) g.drawImage(png.img, 0, 0);
+      const t = performance.now() / 1000, { R, ell } = T(g);
+      for (const [i, [x, y0, y1]] of (png.meta.drips || []).entries()) {   // gotas da goteira
+        const k = (t * 0.55 + i * 0.45) % 1;
+        if (k < 0.75) R(x, y0 + (y1 - y0) * (k / 0.75), 1, 3, "#a6cbeb");
+        else { const sp = (k - 0.75) / 0.25; ell(x, y1 + 2, Math.round(2 + sp * 8), 1, "rgba(166,203,234," + (0.7 - sp * 0.7) + ")"); }
+      }
+      if (id === 1 && Math.floor(t * 2) % 9 !== 0) R(83, 18, 74, 2, "#8160a8");   // luz roxa do armário
+      return;
+    }
     if (!cache[id]) {
       const c = document.createElement("canvas");
       c.width = W; c.height = H;
@@ -551,5 +578,5 @@
     if (ANIM[id]) ANIM[id](g, performance.now() / 1000);
   }
 
-  root.SCENES = { background, lighting: (g, id) => lighting(g, id, performance.now() / 1000), count: STATIC.length };
+  root.SCENES = { register, size, background, lighting: (g, id) => lighting(g, id, performance.now() / 1000), count: STATIC.length };
 })(this);

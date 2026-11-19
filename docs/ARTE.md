@@ -159,6 +159,16 @@ Regras:
 
 ![Equipamentos](arte/equipamentos.png)
 
+## 7d. Cenários dos imóveis
+
+- Cada imóvel tem um cômodo com **tamanho próprio** (16:9): o Quartinho tem 240×135 e aparece mais de perto; os
+  imóveis grandes chegam a 320×180 ou mais. Plantas, vasos e cenário ficam **sempre na mesma escala de pixel**
+  (nada de ampliar 2× só a planta, que dá "mixels").
+- Os cenários são PNGs gerados por `tools/arte/cenarios.py`: luz da janela ou da lâmpada, sombra de contato,
+  oclusão nos cantos, veio de madeira e textura. Luz e sombra trocam a cor pelo degrau vizinho da mesma rampa.
+- Prontos com o acabamento novo: Quartinho, Armário Grow, Garagem do Vizinho e Porão Abandonado. Os outros 10
+  ainda usam a versão simples, desenhada em código (`scenes.js`).
+
 ## 8. Interface
 
 - **Fonte pixel** de altura 8 (a Press Start 2P serve por enquanto). Avaliar uma fonte mais
