@@ -67,10 +67,12 @@ function brain(s, p) {
     const opts = E.EQUIP.filter((e) => !E.equipBlock(s, e)).map((e) => [E.equipCost(s, e), e]).sort((a, b) => a[0] - b[0]);
     if (!opts.length) break;
     const nextPlace = E.PLACES[s.place + 1];
-    const budget = nextPlace ? s.clean - nextPlace.cost * 0.3 : s.clean;
+    const budget = nextPlace ? s.clean - E.placeCost(s) * 0.3 : s.clean;
     if (opts[0][0] <= budget && E.buyEquip(s, opts[0][1].id)) continue;
     break;
   }
+  // Vó: escolhe uma das duas explicações no chute
+  if (s.surprise) E.surpriseAnswer(s, Math.random() < 0.5 ? 0 : 1);
   // fiscal: suborna se der, senão fecha
   if (s.fiscal) { if (!E.fiscalBribe(s)) E.fiscalClose(s); }
   // maquininha (só quem joga ativo)
@@ -89,6 +91,7 @@ function brain(s, p) {
 
 function run(name, p) {
   const s = E.newState(p.seed || 7);
+  if (p.easy) s.easy = true;
   const ms = [];
   let lastSeed = bestSeed(s), lastPlace = 0, lastFlag = 0;
   const end = p.hours * 3600;
@@ -126,3 +129,4 @@ run("Ativo cauteloso", { ...base, hours: 8 });
 run("Ativo arriscado", { ...base, risk: 0.3, paraLimit: 95, hours: 8 });
 run("Casual: 15 min a cada 4h", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, hours: 24 * 5 });
 run("Idle: toca só nos 2 primeiros min", { ...base, tapFor: 120, hours: 24 });
+run("MODO FÁCIL · ativo cauteloso (2h)", { ...base, easy: true, hours: 2 });

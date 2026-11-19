@@ -125,6 +125,21 @@
   ];
   const FRONT_MAX = 10;
 
+  // Visita surpresa da Vó: pequena chance para todo mundo. Ela descobre tudo e você escolhe uma
+  // de duas explicações (sorteadas destas 10): 5 levam à cadeia, 4 passam, 1 deixa a Paranoia lá em cima.
+  const SURPRISE = [
+    { say: "É tempero pra sua sopa, vó!", res: "Ela prova uma folha, passa mal e chama a ambulância. A polícia veio junto.", kind: "bust" },
+    { say: "É um trabalho da escola sobre fotossíntese.", res: "Ela liga na escola para elogiar você. A diretora chama a polícia.", kind: "bust" },
+    { say: "São plantas de um amigo, tô só cuidando.", res: "\"Então liga pra ele agora.\" Você liga pro Zé, que atende: \"E aí, chefe, chegou a carga?\"", kind: "bust" },
+    { say: "Tô empreendendo, vó! É um negócio.", res: "Ela fica orgulhosa e conta para a vizinha, que é casada com o delegado.", kind: "bust" },
+    { say: "Isso? Nunca vi na vida.", res: "Ela não acredita e chama seu tio, que é policial.", kind: "bust" },
+    { say: "É chá pra sua artrite, vó.", res: "Ela se emociona, leva um pouquinho e jura segredo.", kind: "safe" },
+    { say: "São mudas pra horta da igreja.", res: "Ela te dá a bênção e um pedaço de bolo. +30⚡", kind: "safe", sta: 30 },
+    { say: "Tô estudando pra ser botânico.", res: "Ela te dá um livro velho de plantas. Você aprende umas coisas.", kind: "safe", bot: true },
+    { say: "É surpresa pro seu aniversário!", res: "Ela chora, te abraça e promete não contar pra ninguém.", kind: "safe" },
+    { say: "Senta aí, vó, vou te contar a verdade...", res: "Ela desmaia, acorda e passa a semana te ligando de hora em hora. A Paranoia foi lá em cima.", kind: "para" },
+  ];
+
   const ATTRS = { bot: "Botânica", lab: "Lábia", fur: "Furtividade", seg: "Segurança" };
 
   // ---------------------------------------------------------------- regras
@@ -138,6 +153,7 @@
     raidEvery: 300, raidAt: 80, raidChance: 0.5,
     zeCost: 300, zeEvery: 20, zeMaxPara: 60,
     frontPara: 0.4 / 60, // cada fachada lavando: +0,4 de Paranoia por minuto
+    surpriseEvery: 900, surpriseChance: 0.06, // a cada 15 min, 6% de chance (com o jogo aberto)
     fiscalEvery: 420, fiscalChance: 0.35, fiscalClose: 900, // fiscal da Receita: a cada 7 min, 35%; fechar = 15 min
     billSta: 1, billPara: 0.15, // maquininha: por toque
     avoEvery: 180,
@@ -163,6 +179,7 @@
       fronts: {}, // id -> nível
       closed: {}, // id -> até quando a fachada fica fechada
       fiscal: null, fiscalT: 0, // fiscal da Receita esperando resposta
+      surprise: null, surpT: 0, // visita surpresa da Vó esperando sua explicação
       city: null, // { id, end }
       ze: false, zeT: 0,
       avoT: 0, debt: 0,
@@ -193,17 +210,22 @@
   // produção: soma dos bônus dos equipamentos + Botânica × 2% (GDD)
   const prodMult = (s) => 1 + EQUIP.reduce((a, e) => a + e.prod * lvl(s, e.id), 0) + s.attrs.bot * 0.02;
   // crescimento: tempo = base / (1 + Botânica × 5%) (GDD), mais equipamentos de velocidade
-  const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed"));
+  // Modo fácil (para testar com amigos): cresce 3x mais rápido, vende 2x mais caro, tudo custa 30%,
+  // atributos sobem 3x mais rápido, Paranoia cai 2x mais rápido e a espera entre vendas cai pela metade.
+  const EASY = { speed: 3, price: 2, cost: 0.3, xp: 3, decay: 2, cd: 0.5 };
+  const ez = (s, k) => (s.easy ? EASY[k] : 1);
+  const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed")) * ez(s, "speed");
   const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap"));
-  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01);
+  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price");
   const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004);
   const paraOf = (s, lvlIdx) => SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
   const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
   const maxPots = (s) => PLACES[s.place].pots;
-  const potCost = (s) => Math.round(20 * Math.pow(2.6, s.pots.length - 1)); // grana suja
-  const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)));
-  const saleCooldown = (s) => Math.max(3, 20 - 17 * (topStockSeed(s) / (SEEDS.length - 1))) * Math.max(0.4, 1 - s.attrs.lab * 0.01);
+  const potCost = (s) => Math.round(20 * Math.pow(2.6, s.pots.length - 1) * ez(s, "cost")); // grana suja
+  const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)) * ez(s, "cost"));
+  const placeCost = (s, i = s.place + 1) => (PLACES[i] ? Math.round(PLACES[i].cost * ez(s, "cost")) : Infinity);
+  const saleCooldown = (s) => Math.max(3, 20 - 17 * (topStockSeed(s) / (SEEDS.length - 1))) * Math.max(0.4, 1 - s.attrs.lab * 0.01) * ez(s, "cd");
   const stockUnits = (s) => s.stock.reduce((a, b) => a + b, 0);
   const stockValue = (s) => s.stock.reduce((a, n, i) => a + n * SEEDS[i].sell, 0);
   function topStockSeed(s) {
@@ -274,7 +296,7 @@
     seg: (l) => 10 * Math.pow(l, 1.8),
   };
   function gainXp(s, k, amt) {
-    s.xp[k] += amt;
+    s.xp[k] += amt * ez(s, "xp");
     while (s.xp[k] >= XP_NEED[k](s.attrs[k])) {
       s.xp[k] -= XP_NEED[k](s.attrs[k]);
       s.attrs[k]++;
@@ -342,7 +364,7 @@
   // reserva para replantar: fachadas e maquininha não encostam nela
   const reserve = (s) => Math.max(30, SEEDS[s.seed].price * s.pots.length * 3);
   const frontLvl = (s, id) => (s.fronts && s.fronts[id]) || 0;
-  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)));
+  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)) * ez(s, "cost"));
   const frontCap = (f, l) => (l ? f.cap * Math.pow(1.7, l - 1) : 0); // $/min
   function buyFront(s, id) {
     const f = FRONTS.find((x) => x.id === id);
@@ -455,8 +477,9 @@
   }
   function buyPlace(s) {
     const next = PLACES[s.place + 1];
-    if (!next || s.clean < next.cost) return false;
-    s.clean -= next.cost;
+    const pc = placeCost(s);
+    if (!next || s.clean < pc) return false;
+    s.clean -= pc;
     s.place++;
     // os equipamentos do lugar antigo ficam para trás; só os de compra única vêm junto
     for (const e of EQUIP) if (!e.keep) delete s.equip[e.id];
@@ -562,7 +585,7 @@
     s.lastBust = { why, gain, kept: 0 };
   }
   // Advogado: baixa a ficha em 10 na hora. Fica 10x mais caro a cada 10% de ficha.
-  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10));
+  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10) * ez(s, "cost"));
   function lawyer(s) {
     if (!s.ficha) return false;
     const c = lawyerCost(s);
@@ -572,6 +595,21 @@
     note(s, "city", `O advogado limpou parte da sua ficha: agora ${s.ficha}%.`);
     return true;
   }
+  // responde a Vó com a explicação k (0 ou 1); devolve o que aconteceu
+  function surpriseAnswer(s, k) {
+    if (!s.surprise) return null;
+    const o = SURPRISE[s.surprise.opts[k]];
+    s.surprise = null;
+    if (o.kind === "bust") {
+      if (s.cheat && s.cheat.noPolice) return { ...o, kind: "safe", res: o.res + " (Imune à polícia: escapou.)" };
+      bust(s, "A Vó fez uma visita surpresa e descobriu tudo.");
+    } else if (o.kind === "para") s.para = Math.max(s.para, 90);
+    else {
+      if (o.sta) s.sta = Math.min(100, s.sta + o.sta);
+      if (o.bot) gainXp(s, "bot", XP_NEED.bot(s.attrs.bot) * 0.5);
+    }
+    return o;
+  }
   function retire(s) {
     const gain = legendFor(s.runEarned);
     if (gain < 1) return 0;
@@ -580,7 +618,7 @@
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -592,7 +630,7 @@
     s.time += dt;
     s.saleCd = Math.max(0, s.saleCd - dt);
     s.sta = Math.min(100, s.sta + R.staRegen * dt);
-    s.para = Math.max(s.ficha || 0, s.para - R.paraDecay * dt + (s.debt > 0 ? R.loanPara * dt : 0));
+    s.para = Math.max(s.ficha || 0, s.para - R.paraDecay * ez(s, "decay") * dt + (s.debt > 0 ? R.loanPara * dt : 0));
     // ficha limpa aos poucos: a cada 5 de Lenda ganhos depois da última batida
     while (s.ficha > 0 && s.legend >= s.fichaLenda + R.fichaLenda) {
       s.ficha = Math.max(0, s.ficha - 5); s.fichaLenda += R.fichaLenda;
@@ -605,6 +643,17 @@
     if (s.city && s.time >= s.city.end) finishCity(s);
     runFronts(s, dt);
     fiscalCheck(s, dt);
+    if (!s.away && !s.surprise && s.time > 600) {
+      s.surpT += dt;
+      if (s.surpT >= R.surpriseEvery) {
+        s.surpT = 0;
+        if (rand(s) < R.surpriseChance) {
+          const a = Math.floor(rand(s) * SURPRISE.length);
+          let b = Math.floor(rand(s) * (SURPRISE.length - 1)); if (b >= a) b++;
+          s.surprise = { opts: [a, b], at: s.time };
+        }
+      }
+    }
     if (s.ze) {
       s.zeT += dt;
       if (s.zeT >= R.zeEvery) {
@@ -627,10 +676,12 @@
   // Com o app fechado: avança em passos de 5 s (até 8 h).
   function offline(s, seconds) {
     const t = Math.min(seconds, R.offlineCap);
+    s.away = true; // a Vó não aparece com o jogo fechado
     const before = { dirty: s.dirty, clean: s.clean, units: stockUnits(s), resp: s.resp };
     const busts = s.busts;
     let left = t;
     while (left > 0) { const d = Math.min(5, left); tick(s, d); left -= d; }
+    s.away = false;
     return {
       seconds: t,
       dirty: s.dirty - before.dirty, clean: s.clean - before.clean,
@@ -643,7 +694,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    saleSta, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),

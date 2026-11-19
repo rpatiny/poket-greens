@@ -114,6 +114,7 @@ canvas.spark{display:inline-block;width:72px;height:18px;vertical-align:middle;i
 .modal .card{max-width:360px;text-align:center}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);z-index:25;background:#fffbef;color:#1a1420;border:3px solid #1a1420;padding:8px 12px;font-size:14px;max-width:92vw;box-shadow:0 4px 0 #0006;pointer-events:none}
 .toast.bad{background:#f2918a}
+#easy{right:8px;bottom:8px;color:#bcd95e;border-color:#4a8f40;pointer-events:none}
 #master{left:8px;bottom:8px;color:#fff0a6;border-color:#d1952e;pointer-events:none}
 .sheet{position:fixed;inset:0;background:#1a1420d0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
 .sheet .in{background:var(--panel);border-top:3px solid var(--dirty);width:100%;max-width:520px;max-height:86%;overflow-y:auto;
@@ -145,6 +146,7 @@ canvas.spark{display:inline-block;width:72px;height:18px;vertical-align:middle;i
     <div class="tag" id="busy" hidden></div>
     <div class="tag" id="hint">toque para regar as plantas</div>
     <div class="tag" id="master" hidden>MASTER</div>
+    <div class="tag" id="easy" hidden>MODO FÁCIL</div>
     <div id="tip" hidden role="status"><div class="who" aria-hidden="true">👵</div><div><div id="tiptext"></div><div class="acts"><button id="tipgo">Ver</button><button class="ghost" id="tipok">Entendi</button></div></div></div>
   </div>
   <div class="sell pad">
@@ -218,7 +220,22 @@ function load() {
     }
   } catch (e) {}
   S = E.newState(Math.floor(Math.random() * 1e9));
-  modal("Bem-vindo ao Greenhood", "Você tem um quartinho, dois vasos e $20.<br>Toque na cena para as plantas crescerem, venda o que colher e <b>cuidado com a Paranoia</b>: em 100% a polícia leva tudo.");
+  welcome();
+}
+function welcome() {
+  const m = el(`<div class="modal"><div class="card">
+    <b style="font-size:18px">Bem-vindo ao Greenhood</b>
+    <p>Você tem um armário, um vaso e $20.<br>Toque na cena para as plantas crescerem, venda o que colher e <b>cuidado com a Paranoia</b>: em 100% a polícia leva tudo.</p>
+    <div class="help" style="display:flex;flex-direction:column;gap:6px">
+      <button class="row" data-m="normal" style="text-align:left;width:100%"><div class="ico emo">🌱</div><div class="t"><b>Jogo normal</b><small>O ritmo de verdade: leva dias para chegar ao Bunker.</small></div><span></span></button>
+      <button class="row" data-m="easy" style="text-align:left;width:100%"><div class="ico emo">⚡</div><div class="t"><b>Modo fácil</b><small>Para testar com os amigos: tudo cresce 3× mais rápido, vende 2× mais caro e custa 30%. Dá para zerar em ~2 h.</small></div><span></span></button>
+    </div></div></div>`);
+  m.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => {
+    S.easy = b.dataset.m === "easy";
+    m.parentNode.removeChild(m);
+    save(); renderPanel(); refresh();
+  }));
+  document.body.appendChild(m);
 }
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ at: Date.now(), s: S })); } catch (e) {} }
 
@@ -632,6 +649,7 @@ function checkEvents() {
     renderPanel();
   }
   if (S.fiscal && fiscalSeen !== S.fiscal.at && !document.querySelector(".modal")) { fiscalSeen = S.fiscal.at; fiscalModal(); }
+  if (S.surprise && surpriseSeen !== S.surprise.at && !document.querySelector(".modal")) { surpriseSeen = S.surprise.at; surpriseModal(); }
   while (seenLog < S.log.length) {
     const l = S.log[seenLog++];
     if (l.kind === "attr" || l.kind === "city" || l.kind === "avo") toast(l.text);
@@ -699,7 +717,7 @@ function estufa() {
   const np = E.PLACES[S.place + 1];
   if (np) row({
     ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} Pago com grana limpa.<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>`,
-    btn: $$(np.cost), btnCls: "clean", enabled: () => S.clean >= np.cost, onClick: () => E.buyPlace(S),
+    btn: $$(E.placeCost(S)), btnCls: "clean", enabled: () => S.clean >= E.placeCost(S), onClick: () => E.buyPlace(S),
   });
   if (!S.ze) row({
     ico: icon("estagios", 64, 40, 32, 40), title: "Contratar o Zé", desc: `Vende sozinho no Discreto a cada ${E.R.zeEvery}s, até com o app fechado.`,
@@ -818,6 +836,40 @@ function lavagem() {
   }
 }
 
+// Visita surpresa da Vó: duas explicações, e só uma chance
+let surpriseSeen = -1;
+function surpriseModal() {
+  const sp = S.surprise;
+  const m = el(`<div class="modal"><div class="card">
+    <b style="font-size:18px">👵 VISITA SURPRESA!</b>
+    <p>A Vó Dita resolveu aparecer sem avisar, abriu a porta do esconderijo e viu <b>tudo</b>.<br><i>"Meu filho... que plantas são essas?"</i></p>
+    <p style="font-size:12px;color:var(--muted)">Escolha bem o que dizer. Você só tem uma chance.</p>
+    <div class="help" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div data-res style="display:none"></div>
+  </div></div>`);
+  const box = m.querySelector(".help"), res = m.querySelector("[data-res]");
+  sp.opts.forEach((idx, k) => {
+    const b = el(`<button class="row" style="text-align:left;width:100%"><div class="ico emo">💬</div><div class="t"><b>"${E.SURPRISE[idx].say}"</b></div><span></span></button>`);
+    b.onclick = () => {
+      const before = S.busts;
+      const o = E.surpriseAnswer(S, k);
+      if (S.busts > before) seenBusts = S.busts;               // a batida aparece depois do resultado
+      const col = o.kind === "bust" ? "#f2918a" : o.kind === "para" ? "#f0c94f" : "#7cdc5a";
+      const head = o.kind === "bust" ? "🚨 Deu ruim!" : o.kind === "para" ? "😰 Ela não vai esquecer..." : "😮‍💨 Ufa, colou!";
+      box.style.display = "none";
+      res.style.display = "block";
+      res.innerHTML = `<p style="color:${col};font-weight:bold">${head}</p><p>${o.res}</p><button class="buy" style="align-self:center">OK</button>`;
+      res.querySelector("button").onclick = () => {
+        m.parentNode.removeChild(m);
+        if (o.kind === "bust" && S.lastBust) { shake = 10; bustModal(S.lastBust); }
+        renderPanel(); refresh();
+      };
+    };
+    box.appendChild(b);
+  });
+  document.body.appendChild(m);
+}
+
 // Fiscal da Receita: escolha na hora
 let fiscalSeen = -1;
 function fiscalModal() {
@@ -933,6 +985,16 @@ function cidade() {
 
 function perfil() {
   const lvl = E.level(S);
+  const mode = el(`<div class="card"><p>Modo: <b>${S.easy ? "⚡ Fácil" : "🌱 Normal"}</b>. ${S.easy ? "Cresce 3× mais rápido, vende 2× mais caro e tudo custa 30%." : "O ritmo de verdade do jogo."}</p>
+    <button class="buy" data-sw style="margin-top:6px">Recomeçar no modo ${S.easy ? "normal" : "fácil"}</button></div>`);
+  mode.querySelector("[data-sw]").onclick = () => {
+    if (!confirm(`Apagar este jogo e começar do zero no modo ${S.easy ? "normal" : "fácil"}?`)) return;
+    const easy = !S.easy;
+    S = E.newState(Math.floor(Math.random() * 1e9));
+    S.easy = easy;
+    save(); renderPanel(); refresh();
+  };
+  panel.appendChild(mode);
   panel.appendChild(el(`<div class="card"><p>Nível <b class="big">${lvl}</b> · Respeito ${fmt(S.resp)} · preso ${S.timesArrested} vez(es)</p><p>Cada nível dá +1% no preço de venda.</p></div>`));
   h3("Atributos");
   const info = {
@@ -1002,6 +1064,7 @@ function refresh() {
   else if (S.laundry.length) { busy.hidden = false; busy.textContent = `Lavando ${S.laundry.length}`; }
   else busy.hidden = true;
   const ch = S.cheat || {};
+  $("easy").hidden = !S.easy;
   const mt = $("master");
   mt.hidden = !ch.on;
   if (ch.on) mt.textContent = "MASTER" + (ch.speed > 1 ? ` ×${ch.speed}` : "") + (ch.noPolice ? " · imune" : "");
@@ -1090,6 +1153,7 @@ function openMaster() {
       ["+1000 Respeito", () => (S.resp += 1000)],
     ]],
     ["Progresso", [
+      ["Visita surpresa da Vó agora", () => { const a = Math.floor(Math.random() * 10); let b = Math.floor(Math.random() * 9); if (b >= a) b++; S.surprise = { opts: [a, b], at: S.time }; }],
       ["Todos os equipamentos que cabem aqui", () => E.EQUIP.forEach((e) => { if (S.place >= e.place) S.equip[e.id] = Math.max(1, E.lvl(S, e.id)); })],
       ["Próximo imóvel", () => { if (E.PLACES[S.place + 1]) S.place++; }],
       ["Último imóvel", () => (S.place = E.PLACES.length - 1)],
@@ -1151,7 +1215,7 @@ function nextTip() {
   if (S.pots.some((p) => !p.on)) tips.push(["Tem vaso vazio! Escolhe uma semente na Estufa para começar a plantar.", "estufa"]);
   if (units > 0 && S.saleCd <= 0 && S.para < 60) tips.push(["Você tem <b>" + units + " un</b> paradas no estoque. Vende no <b>Discreto (5%)</b>: chama menos atenção da polícia.", null]);
   if (S.pots.length < E.maxPots(S) && S.dirty >= E.potCost(S)) tips.push(["Dá pra comprar <b>mais um vaso</b> com a grana suja. Mais plantas, mais grana.", "estufa"]);
-  if (S.pots.length >= E.maxPots(S) && nextPlace && S.clean >= nextPlace.cost) tips.push(["O " + place.name + " ficou pequeno. Você já pode se mudar para o <b>" + nextPlace.name + "</b>!", "estufa"]);
+  if (S.pots.length >= E.maxPots(S) && nextPlace && S.clean >= E.placeCost(S)) tips.push(["O " + place.name + " ficou pequeno. Você já pode se mudar para o <b>" + nextPlace.name + "</b>!", "estufa"]);
   if (S.dirty > 200 && S.clean < S.dirty / 2 && !S.laundry.length) tips.push(["Grana suja só compra semente e vaso. <b>Lava o dinheiro</b> para comprar equipamento e esconderijo.", "lavagem"]);
   if (!S.ze && S.clean >= E.R.zeCost) tips.push(["Contrata o <b>Zé</b>: ele vende sozinho, até com o jogo fechado.", "loja"]);
   if (lockedSeed) tips.push(["Para plantar <b>" + lockedSeed.name + "</b> falta: " + E.seedLocked(S, lockedSeed).join(", ") + ".", "loja"]);
