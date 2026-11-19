@@ -193,3 +193,19 @@ Regras:
 | 5 – UI | Caixa de diálogo, HUD, ícones dos recursos | a fazer |
 
 Exportação: Pixelwright → **Godot 4** (SpriteFrames para personagens, TileSet para cenários).
+
+## Cômodos vistos de cima (versão atual)
+
+`python3 tools/arte/comodos.py` desenha os 13 esconderijos em `assets/sprites/v2/comodos/`. Todos usam
+uma tela fixa de 320×180: o cômodo flutua no preto com contorno escuro e cresce a cada imóvel, do
+Quartinho (140×112) ao Bunker (312×170). Imagem de todos no jogo: `docs/arte/comodos-no-jogo.png`.
+
+Cada cômodo tem três camadas:
+- `NN.png`: o fundo já iluminado, com móveis, sombras projetadas, luz de borda e oclusão.
+- `NN_s.png`: o mesmo fundo um degrau mais escuro. O jogo recorta dele a sombra de cada vaso.
+- `NN_l.png`: o mapa de luz (degraus −2 a +1 por pixel). O jogo acende ou escurece cada planta
+  conforme o lugar onde ela está, e acende a borda virada para a luz principal.
+
+Mais `meta.json` (área dos vasos, luz principal, animações) e `shift.json` (degrau acima e abaixo de
+cada cor da paleta). Assim uma planta perto da lâmpada brilha e a do canto fica na penumbra, mesmo
+crescendo em tempo real. Os cenários de vista lateral (`cenarios.py`) ficam como referência.

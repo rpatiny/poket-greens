@@ -508,18 +508,128 @@
     3: { a: 0.6, tint: "26,20,32", lights: [[160, 30, 115]], flicker: true },
     11: { a: 0.5, tint: "26,20,32", lights: [[62, 34, 80], [254, 34, 80]], flicker: true },
   };
+
+  // ------------------------------------------------------------ cômodos vistos de cima (tools/arte/comodos.py)
+  // cada cômodo: fundo iluminado, fundo um degrau mais escuro (sombra) e mapa de luz por pixel
+  const ROOM = {}; const STEP = new Map();           // cor -> [um degrau abaixo, um acima] na rampa
+  const OL = 0x1a1420;
+  const mk = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+  function registerRooms(map, shift) {
+    for (const k in shift) STEP.set(parseInt(k.slice(1), 16), shift[k].map((h) => parseInt(h.slice(1), 16)));
+    for (const id in map) {
+      const m = map[id], r = { meta: m.meta, img: new Image(), sh: new Image(), lm: null, lit: new Map(), raw: new Map(), shadow: null, sig: "" };
+      r.img.src = m.src; r.sh.src = m.srcS;
+      const li = new Image();
+      li.onload = () => {
+        const c = mk(li.width, li.height), x = c.getContext("2d"); x.drawImage(li, 0, 0);
+        const d = x.getImageData(0, 0, li.width, li.height).data;
+        r.lm = new Int8Array(li.width * li.height);
+        for (let i = 0; i < r.lm.length; i++) r.lm[i] = Math.round(d[i * 4] / 64) - 2;
+      };
+      li.src = m.srcL;
+      ROOM[id] = r;
+    }
+  }
+  function shiftN(rgb, n) {
+    while (n !== 0) { const s = STEP.get(rgb); if (!s) break; rgb = n < 0 ? s[0] : s[1]; n += n < 0 ? 1 : -1; }
+    return rgb;
+  }
+  // sprite cru (vaso + planta) desenhado pelo jogo, guardado por chave
+  function rawSprite(r, it) {
+    let c = r.raw.get(it.key);
+    if (!c) {
+      c = mk(it.w, it.h); const x = c.getContext("2d"); x.imageSmoothingEnabled = false; it.paint(x);
+      c.data = x.getImageData(0, 0, it.w, it.h);
+      r.raw.set(it.key, c);
+    }
+    return c;
+  }
+  // o sprite aceso pelo mapa de luz do lugar onde está + luz de borda virada para a lâmpada
+  function litSprite(r, it) {
+    const k = it.key + "@" + it.x + "," + it.y;
+    let c = r.lit.get(k);
+    if (c) return c;
+    const raw = rawSprite(r, it);
+    if (!r.lm || !raw.data) return raw;
+    const { w, h } = it, src = raw.data.data, W0 = r.meta.w;
+    c = mk(w, h); const x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data;
+    const [lx] = r.meta.light, cx = it.x + w / 2, dx = lx > cx + 8 ? 1 : lx < cx - 8 ? -1 : 0;
+    const op = (sx, sy) => sx >= 0 && sy >= 0 && sx < w && sy < h && src[(sy * w + sx) * 4 + 3] > 0 &&
+      ((src[(sy * w + sx) * 4] << 16) | (src[(sy * w + sx) * 4 + 1] << 8) | src[(sy * w + sx) * 4 + 2]) !== OL;
+    for (let sy = 0; sy < h; sy++) for (let sx = 0; sx < w; sx++) {
+      const i = (sy * w + sx) * 4;
+      if (!src[i + 3]) continue;
+      let rgb = (src[i] << 16) | (src[i + 1] << 8) | src[i + 2];
+      if (rgb !== OL) {
+        const px = it.x + sx, py = it.y + sy;
+        let n = px >= 0 && py >= 0 && px < W0 && py < r.meta.h ? r.lm[py * W0 + px] : 0;
+        if (!op(sx, sy - 1) || (dx && !op(sx + dx, sy))) n += 1;
+        rgb = shiftN(rgb, n);
+      }
+      o[i] = rgb >> 16; o[i + 1] = (rgb >> 8) & 255; o[i + 2] = rgb & 255; o[i + 3] = 255;
+    }
+    x.putImageData(out, 0, 0);
+    if (r.lit.size > 600) r.lit.clear();
+    r.lit.set(k, c);
+    return c;
+  }
+  // sombras projetadas pela luz principal (mesma conta do comodos.py) + sombra de contato, recortadas do fundo escuro
+  function shadowLayer(r, items) {
+    const sig = items.map((it) => it.key + "@" + it.x + "," + it.y).join("|");
+    if (r.shadow && r.sig === sig) return r.shadow;
+    const { w: W0, h: H0 } = r.meta, [lx] = r.meta.light;
+    const c = r.shadow || mk(W0, H0), x = c.getContext("2d");
+    x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, W0, H0);
+    const m = x.createImageData(W0, H0), d = m.data;
+    const mark = (px, py) => { if (px >= 0 && py >= 0 && px < W0 && py < H0) d[(py * W0 + px) * 4 + 3] = 255; };
+    for (const it of items) {
+      const raw = rawSprite(r, it); if (!raw.data) continue;
+      const src = raw.data.data, ground = it.y + it.h - 1 - (it.foot || 0), cxo = it.x + it.w / 2;
+      const kx = Math.max(-0.7, Math.min(0.7, (cxo - lx) / 70)), ky = 0.45;
+      for (let sy = 0; sy < it.h; sy++) for (let sx = 0; sx < it.w; sx++) {
+        if (!src[(sy * it.w + sx) * 4 + 3]) continue;
+        const hh = Math.max(0, ground - (it.y + sy));
+        const tx = Math.round(it.x + sx + hh * kx), ty = Math.round(ground + hh * ky);
+        mark(tx, ty); mark(tx, ty + 1);
+      }
+      const bw = it.w * 0.42;
+      for (let yy = ground - 1; yy <= ground + 2; yy++) for (let xx = Math.floor(cxo - bw); xx <= cxo + bw; xx++)
+        if (((xx - cxo) / bw) ** 2 + ((yy - ground - 0.5) / 2.2) ** 2 <= 1) mark(xx, yy);
+    }
+    x.putImageData(m, 0, 0);
+    x.globalCompositeOperation = "source-in";
+    if (r.sh.complete) x.drawImage(r.sh, 0, 0);
+    x.globalCompositeOperation = "source-over";
+    r.shadow = c; r.sig = sig;
+    return c;
+  }
+  // desenha as plantas do cômodo: sombras primeiro, depois cada vaso aceso, de trás para frente
+  function plants(g, id, items) {
+    const r = ROOM[id];
+    if (!r) { for (const it of items) g.drawImage(rawSprite({ raw: PLAIN }, it), it.x, it.y); return; }
+    g.drawImage(shadowLayer(r, items), 0, 0);
+    for (const it of items) g.drawImage(litSprite(r, it), it.x, it.y);
+  }
+  const PLAIN = new Map();
+  const roomMeta = (id) => ROOM[id] && ROOM[id].meta;
   // cenários desenhados em PNG (tools/arte/cenarios.py): substituem os desenhados em código
   const PNG = {};
   function register(map) {
     for (const id in map) { const img = new Image(); img.src = map[id].src; PNG[id] = { img, meta: map[id].meta }; }
   }
   function size(id) {
+    if (ROOM[id]) return { w: ROOM[id].meta.w, h: ROOM[id].meta.h, floor: ROOM[id].meta.floor };
     const p = PNG[id];
     return p ? { w: p.meta.w, h: p.meta.h, floor: p.meta.floor } : { w: W, h: H, floor: F };
   }
 
   let darkCanvas = null;
   function lighting(g, id, t) {
+    if (ROOM[id]) {                                   // a luz já está pintada no cômodo; só a lâmpada pisca
+      const b = ROOM[id].meta.bulb;
+      if (b) { const { R } = T(g); const [bx, by] = b; R(bx - 3, by - 2, 7, 6, "#1a1420"); R(bx - 2, by - 1, 5, 4, Math.sin(t * 23) > 0.93 ? "#d1952e" : "#fff0a6"); R(bx - 1, by, 2, 1, "#fffbef"); }
+      return;
+    }
     const L = (PNG[id] && PNG[id].meta.dark) || (!PNG[id] && LIGHT[id]);
     if (!L) return;
     const { w: RW, h: RH } = size(id);
@@ -554,6 +664,12 @@
 
   const cache = {};
   function background(g, id) {
+    if (ROOM[id]) {
+      const r = ROOM[id];
+      if (r.img.complete) g.drawImage(r.img, 0, 0);
+      anims(g, r.meta, performance.now() / 1000);
+      return;
+    }
     const png = PNG[id];
     if (png) {
       if (png.img.complete) g.drawImage(png.img, 0, 0);
@@ -564,37 +680,7 @@
         else { const sp = (k - 0.75) / 0.25; ell(x, y1 + 2, Math.round(2 + sp * 8), 1, "rgba(166,203,234," + (0.7 - sp * 0.7) + ")"); }
       }
       if (id === 1 && Math.floor(t * 2) % 9 !== 0) R(83, 18, 74, 2, "#8160a8");   // luz roxa do armário
-      for (const an of png.meta.anims || []) {
-        const [kind, ...a] = an;
-        if (kind === "fire") {                       // fogo da lareira: [x, base, largura]
-          const [x, y, w] = a;
-          for (let i = 0; i < w / 4; i++) {
-            const h = 6 + Math.round((Math.sin(t * 9 + i * 1.7) + 1) * 5);
-            R(x + i * 4, y - h, 3, h, i % 2 ? "#d1952e" : "#d95463");
-            R(x + i * 4 + 1, y - Math.round(h / 2), 1, Math.round(h / 2), "#fff0a6");
-          }
-        } else if (kind === "waves") {              // brilho do mar entre y0 e y1
-          const [y0, y1] = a;
-          for (let x = 0; x < png.meta.w; x += 18) {
-            const o = Math.round(Math.sin(t * 2 + x / 30) * 3);
-            R(x + o + 4, y0 + 4 + ((x / 18) % 3) * 7, 7, 1, "#fffbef");
-          }
-          R(0, y1 + Math.round(Math.sin(t * 1.5)), png.meta.w, 2, "#fffbef");
-        } else if (kind === "torch" || kind === "lantern") {
-          const [x, y] = a, f = Math.sin(t * 13 + x) > 0;
-          R(x - 2, y - 2, 5, 6, f ? "#f0c94f" : "#d1952e"); R(x - 1, y, 3, 3, "#fff0a6");
-        } else if (kind === "sparkle") {            // ouro brilhando na rocha
-          const [x0, y0, x1, y1] = a, rr = rng(Math.floor(t * 2));
-          for (let i = 0; i < 6; i++) { const x = x0 + rr() * (x1 - x0), y = y0 + rr() * (y1 - y0); R(x, y, 1, 1, "#fff0a6"); R(x - 1, y, 3, 1, "#f0c94f"); }
-        } else if (kind === "siren") {
-          const [x, y] = a, on = Math.floor(t * 2) % 2;
-          R(x - 1, y, 14, 9, "#1a1420"); R(x, y + 1, 12, 7, on ? "#d95463" : "#6e1b3d");
-          if (on) R(x + 3, y + 2, 4, 2, "#f2918a");
-        } else if (kind === "stars") {
-          const [x0, y0, x1, y1] = a, rr = rng(Math.floor(t * 3));
-          for (let i = 0; i < 12; i++) R(x0 + rr() * (x1 - x0), y0 + rr() * (y1 - y0), 1, 1, "#fffbef");
-        }
-      }
+      anims(g, png.meta, t);
       return;
     }
     if (!cache[id]) {
@@ -609,5 +695,49 @@
     if (ANIM[id]) ANIM[id](g, performance.now() / 1000);
   }
 
-  root.SCENES = { register, size, background, lighting: (g, id) => lighting(g, id, performance.now() / 1000), count: STATIC.length };
+  function anims(g, meta, t) {
+    const { R, ell } = T(g);
+      for (const an of meta.anims || []) {
+        const [kind, ...a] = an;
+        if (kind === "fire") {                       // fogo da lareira: [x, base, largura]
+          const [x, y, w] = a;
+          for (let i = 0; i < w / 4; i++) {
+            const h = 6 + Math.round((Math.sin(t * 9 + i * 1.7) + 1) * 5);
+            R(x + i * 4, y - h, 3, h, i % 2 ? "#d1952e" : "#d95463");
+            R(x + i * 4 + 1, y - Math.round(h / 2), 1, Math.round(h / 2), "#fff0a6");
+          }
+        } else if (kind === "waves") {              // brilho do mar entre y0 e y1
+          const [y0, y1] = a;
+          const rw = meta.room || [0, 0, meta.w];
+          for (let x = rw[0]; x < rw[0] + rw[2] - 12; x += 18) {
+            const o = Math.round(Math.sin(t * 2 + x / 30) * 3);
+            R(x + o + 4, y0 + 4 + ((x / 18) % 3) * 7, 7, 1, "#fffbef");
+          }
+          const rm = meta.room || [0, 0, meta.w];
+          R(rm[0], y1 + Math.round(Math.sin(t * 1.5)), rm[2], 1, "#fffbef");
+        } else if (kind === "torch" || kind === "lantern") {
+          const [x, y] = a, f = Math.sin(t * 13 + x) > 0;
+          R(x - 2, y - 2, 5, 6, f ? "#f0c94f" : "#d1952e"); R(x - 1, y, 3, 3, "#fff0a6");
+        } else if (kind === "sparkle") {            // ouro brilhando na rocha
+          const [x0, y0, x1, y1] = a, rr = rng(Math.floor(t * 2));
+          for (let i = 0; i < 6; i++) { const x = x0 + rr() * (x1 - x0), y = y0 + rr() * (y1 - y0); R(x, y, 1, 1, "#fff0a6"); R(x - 1, y, 3, 1, "#f0c94f"); }
+        } else if (kind === "siren") {
+          const [x, y] = a, on = Math.floor(t * 2) % 2;
+          R(x - 1, y, 14, 9, "#1a1420"); R(x, y + 1, 12, 7, on ? "#d95463" : "#6e1b3d");
+          if (on) R(x + 3, y + 2, 4, 2, "#f2918a");
+        } else if (kind === "drip") {              // goteira: [x, teto, chão]
+          const [x, y0, y1] = a, k = (t * 0.55) % 1;
+          if (k < 0.75) R(x, y0 + (y1 - y0) * (k / 0.75), 1, 3, "#a6cbeb");
+          else { const sp = (k - 0.75) / 0.25; ell(x, y1 + 2, Math.round(2 + sp * 8), 1, "rgba(166,203,234," + (0.7 - sp * 0.7) + ")"); }
+        } else if (kind === "purple") {            // lâmpada roxa piscando: [x, y, largura]
+          const [x, y, w] = a;
+          if (Math.floor(t * 2) % 9 !== 0) R(x, y, w, 1, "#c79ef0");
+        } else if (kind === "stars") {
+          const [x0, y0, x1, y1] = a, rr = rng(Math.floor(t * 3));
+          for (let i = 0; i < 12; i++) R(x0 + rr() * (x1 - x0), y0 + rr() * (y1 - y0), 1, 1, "#fffbef");
+        }
+      }
+  }
+
+  root.SCENES = { register, registerRooms, plants, roomMeta, size, background, lighting: (g, id) => lighting(g, id, performance.now() / 1000), count: STATIC.length };
 })(this);

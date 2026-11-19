@@ -20,10 +20,12 @@ html = html.replace("__ESTAGIOS__", data_uri("plantas_estagios.png"))
 html = html.replace("__EQUIP__", data_uri("equipamentos.png"))
 html = html.replace("__VASOS__", data_uri("vasos.png"))
 import json
-cen = {}
-meta = json.loads((SPR / "cenarios" / "meta.json").read_text())
+rooms = {}
+meta = json.loads((SPR / "comodos" / "meta.json").read_text())
 for k, m in meta.items():
-    cen[int(k)] = {"src": data_uri(f"cenarios/{int(k):02d}.png"), "meta": m}
-html = html.replace("__CENARIOS__", json.dumps(cen))
+    n = f"comodos/{int(k):02d}"
+    rooms[int(k)] = {"src": data_uri(n + ".png"), "srcS": data_uri(n + "_s.png"), "srcL": data_uri(n + "_l.png"), "meta": m}
+html = html.replace("__COMODOS__", json.dumps(rooms))
+html = html.replace("__SHIFT__", (SPR / "comodos" / "shift.json").read_text())
 (HERE / "index.html").write_text(html)
 print("index.html:", len(html) // 1024, "KB")
