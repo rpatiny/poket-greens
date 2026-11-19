@@ -83,11 +83,12 @@
   // Venda: fatia do estoque que sai (pct), Paranoia, chance de flagrante e bônus de preço.
   // Quanto maior a fatia, maior o risco; o All-in vende tudo com o maior risco.
   const SALES = [
-    { name: "Discreto", pct: 0.05, para: 5, risk: 0, bonus: 0 },
-    { name: "Normal", pct: 0.15, para: 15, risk: 0.03, bonus: 0.1 },
-    { name: "Ousado", pct: 0.35, para: 25, risk: 0.08, bonus: 0.25 },
-    { name: "Agressivo", pct: 0.7, para: 40, risk: 0.15, bonus: 0.5 },
-    { name: "All-in", pct: 1, para: 60, risk: 0.3, bonus: 1 },
+    // sta: Estamina gasta pela venda (proporcional ao tamanho; o Zé não gasta a sua)
+    { name: "Discreto", pct: 0.05, para: 5, risk: 0, bonus: 0, sta: 1 },
+    { name: "Normal", pct: 0.15, para: 15, risk: 0.03, bonus: 0.1, sta: 3 },
+    { name: "Ousado", pct: 0.35, para: 25, risk: 0.08, bonus: 0.25, sta: 6 },
+    { name: "Agressivo", pct: 0.7, para: 40, risk: 0.15, bonus: 0.5, sta: 10 },
+    { name: "All-in", pct: 1, para: 60, risk: 0.3, bonus: 1, sta: 16 },
   ];
 
   // Lavagem (GDD): taxa, tempo (s), Paranoia e Lábia mínima.
@@ -197,6 +198,7 @@
   const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01);
   const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004);
   const paraOf = (s, lvlIdx) => SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
+  const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
   const maxPots = (s) => PLACES[s.place].pots;
   const potCost = (s) => Math.round(20 * Math.pow(2.6, s.pots.length - 1)); // grana suja
@@ -291,6 +293,11 @@
   function sell(s, lvlIdx, auto = false) {
     if (s.saleCd > 0 || stockUnits(s) <= 0) return null;
     const L = SALES[lvlIdx];
+    if (!auto) {
+      const sc = staCost(s, L.sta);
+      if (s.sta < sc) return null;
+      s.sta -= sc;
+    }
     // vende a fatia do estoque (no mínimo 1 unidade), começando pelas plantas mais valiosas
     let left = Math.max(1, Math.ceil(stockUnits(s) * L.pct)), units = 0, value = 0;
     for (let i = SEEDS.length - 1; i >= 0 && left > 0; i--) {
@@ -636,7 +643,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    saleSta, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),

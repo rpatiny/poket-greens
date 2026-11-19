@@ -57,6 +57,11 @@ canvas{display:block;width:100%;image-rendering:pixelated}
 .stockline{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);gap:8px}
 .stockline b{color:var(--leaf-2);font-family:var(--num);font-size:13px}
 .sbtns{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.sb.tired{opacity:.45}
+.sb .stc{color:#a6cbeb}
+.fx{display:inline-block;padding:0 4px;margin:2px 3px 0 0;font-size:11px;font-weight:bold;border:1px solid #1a1420}
+.fx.g{background:#2c6a40;color:#bcd95e} .fx.r{background:#6e2834;color:#f2918a} .fx.n{background:#272436;color:#bfbfc8}
+.t .flavor{color:#cfc6b8;font-style:italic}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 button:focus-visible{outline:2px solid var(--dirty);outline-offset:2px}
 .sb{background:var(--panel-2);border:2px solid var(--bg);box-shadow:inset 0 -3px 0 #0006;padding:5px 1px 6px;display:flex;flex-direction:column;align-items:center;min-width:0;line-height:1.15}
@@ -605,8 +610,9 @@ $("scene").addEventListener("pointerdown", (e) => {
 E.SALES.forEach((L, i) => {
   const b = document.createElement("button");
   b.className = "sb"; b.dataset.l = i;
-  b.innerHTML = `<b>${L.name}</b><small data-q></small><small data-r></small>`;
+  b.innerHTML = `<b>${L.name}</b><small data-q></small><small data-r></small><small data-s class="stc"></small>`;
   b.onclick = () => {
+    if (S.sta < E.saleSta(S, i) && S.saleCd <= 0) { toast(`Sem energia para vender no ${L.name} (precisa de ${E.saleSta(S, i)}⚡). Toma um café na Cidade ou venda menos.`, true); return; }
     const r = E.sell(S, i);
     if (!r) return;
     if (r.caught) { toast(`Flagrante! Perdeu ${r.units} un e pagou multa.`, true); shake = 6; }
@@ -876,13 +882,35 @@ function cidade() {
     bind(() => { c.querySelector("[data-t]").textContent = dur(S.city ? S.city.end - S.time : 0); c.querySelector("i").style.width = pct(S.city ? 1 - (S.city.end - S.time) / a.time : 1); });
     panel.appendChild(c);
   }
-  h3("Cidade (grana limpa)");
-  const names = { sta: "⚡", para: "👁", lab: "Lábia", bot: "Botânica", fur: "Furtividade", seg: "Segurança", resp: "Respeito" };
+  panel.appendChild(el(`<div class="card"><p>Na cidade você <b>recupera energia</b>, <b>baixa a Paranoia</b> ou <b>treina atributos</b>. Uma atividade por vez, paga com grana limpa.</p>
+    <p style="font-size:12px;line-height:1.5">🌱 <b>Botânica</b>: plantas crescem mais rápido e libera sementes<br>🗣️ <b>Lábia</b>: vende mais caro e libera lavagens<br>🥷 <b>Furtividade</b>: vendas dão menos Paranoia e menos flagrante<br>🛡️ <b>Segurança</b>: multa menor e as rondas te acham menos</p>
+    <p style="font-size:12px"><span class="fx g">verde</span> ajuda · <span class="fx r">vermelho</span> atrapalha</p></div>`));
+  cashCard();
+  h3("Atividades");
+  const FLAVOR = {
+    cafe: "Cafezinho no boteco. Acorda, mas deixa ligado.",
+    energetico: "Lata de energético. Muita energia, coração na boca.",
+    bar: "Conversa fiada no Bar do Zé. Relaxa e treina o papo.",
+    biblioteca: "Livros de jardinagem. Você aprende a cuidar melhor das plantas.",
+    academia: "Treino pesado. Fica mais forte e a quebrada te respeita.",
+    beco: "Andar com gente barra-pesada. Aprende a sumir, mas chama atenção.",
+    praca: "Papo na praça. Treina a lábia e faz contatos.",
+    spa: "Um dia inteiro de spa. A cabeça esfria de verdade.",
+    fliperama: "Uma tarde no fliperama. Distrai e acalma.",
+  };
+  const ATTR = { bot: "🌱 treina Botânica", lab: "🗣️ treina Lábia", fur: "🥷 treina Furtividade", seg: "🛡️ treina Segurança" };
   E.CITY.forEach((a) => {
-    const fxText = Object.entries(a.fx).map(([k, v]) => (["bot", "lab", "fur", "seg"].includes(k) ? `treina ${names[k]}` : `${v > 0 ? "+" : ""}${v} ${names[k]}`)).join(" · ");
+    const fx = [];
+    if (a.fx.sta) fx.push(`<span class="fx g">+${a.fx.sta}⚡ energia</span>`);
+    if (a.fx.para < 0) fx.push(`<span class="fx g">${a.fx.para}👁 Paranoia</span>`);
+    for (const k of ["bot", "lab", "fur", "seg"]) if (a.fx[k]) fx.push(`<span class="fx g">${ATTR[k]}${a.fx[k] > 1 ? " ×" + a.fx[k] : ""}</span>`);
+    if (a.fx.resp) fx.push(`<span class="fx g">+${a.fx.resp} Respeito</span>`);
+    if (a.fx.para > 0) fx.push(`<span class="fx r">+${a.fx.para}👁 Paranoia</span>`);
+    if (a.sta) fx.push(`<span class="fx r">−${E.staCost(S, a.sta)}⚡ energia</span>`);
+    fx.push(`<span class="fx n">⏱ ${dur(a.time)}</span>`);
     row({
       emoji: { cafe: "☕", energetico: "🥤", bar: "🍺", biblioteca: "📚", academia: "🥊", beco: "🌑", praca: "🗣️", spa: "🧖", fliperama: "🕹️" }[a.id],
-      title: a.name, desc: `${dur(a.time)} · ${a.sta ? `−${E.staCost(S, a.sta)}⚡ · ` : ""}${fxText}`,
+      title: a.name, desc: `<span class="flavor">${FLAVOR[a.id] || ""}</span><br>${fx.join("")}`,
       btn: $$(a.cost), btnCls: "clean", enabled: () => !S.city && S.clean >= a.cost && S.sta >= E.staCost(S, a.sta) && (!(a.fx.para > 0) || E.safe(S, a.fx.para)),
       onClick: () => E.startCity(S, a.id),
     });
@@ -963,6 +991,8 @@ function refresh() {
     b.disabled = S.saleCd > 0 || E.stockUnits(S) <= 0;
     b.querySelector("[data-q]").textContent = (L.pct >= 1 ? "tudo" : Math.round(L.pct * 100) + "%") + " · +" + Math.round(E.paraOf(S, i)) + "👁";
     b.querySelector("[data-r]").textContent = "risco " + Math.round(E.riskOf(S, i) * 100) + "%";
+    b.querySelector("[data-s]").textContent = "−" + E.saleSta(S, i) + "⚡";
+    b.classList.toggle("tired", S.sta < E.saleSta(S, i));
   });
   $("cd").style.width = S.saleCd > 0 ? pct(1 - S.saleCd / E.saleCooldown(S)) : "100%";
   $("cdtext").textContent = S.saleCd > 0 ? `próxima venda em ${Math.ceil(S.saleCd)}s` : E.stockUnits(S) > 0 ? "pronto para vender" : "";

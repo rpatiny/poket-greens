@@ -35,6 +35,7 @@ function brain(s, p) {
     for (let l = E.SALES.length - 1; l >= 0; l--) {
       if (E.riskOf(s, l) > p.risk) continue;
       if (s.para + E.paraOf(s, l) > p.paraLimit) continue;
+      if (s.sta < E.saleSta(s, l) + 5) continue;
       pick = l; break;
     }
     if (pick >= 0) E.sell(s, pick);
