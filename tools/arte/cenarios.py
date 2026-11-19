@@ -624,7 +624,690 @@ def porao():
                "drips": [[206, 11, 156], [101, 62, 148]]}
 
 
-SCENES = {0: quartinho, 1: armario, 2: garagem, 3: porao}
+
+
+# ======================================================================= utilidades extras
+FONT = {
+    "G": ["0111", "1000", "1011", "1001", "0111"], "R": ["1110", "1001", "1110", "1010", "1001"],
+    "N": ["1001", "1101", "1011", "1001", "1001"], "0": ["0110", "1001", "1001", "1001", "0110"],
+    "4": ["1001", "1001", "1111", "0001", "0001"], "5": ["1111", "1000", "1110", "0001", "1110"],
+    "1": ["0010", "0110", "0010", "0010", "0111"], " ": ["0000"] * 5, "-": ["0000", "0000", "1111", "0000", "0000"],
+    "B": ["1110", "1001", "1110", "1001", "1110"], "K": ["1001", "1010", "1100", "1010", "1001"],
+    "E": ["1111", "1000", "1110", "1000", "1111"], "U": ["1001", "1001", "1001", "1001", "0110"],
+    "7": ["1111", "0001", "0010", "0100", "0100"], "A": ["0110", "1001", "1111", "1001", "1001"],
+    "X": ["1001", "1001", "0110", "1001", "1001"], "C": ["0111", "1000", "1000", "1000", "0111"],
+    "S": ["0111", "1000", "0110", "0001", "1110"], "T": ["1111", "0100", "0100", "0100", "0100"],
+}
+
+
+def text(c, x, y, s, col, scale=1):
+    for ch in s:
+        g = FONT.get(ch, FONT[" "])
+        for j, row in enumerate(g):
+            for i, b in enumerate(row):
+                if b == "1":
+                    c.rect(x + i * scale, y + j * scale, x + i * scale + scale - 1, y + j * scale + scale - 1, col)
+        x += 5 * scale
+
+
+def sky(c, y0, y1, cols=None):
+    cols = cols or [D_[4], D_[4], D_[3]]
+    for y in range(y0, y1):
+        t = (y - y0) / max(1, y1 - y0)
+        c.hline(0, c.w - 1, y, cols[min(len(cols) - 1, int(t * len(cols)))])
+    # faixa de transição pontilhada
+    for k in range(1, len(cols)):
+        yb = y0 + int((y1 - y0) * k / len(cols))
+        for x in range(0, c.w, 2):
+            c.set(x + (yb % 2), yb - 1, cols[k])
+
+
+def cloud(c, x, y, w):
+    for i, (dx, dy, r) in enumerate(((0, 0, w * 0.22), (w * 0.25, -w * 0.08, w * 0.28), (w * 0.55, 0, w * 0.22), (w * 0.3, w * 0.06, w * 0.25))):
+        c.ell(x + dx, y + dy, r, r * 0.55, "#fffbef")
+    c.hline(int(x - w * 0.15), int(x + w * 0.7), int(y + w * 0.12), S_[6])
+
+
+def tree_crown(c, cx, cy, r, ramp=None, seed=1):
+    ramp = ramp or L_
+    rr = random.Random(seed)
+    blobs = [(cx + rr.uniform(-r, r) * 0.7, cy + rr.uniform(-r, r) * 0.5, r * rr.uniform(0.45, 0.7)) for _ in range(7)]
+    blobs.sort(key=lambda b: b[1])
+    for (x, y, br) in blobs:
+        c.ell(x, y, br + 1, br * 0.85 + 1, OL)
+    for (x, y, br) in blobs:
+        for yy in range(int(y - br), int(y + br) + 1):
+            for xx in range(int(x - br), int(x + br) + 1):
+                nx, ny = (xx - x) / br, (yy - y) / (br * 0.85)
+                d = nx * nx + ny * ny
+                if d <= 1:
+                    lit = -(-0.55 * nx - 0.8 * ny)
+                    i = 1 if lit < -0.35 else 2 if lit < 0.1 else 3 if lit < 0.5 else 4
+                    c.set(xx, yy, ramp[i])
+
+
+def concrete(c, y0, base=4, seed=9, joints=40):
+    r = random.Random(seed)
+    c.rect(0, y0, c.w - 1, c.h - 1, S_[base])
+    for _ in range(int(c.w * (c.h - y0) / 18)):
+        c.set(r.uniform(0, c.w), r.uniform(y0, c.h), r.choice([S_[base - 1], S_[base - 1], S_[base + 1]]))
+    for y in range(y0 + joints, c.h, joints):
+        c.hline(0, c.w - 1, y, S_[base - 1])
+    for x in range(joints * 2, c.w, joints * 3):
+        c.vline(x, y0 + 4, c.h - 1, S_[base - 1])
+
+
+def corrugated(c, y0, y1, ramp, base=2, step=6):
+    for x in range(0, c.w, step):
+        c.rect(x, y0, x + step - 1, y1, ramp[base])
+        c.vline(x, y0, y1, ramp[base + 1] if base + 1 < len(ramp) else ramp[base])
+        c.vline(x + 1, y0, y1, ramp[base + 1] if base + 1 < len(ramp) else ramp[base])
+        c.vline(x + step - 2, y0, y1, ramp[base - 1])
+
+
+def pallet(c, x, y, w=44, h=7, load=None):
+    p = Sprite(w, h + (load[1] if load else 0))
+    if load:
+        col, lh = load
+        p.rect(0, 0, w - 1, lh - 1, col); p.hline(0, w - 1, 0, shift(col, 1)); p.vline(0, 0, lh - 1, shift(col, 1))
+        for xx in range(4, w, 10):
+            p.vline(xx, 1, lh - 2, shift(col, -1))
+        off = lh
+    else:
+        off = 0
+    p.rect(0, off, w - 1, off + h - 1, W_[4]); p.hline(0, w - 1, off, W_[5])
+    for xx in (2, w // 2 - 3, w - 8):
+        p.rect(xx, off + 3, xx + 5, off + h - 1, W_[2])
+    p.stamp_on(c, x, y)
+    c.tone(x + 2, y + p.h + 1, x + w + 1, y + p.h + 2, -1)
+
+
+def barrel(c, x, y, col=None):
+    col = col or B_[2]
+    b = Sprite(16, 22)
+    for xx in range(16):
+        t = xx / 15
+        cc = shift(col, 1) if t < 0.25 else col if t < 0.7 else shift(col, -1)
+        b.vline(xx, 1, 21, cc)
+    b.ell(7.5, 2, 7.5, 2, shift(col, 1)); b.ell(7.5, 2, 5, 1, shift(col, -1))
+    for yy in (7, 15):
+        b.hline(0, 15, yy, shift(col, -2))
+    b.stamp_on(c, x, y)
+    c.tone(x + 2, y + 23, x + 19, y + 24, -1)
+
+
+# ======================================================================= 4 · Terreno Abandonado (320x180)
+def terreno():
+    W, H, F = 320, 180, 72
+    c = Cv(W, H, 5); r = random.Random(51)
+    sky(c, 0, 40)
+    cloud(c, 40, 12, 34); cloud(c, 210, 8, 26)
+    x = 0
+    while x < W:                                                # prédios ao fundo
+        bw = r.randrange(20, 34); bh = r.randrange(14, 30)
+        col = r.choice([S_[4], S_[4], S_[3]])
+        c.rect(x, 40 - bh, x + bw - 1, 44, col); c.vline(x, 40 - bh, 44, shift(col, 1))
+        for wy in range(42 - bh, 42, 4):
+            for wx in range(x + 3, x + bw - 3, 4):
+                if r.random() < 0.55:
+                    c.set(wx, wy, S_[5] if r.random() < 0.7 else G_[4])
+        x += bw + r.randrange(0, 6)
+    # muro de tábuas (com frestas, pregos, pichação)
+    for x in range(0, W, 13):
+        col = r.choice([W_[3], W_[3], W_[4], W_[2]])
+        top = 36 + r.randrange(0, 4)
+        c.rect(x, top, x + 11, F - 1, col)
+        c.vline(x, top, F - 1, shift(col, 1)); c.vline(x + 11, top, F - 1, shift(col, -1)); c.vline(x + 12, top + 2, F - 1, W_[0])
+        c.poly([(x, top), (x + 6, top - 4), (x + 12, top)], col)
+        for yy in (top + 6, F - 8):
+            c.set(x + 5, yy, S_[2])
+        for _ in range(3):
+            gy = r.randrange(top + 4, F - 2); c.vline(x + r.randrange(2, 10), gy, gy + r.randrange(3, 8), shift(col, -1))
+    # pichação em letras grandes com contorno
+    gr = Sprite(80, 22)
+    for i, (col, dx) in enumerate(((CR[3], 0), (G_[3], 18), (L_[4], 36), (D_[3], 54))):
+        gr.ell(dx + 9, 11, 9, 10, col); gr.ell(dx + 9, 11, 4, 5, shift(col, 1)); gr.ell(dx + 7, 8, 2, 2, "#fffbef")
+    gr.stamp_on(c, 118, 42)
+    c.line(116, 66, 200, 64, PL[3]); c.line(116, 67, 200, 65, PL[2])
+    # árvore grande à esquerda
+    c.rect(18, 28, 26, F + 26, W_[1]); c.vline(19, 28, F + 26, W_[2]); c.vline(20, 28, F + 26, W_[2])
+    c.line(22, 40, 8, 26, W_[1]); c.line(24, 36, 40, 22, W_[1])
+    tree_crown(c, 24, 20, 26, seed=4)
+    c.tone(10, F + 22, 70, F + 30, -1, mask=lambda x, y: ((x - 40) / 30) ** 2 + ((y - F - 26) / 4) ** 2 <= 1)
+    # chão de terra com mato
+    c.rect(0, F, W - 1, H - 1, SO[3])
+    for _ in range(1400):
+        c.set(r.uniform(0, W), r.uniform(F, H), r.choice([SO[2], SO[2], W_[4], SO[3]]))
+    c.tone(0, F, W - 1, F + 2, -1)
+    for _ in range(46):
+        gx, gy = r.uniform(0, W), r.uniform(F + 4, H - 2)
+        for k in range(7):
+            hgt = r.randrange(2, 6)
+            c.vline(gx + k, gy - hgt, gy, r.choice([L_[3], L_[4], L_[2]]))
+        c.tone(gx, gy + 1, gx + 7, gy + 1, -1)
+    # entulho: tijolos, pneu, TV quebrada, carrinho de supermercado
+    for i in range(6):
+        bx = 250 + (i % 3) * 10 + (i // 3) * 5; by = 160 - (i // 3) * 5
+        b = Sprite(10, 5); b.rect(0, 0, 9, 4, B_[2]); b.hline(0, 9, 0, B_[3]); b.set(3, 2, B_[1]); b.stamp_on(c, bx, by)
+    c.ell(292, 140, 16, 6, OL); c.ell(292, 140, 15, 5, S_[2]); c.ell(292, 139, 13, 3, S_[3]); c.ell(292, 140, 6, 2, SO[2])
+    tv = Sprite(30, 24)
+    tv.rect(0, 0, 29, 23, S_[3]); tv.hline(0, 29, 0, S_[4]); tv.rect(3, 3, 22, 19, S_[1]); tv.line(6, 5, 18, 17, S_[5]); tv.line(9, 4, 20, 12, S_[4])
+    tv.ell(26, 7, 1, 1, S_[2]); tv.ell(26, 12, 1, 1, S_[2])
+    tv.stamp_on(c, 60, 146)
+    cart = Sprite(34, 26)
+    for xx in range(2, 32, 4):
+        cart.vline(xx, 0, 16, S_[5])
+    for yy in range(0, 17, 4):
+        cart.hline(1, 32, yy, S_[5])
+    cart.rect(0, 16, 33, 17, S_[4]); cart.ell(5, 23, 2, 2, OL); cart.ell(28, 23, 2, 2, OL)
+    cart.stamp_on(c, 196, 120)
+    return c, {"w": W, "h": H, "floor": F}
+
+
+# ======================================================================= 5 · Container Marítimo (320x180)
+def container():
+    W, H, F = 320, 180, 72
+    c = Cv(W, H, 6); r = random.Random(61)
+    corrugated(c, 0, F - 1, B_, base=3, step=8)
+    c.rect(0, 0, W - 1, 5, B_[1]); c.hline(0, W - 1, 6, OL); c.tone(0, 7, W - 1, 9, -1)
+    for _ in range(90):                                        # ferrugem
+        x, y = r.uniform(0, W), r.uniform(8, F)
+        c.rect(x, y, x + r.randrange(1, 4), y + r.randrange(1, 3), r.choice([SO[2], G_[1], B_[1]]))
+    # placa de identificação com estêncil
+    c.box(96, 18, 220, 44, B_[3], B_[1])
+    text(c, 108, 24, "GRN 0451", "#fffbef", 3)
+    c.rect(104, 21, 212, 21, B_[4])
+    # barras de travamento da porta (lado direito, vistas por dentro)
+    for x in (258, 284):
+        c.rect(x, 6, x + 5, F - 1, S_[3]); c.vline(x, 6, F - 1, S_[5]); c.vline(x + 5, 6, F - 1, S_[2])
+        c.box(x - 3, 30, x + 8, 38, S_[3]); c.hline(x - 2, x + 7, 31, S_[5])
+    c.vline(306, 6, F - 1, OL)
+    c.tone_poly([(307, 6), (319, 6), (319, F + 40), (300, H)], 1, dither=0)        # luz pela fresta da porta
+    # fita de LED (gambiarra presa com fita)
+    c.hline(0, W - 1, 11, TE[4]); c.hline(0, W - 1, 12, TE[3])
+    for x in range(30, W, 70):
+        c.rect(x, 10, x + 4, 13, S_[4])
+    # piso de compensado
+    c.rect(0, F, W - 1, H - 1, W_[3])
+    for y in range(F, H, 18):
+        c.hline(0, W - 1, y, W_[2])
+        for x in range((y // 18 % 2) * 40, W, 80):
+            c.vline(x, y, y + 17, W_[2])
+        for _ in range(14):
+            c.set(r.uniform(0, W), r.uniform(y + 2, y + 16), W_[2])
+    baseboard(c, F, B_[1])
+    # carga: palete com fardo, galões, saco de dormir, ventilador de pé
+    pallet(c, 10, 100, 50, 7, (S_[5], 20))
+    for i in range(3):
+        g = Sprite(12, 18); g.rect(0, 2, 11, 17, CR[3] if i != 1 else G_[3]); g.rect(4, 0, 7, 2, S_[2]); g.vline(1, 3, 16, CR[4] if i != 1 else G_[4]); g.rect(3, 7, 8, 10, "#fffbef")
+        g.stamp_on(c, 268 + i * 14, 140 - (i % 2) * 2)
+    c.tone(268, 159, 310, 160, -1)
+    sb = Sprite(46, 14); sb.ell(23, 7, 22, 6, D_[2]); sb.ell(23, 5, 20, 3, D_[3]); sb.ell(6, 7, 5, 5, D_[1]); sb.line(10, 4, 40, 10, D_[1])
+    sb.stamp_on(c, 74, 156)
+    fan = Sprite(22, 40)
+    fan.ell(11, 10, 10, 10, S_[3]); fan.ell(11, 10, 8, 8, S_[4])
+    for a in range(0, 360, 90):
+        fan.line(11, 10, 11 + 7 * math.cos(math.radians(a + 20)), 10 + 7 * math.sin(math.radians(a + 20)), S_[2])
+    fan.ell(11, 10, 2, 2, S_[2]); fan.rect(10, 20, 12, 35, S_[2]); fan.rect(4, 36, 18, 39, S_[2])
+    fan.stamp_on(c, 226, 92)
+    return c, {"w": W, "h": H, "floor": F}
+
+
+# ======================================================================= 6 · Sobrado na Favela (320x180)
+def sobrado():
+    W, H, F = 320, 180, 72
+    c = Cv(W, H, 7); r = random.Random(71)
+    # tijolo baiano aparente com reboco caindo
+    c.rect(0, 0, W - 1, F - 1, B_[1])
+    for y in range(0, F, 7):
+        off = 0 if (y // 7) % 2 else 7
+        for x in range(-off, W, 14):
+            col = r.choice([B_[3], B_[3], B_[2], B_[4]])
+            c.rect(x + 1, y + 1, x + 12, y + 5, col); c.hline(x + 1, x + 12, y + 1, shift(col, 1))
+            c.vline(x + 4, y + 2, y + 4, shift(col, -1)); c.vline(x + 8, y + 2, y + 4, shift(col, -1))
+    for (x, y, w, h) in ((20, 6, 50, 24), (232, 40, 40, 20)):                      # reboco
+        c.tone(x, y, x + w, y + h, 0)
+        c.rect(x, y, x + w, y + h, S_[5])
+        for yy in range(y, y + h):
+            c.set(x + r.randrange(0, w), yy, S_[4])
+        for k in range(0, w, 3):
+            c.set(x + k, y + h + r.randrange(0, 3), S_[5])
+    # janela com o morro
+    window(c, 128, 8, 96, 46, S_[3])
+    for y in range(8, 54):
+        c.hline(128, 223, y, D_[4] if y < 22 else L_[3])
+    c.ell(206, 14, 4, 4, G_[4])
+    houses = [CR[3], G_[3], D_[3], L_[5], B_[4], S_[5], CR[4], TE[3], PL[3]]
+    for row in range(5):
+        for i in range(12):
+            hx = 128 + i * 8 + (row % 2) * 4; hy = 16 + row * 7
+            if hx + 7 > 223:
+                continue
+            col = houses[(i * 3 + row * 5) % len(houses)]
+            c.rect(hx, hy, hx + 7, hy + 7, col); c.hline(hx, hx + 7, hy, OL)
+            c.set(hx + 2, hy + 3, OL); c.set(hx + 5, hy + 3, D_[1])
+            if (i + row) % 4 == 0:
+                c.rect(hx + 2, hy - 2, hx + 5, hy - 1, D_[2])                     # caixa d'água
+    c.line(128, 20, 223, 26, OL); c.line(128, 30, 223, 24, OL)                   # fios
+    c.vline(176, 8, 53, S_[3]); c.vline(177, 8, 53, S_[2]); c.hline(128, 223, 31, S_[3])
+    # gambiarra de fios na parede
+    c.line(20, 0, 26, 40, OL); c.line(26, 40, 60, 46, OL); c.box(58, 42, 66, 50, "#fffbef")
+    # ventilador de teto
+    c.vline(90, 0, 8, S_[2])
+    fan = Sprite(50, 6); fan.rect(0, 2, 49, 3, W_[2]); fan.hline(0, 49, 2, W_[3]); fan.ell(25, 3, 4, 3, S_[3]); fan.stamp_on(c, 65, 8)
+    # piso de cerâmica
+    c.rect(0, F, W - 1, H - 1, S_[5])
+    for y in range(F, H, 16):
+        for x in range((y // 16 % 2) * 8, W, 16):
+            col = r.choice([S_[5], S_[5], S_[6]])
+            c.rect(x + 1, y + 1, x + 15, y + 15, col)
+        c.hline(0, W - 1, y, S_[4])
+    for x in range(0, W, 16):
+        c.vline(x, F, H - 1, S_[4])
+    baseboard(c, F, B_[1])
+    # sofá verde com almofadas
+    so = Sprite(74, 44)
+    so.rect(0, 0, 73, 18, L_[2]); so.hline(0, 73, 0, L_[3]); so.hline(0, 73, 1, L_[3])
+    so.rect(0, 18, 73, 36, L_[3]); so.hline(0, 73, 18, L_[4]); so.vline(36, 19, 33, L_[2])
+    so.rect(0, 8, 7, 40, L_[2]); so.rect(66, 8, 73, 40, L_[1]); so.vline(0, 8, 40, L_[3])
+    so.rect(2, 37, 71, 43, L_[1])
+    so.rect(12, 12, 26, 24, CR[3]); so.hline(12, 26, 12, CR[4]); so.rect(44, 13, 56, 24, G_[3]); so.hline(44, 56, 13, G_[4])
+    so.stamp_on(c, 6, 54)
+    c.tone(8, 99, 84, 101, -1)
+    # TV de tubo no caixote + antena de palha de aço
+    cx = Sprite(40, 24); cx.rect(0, 0, 39, 23, W_[3]); cx.hline(0, 39, 0, W_[4])
+    for yy in (7, 15):
+        cx.hline(0, 39, yy, W_[2])
+    cx.stamp_on(c, 268, 112)
+    tv = Sprite(44, 34); tv.rect(0, 0, 43, 33, S_[2]); tv.hline(0, 43, 0, S_[3]); tv.rect(3, 3, 32, 28, TE[1]); tv.rect(5, 5, 14, 8, TE[3]); tv.rect(35, 6, 40, 9, S_[1]); tv.rect(35, 13, 40, 16, S_[1])
+    tv.stamp_on(c, 266, 78)
+    c.line(276, 78, 268, 64, S_[4]); c.line(296, 78, 304, 64, S_[4]); c.ell(268, 63, 3, 2, S_[5])
+    # cadeira de plástico e botijão
+    ch = Sprite(20, 28); ch.rect(0, 0, 19, 10, "#fffbef"); ch.rect(0, 11, 19, 14, S_[6]); ch.rect(1, 15, 3, 27, S_[6]); ch.rect(16, 15, 18, 27, S_[5])
+    ch.stamp_on(c, 220, 120)
+    bj = Sprite(16, 22); bj.ell(8, 12, 7, 9, D_[2]); bj.ell(6, 10, 3, 5, D_[3]); bj.rect(5, 0, 10, 4, S_[3]); bj.stamp_on(c, 92, 148)
+    return c, {"w": W, "h": H, "floor": F}
+
+
+# ======================================================================= 7 · Galpão Industrial (320x180)
+def galpao():
+    W, H, F = 320, 180, 70
+    c = Cv(W, H, 8); r = random.Random(81)
+    corrugated(c, 0, F - 1, S_, base=3, step=6)
+    # vigas e colunas de aço
+    for x in (0, 104, 208, 312):
+        c.rect(x, 0, x + 7, F - 1, S_[2]); c.vline(x + 1, 0, F - 1, S_[4]); c.vline(x + 7, 0, F - 1, S_[1])
+    c.rect(0, 0, W - 1, 4, S_[2]); c.hline(0, W - 1, 1, S_[4]); c.hline(0, W - 1, 5, OL)
+    for x in range(0, W, 16):
+        c.line(x, 5, x + 8, 0, S_[1])
+    # janelas altas
+    for x in (26, 130, 234):
+        window(c, x, 10, 52, 18, S_[2])
+    # luz entrando em feixes diagonais
+    for x in (26, 130, 234):
+        c.tone_poly([(x, F), (x + 52, F), (x + 92, H), (x + 30, H)], 1)
+        c.tone_poly([(x - 4, F), (x, F), (x + 30, H), (x + 24, H)], 1, dither=1)
+    # luminárias industriais penduradas
+    for x in (78, 182, 286):
+        c.vline(x, 5, 18, OL)
+        lm = Sprite(20, 8); lm.poly([(5, 0), (14, 0), (19, 6), (0, 6)], S_[2]); lm.hline(5, 14, 0, S_[4]); lm.rect(5, 6, 14, 7, G_[4]); lm.stamp_on(c, x - 10, 18)
+    concrete(c, F, base=4, seed=82, joints=36)
+    for x in range(0, W):                                                       # faixa de segurança
+        c.vline(x, F + 8, F + 10, G_[3] if (x // 8) % 2 else OL)
+    baseboard(c, F, S_[2])
+    # paletes empilhados com caixas
+    for i in range(3):
+        pallet(c, 8, 150 - i * 15, 52, 6, (W_[4] if i % 2 else W_[3], 9))
+    # barris
+    barrel(c, 268, 150, D_[2]); barrel(c, 286, 154, B_[2]); barrel(c, 277, 132, G_[2])
+    # empilhadeira
+    fk = Sprite(56, 54)
+    fk.rect(14, 22, 55, 44, G_[3]); fk.hline(14, 55, 22, G_[4]); fk.rect(14, 38, 55, 44, G_[2])
+    fk.rect(22, 2, 50, 22, S_[1]); fk.rect(25, 5, 47, 20, D_[4]); fk.line(26, 6, 30, 18, "#fffbef")
+    fk.rect(20, 0, 52, 2, G_[2])
+    fk.rect(6, 4, 9, 50, S_[2]); fk.vline(6, 4, 50, S_[4]); fk.rect(0, 46, 14, 49, S_[2])
+    for wx in (24, 48):
+        fk.ell(wx, 46, 7, 7, OL); fk.ell(wx, 46, 5, 5, S_[2]); fk.ell(wx, 46, 2, 2, S_[4])
+    fk.stamp_on(c, 200, 120)
+    c.tone(200, 175, 258, 177, -1)
+    return c, {"w": W, "h": H, "floor": F}
+
+
+# ======================================================================= 8 · Sítio na Serra (320x180)
+def sitio():
+    W, H, F = 320, 180, 72
+    c = Cv(W, H, 9); r = random.Random(91)
+    # parede de troncos
+    for y in range(0, F, 9):
+        c.rect(0, y, W - 1, y + 8, W_[3]); c.hline(0, W - 1, y, W_[4]); c.hline(0, W - 1, y + 1, W_[4]); c.hline(0, W - 1, y + 7, W_[2]); c.hline(0, W - 1, y + 8, W_[1])
+        for _ in range(6):
+            gx = r.uniform(0, W); c.hline(gx, gx + r.uniform(6, 16), y + r.randrange(3, 6), W_[2])
+        for x in (2, W - 9):
+            c.ell(x + 3, y + 4, 4, 4, W_[1]); c.ell(x + 3, y + 4, 3, 3, W_[4]); c.ell(x + 3, y + 4, 1, 1, W_[2])
+    # janela com montanhas e pinheiros
+    window(c, 100, 8, 84, 42, W_[2])
+    for y in range(8, 50):
+        c.hline(100, 183, y, D_[4] if y < 26 else D_[3])
+    c.poly([(100, 50), (128, 16), (150, 50)], S_[4]); c.poly([(120, 22), (128, 16), (136, 22)], "#fffbef")
+    c.poly([(132, 50), (162, 12), (184, 50)], S_[3]); c.poly([(155, 20), (162, 12), (169, 20)], "#fffbef")
+    c.rect(100, 40, 183, 49, L_[3])
+    for x in range(102, 182, 7):
+        c.poly([(x, 46), (x + 3, 34 + (x % 3) * 2), (x + 6, 46)], L_[1])
+    c.vline(141, 8, 49, W_[2]); c.vline(142, 8, 49, W_[1]); c.hline(100, 183, 29, W_[2])
+    # prateleira com potes de conserva
+    c.box(30, 26, 84, 29, W_[2])
+    for i, col in enumerate((CR[3], G_[3], L_[4], CR[2], G_[2])):
+        jar = Sprite(8, 10); jar.rect(0, 2, 7, 9, col); jar.rect(1, 0, 6, 1, S_[3]); jar.vline(1, 3, 8, shift(col, 1)); jar.rect(2, 5, 5, 6, PA[4])
+        jar.stamp_on(c, 33 + i * 10, 16)
+    # lareira de pedra com fogo (o fogo é animado)
+    fp = Sprite(78, F + 10)
+    for y in range(0, F + 10, 7):
+        for x in range((y // 7 % 2) * 5, 78, 11):
+            col = r.choice([S_[4], S_[3], S_[4], S_[5]])
+            fp.rect(x, y, x + 9, y + 5, col); fp.hline(x, x + 9, y, shift(col, 1))
+    fp.rect(14, 38, 63, F + 9, S_[1]); fp.rect(18, 42, 59, F + 9, OL)
+    fp.rect(8, 33, 69, 37, W_[2]); fp.hline(8, 69, 33, W_[3])
+    fp.stamp_on(c, 238, 0)
+    c.rect(258, F + 2, 296, F + 8, W_[1]); c.rect(262, F + 1, 292, F + 3, W_[2])         # lenha na lareira
+    # piso de tábuas largas
+    plank_floor(c, F + 4, base=4, plank_h=9, seed=93)
+    c.rect(0, F, W - 1, F + 3, W_[2]); c.hline(0, W - 1, F + 3, OL)
+    # tapete oval e lenha empilhada
+    c.ell(90, 148, 56, 16, OL); c.ell(90, 148, 55, 15, CR[2]); c.ell(90, 148, 46, 11, CR[3]); c.ell(90, 148, 34, 7, G_[3]); c.ell(90, 148, 26, 4, CR[2])
+    for i in range(7):
+        lg = Sprite(30, 6); lg.rect(0, 0, 29, 5, W_[2]); lg.hline(0, 29, 0, W_[3]); lg.ell(1, 2, 2, 2, W_[4]); lg.set(1, 2, W_[2])
+        lg.stamp_on(c, 250 + (i % 3) * 4, 150 - (i // 3) * 6 - (i % 3) * 2)
+    # cadeira de balanço
+    rk = Sprite(26, 40); rk.rect(2, 0, 21, 18, W_[2])
+    for xx in range(4, 20, 4):
+        rk.vline(xx, 2, 16, W_[3])
+    rk.rect(0, 18, 23, 22, W_[3]); rk.rect(2, 22, 4, 34, W_[2]); rk.rect(19, 22, 21, 34, W_[2]); rk.line(0, 36, 25, 33, W_[1]); rk.line(0, 37, 25, 34, W_[1])
+    rk.stamp_on(c, 190, 112)
+    return c, {"w": W, "h": H, "floor": F, "anims": [["fire", 258, F + 1, 36]]}
+
+
+# ======================================================================= 9 · Fazenda Paraíso Verde (320x180)
+def fazenda():
+    W, H, F = 320, 180, 68
+    c = Cv(W, H, 10); r = random.Random(101)
+    sky(c, 0, 36); cloud(c, 60, 10, 30); cloud(c, 220, 14, 22)
+    c.ell(290, 10, 8, 8, G_[4]); c.ell(290, 10, 6, 6, "#fffbef")
+    c.rect(0, 30, W - 1, F - 1, L_[3])                                            # campo
+    for y in range(32, F, 3):
+        c.hline(0, W - 1, y, L_[4] if (y // 3) % 2 else L_[3])
+    # celeiro, silo e moinho
+    bn = Sprite(46, 34)
+    bn.rect(0, 12, 45, 33, CR[2]); bn.poly([(0, 13), (23, 0), (45, 13)], CR[1]); bn.rect(16, 18, 29, 33, "#fffbef"); bn.line(16, 18, 29, 33, "#fffbef")
+    bn.rect(18, 20, 27, 31, CR[2]); bn.line(18, 20, 27, 31, "#fffbef"); bn.line(27, 20, 18, 31, "#fffbef"); bn.rect(20, 4, 25, 9, "#fffbef")
+    bn.stamp_on(c, 196, 20)
+    sl = Sprite(16, 40); sl.rect(0, 6, 15, 39, S_[5]); sl.ell(7.5, 6, 7.5, 6, S_[4]); sl.vline(0, 6, 39, "#fffbef"); sl.vline(15, 6, 39, S_[4])
+    sl.stamp_on(c, 246, 14)
+    c.vline(60, 22, 50, S_[3]); c.vline(61, 22, 50, S_[4])
+    for a in (20, 110, 200, 290):
+        c.line(60, 22, 60 + 12 * math.cos(math.radians(a)), 22 + 12 * math.sin(math.radians(a)), S_[5])
+    # estrutura da estufa (vidro com caixilhos brancos e reflexos)
+    for x in range(0, W, 46):
+        c.rect(x, 0, x + 2, F - 1, S_[6]); c.vline(x + 2, 0, F - 1, S_[4])
+    for y in (0, 22, 44):
+        c.rect(0, y, W - 1, y + 1, S_[6])
+    for x in range(10, W, 46):
+        for k in range(10):
+            c.set(x + k, 18 - k, "#fffbef"); c.set(x + k + 2, 18 - k, "#fffbef")
+    # chão de terra com canteiros e sulcos de irrigação
+    c.rect(0, F, W - 1, H - 1, SO[2])
+    for y in range(F + 6, H, 22):
+        c.rect(0, y, W - 1, y + 12, SO[3]); c.hline(0, W - 1, y, shift(SO[3], 1) if False else W_[3])
+        c.hline(0, W - 1, y + 12, SO[1])
+        c.rect(0, y + 13, W - 1, y + 16, D_[2]); c.hline(0, W - 1, y + 13, D_[3])
+        for _ in range(60):
+            c.set(r.uniform(0, W), r.uniform(y + 2, y + 11), r.choice([SO[2], W_[3]]))
+    c.rect(0, F, W - 1, F + 2, S_[5]); c.hline(0, W - 1, F + 3, OL)
+    # sol entrando em feixes
+    for x in (40, 180):
+        c.tone_poly([(x, F + 4), (x + 50, F + 4), (x + 80, H), (x + 30, H)], 1, dither=0)
+    # carrinho de mão e sacos de adubo
+    wb = Sprite(46, 22)
+    wb.poly([(0, 2), (34, 2), (30, 14), (6, 14)], L_[3]); wb.hline(0, 34, 2, L_[4]); wb.rect(4, 0, 30, 3, SO[3])
+    wb.line(34, 6, 45, 4, W_[2]); wb.line(30, 13, 44, 10, W_[2]); wb.ell(16, 18, 4, 4, OL); wb.ell(16, 18, 2, 2, S_[3]); wb.rect(8, 14, 9, 21, S_[2])
+    wb.stamp_on(c, 14, 150)
+    for i in range(3):
+        sk = Sprite(18, 22); sk.ell(9, 12, 8, 10, PA[3]); sk.rect(1, 2, 16, 18, PA[3]); sk.rect(5, 0, 12, 3, PA[2]); sk.rect(4, 8, 13, 13, L_[3]); sk.vline(2, 4, 18, PA[4])
+        sk.stamp_on(c, 272 + i * 15, 146 - (i % 2) * 4)
+    return c, {"w": W, "h": H, "floor": F}
+
+
+# ======================================================================= 10 · Ilha Privada (384x216)
+def ilha():
+    W, H, F = 384, 216, 84
+    c = Cv(W, H, 11); r = random.Random(111)
+    sky(c, 0, 46, [D_[4], D_[4], D_[4], D_[3]])
+    cloud(c, 60, 14, 40); cloud(c, 250, 22, 28)
+    c.ell(320, 20, 12, 12, G_[4]); c.ell(320, 20, 9, 9, "#fffbef")
+    # mar com faixas e brilhos, ilha ao longe
+    for y in range(46, 74):
+        c.hline(0, W - 1, y, TE[2] if y < 56 else TE[3] if y < 66 else TE[3])
+    for _ in range(80):
+        x, y = r.uniform(0, W), r.uniform(48, 72); c.hline(x, x + r.randrange(3, 8), y, TE[4] if r.random() < 0.6 else "#fffbef")
+    c.ell(140, 47, 26, 5, L_[2]); c.ell(140, 46, 18, 3, L_[3]); c.vline(146, 36, 44, W_[1]); c.ell(146, 36, 6, 2, L_[2])
+    # areia
+    c.rect(0, 74, W - 1, H - 1, W_[5])
+    for y in range(74, 80):
+        for x in range(0, W, 1):
+            if r.random() < 0.4:
+                c.set(x, y, "#fffbef")
+    for _ in range(1800):
+        c.set(r.uniform(0, W), r.uniform(80, H), r.choice([W_[4], W_[4], PA[3], PA[4]]))
+    for (x, y) in ((60, 190), (300, 170), (220, 200)):                              # conchas
+        c.ell(x, y, 3, 2, OL); c.ell(x, y, 2, 1, CR[4]); c.set(x, y - 1, "#fffbef")
+    # coqueiros
+    for (bx, flip) in ((24, 1), (356, -1)):
+        for i in range(110):
+            x = bx + flip * round(math.sin(i / 34) * 14)
+            y = 150 - i
+            c.rect(x, y, x + 7, y, W_[2] if (i // 4) % 2 else W_[3]); c.set(x, y, OL); c.set(x + 8, y, OL)
+        tx = bx + flip * round(math.sin(110 / 34) * 14) + 4; ty = 40
+        for (dx, dy) in ((-34, 10), (34, 10), (-24, -10), (24, -10), (-8, -20), (12, 22), (-16, 20)):
+            leaf = [(tx, ty), (tx + dx * 0.5, ty + dy * 0.5 - 5), (tx + dx, ty + dy), (tx + dx * 0.5, ty + dy * 0.5 + 2)]
+            c.poly([(p[0] - 1, p[1] - 1) for p in leaf], OL)
+            c.poly(leaf, L_[3]); c.line(tx, ty, tx + dx, ty + dy, L_[2])
+        for k in range(3):
+            c.ell(tx - 3 + k * 4, ty + 5, 3, 3, OL); c.ell(tx - 3 + k * 4, ty + 5, 2, 2, W_[1])
+        c.tone(bx - 6, 150, bx + 40, 156, -1, mask=lambda x, y, bx=bx: ((x - bx - 16) / 22) ** 2 + ((y - 153) / 3) ** 2 <= 1)
+    # rede, cooler, prancha, tocha tiki
+    c.line(60, 70, 120, 96, S_[5]) if False else None
+    hm = Sprite(80, 20)
+    for x in range(80):
+        y = int(4 + 10 * math.sin(math.pi * x / 79))
+        hm.vline(x, y, y + 4, CR[3] if (x // 6) % 2 else G_[3])
+    hm.stamp_on(c, 280, 96)
+    c.line(278, 96, 268, 60, W_[2]); c.line(360, 96, 356, 60, W_[2])
+    cl = Sprite(30, 20); cl.rect(0, 4, 29, 19, D_[3]); cl.rect(0, 0, 29, 5, "#fffbef"); cl.rect(10, 8, 19, 12, "#fffbef"); cl.stamp_on(c, 70, 176)
+    sb = Sprite(14, 56); sb.ell(7, 28, 6, 27, G_[3]); sb.vline(7, 4, 52, CR[3]); sb.stamp_on(c, 62, 96)
+    c.vline(330, 120, 176, W_[2]); c.vline(331, 120, 176, W_[1]); c.box(326, 112, 335, 122, W_[3])
+    return c, {"w": W, "h": H, "floor": F, "anims": [["waves", 46, 72], ["torch", 330, 110]]}
+
+
+# ======================================================================= 11 · Mina de Ouro Desativada (384x216)
+def mina():
+    W, H, F = 384, 216, 84
+    c = Cv(W, H, 12); r = random.Random(121)
+    c.rect(0, 0, W - 1, H - 1, SO[1])
+    for _ in range(260):                                                      # rochas facetadas
+        x, y = r.uniform(-10, W), r.uniform(-6, F + 4)
+        w, h = r.uniform(10, 26), r.uniform(6, 14)
+        col = r.choice([SO[2], SO[1], SO[2], SO[3], SO[0]])
+        pts = [(x, y + h * 0.3), (x + w * 0.4, y), (x + w, y + h * 0.2), (x + w * 0.9, y + h), (x + w * 0.1, y + h * 0.9)]
+        c.poly(pts, col)
+        c.line(x + 1, y + h * 0.3, x + w * 0.4, y + 1, shift(col, 1))
+    for _ in range(40):                                                       # veios de ouro
+        x, y = r.uniform(0, W), r.uniform(4, F - 4)
+        for k in range(r.randrange(3, 7)):
+            c.set(x + k, y + math.sin(k) * 1.5, G_[3] if k % 2 else G_[2])
+        c.set(x + 1, y - 1, G_[4])
+    # escoras de madeira
+    for x in (48, 330):
+        c.rect(x, 6, x + 11, F + 14, W_[2]); c.vline(x + 1, 6, F + 14, W_[3]); c.vline(x + 11, 6, F + 14, W_[1])
+    c.rect(36, 2, 348, 13, W_[2]); c.hline(36, 348, 2, W_[3]); c.hline(36, 348, 3, W_[3]); c.hline(36, 348, 13, W_[1])
+    for x in range(60, 330, 40):
+        c.set(x, 8, S_[4])
+    # chão de pedra com trilhos e dormentes
+    c.rect(0, F, W - 1, H - 1, SO[2])
+    for _ in range(1500):
+        c.set(r.uniform(0, W), r.uniform(F, H), r.choice([SO[1], SO[3], SO[2]]))
+    for x in range(-4, W, 14):
+        c.rect(x, 186, x + 8, 200, W_[1]); c.hline(x, x + 8, 186, W_[2])
+    for y in (188, 197):
+        c.hline(0, W - 1, y, S_[4]); c.hline(0, W - 1, y + 1, S_[3]); c.hline(0, W - 1, y + 2, OL)
+    # carrinho de mina cheio de ouro
+    mc = Sprite(60, 36)
+    mc.poly([(0, 8), (59, 8), (54, 30), (5, 30)], S_[2]); mc.hline(0, 59, 8, S_[4]); mc.hline(0, 59, 9, S_[3])
+    for xx in (14, 30, 46):
+        mc.vline(xx, 10, 29, S_[1])
+    for k in range(9):
+        mc.ell(6 + k * 6, 7, 4, 4, G_[2]); mc.ell(5 + k * 6, 6, 2, 2, G_[3])
+    mc.set(20, 3, G_[4]); mc.set(40, 4, G_[4])
+    for wx in (14, 46):
+        mc.ell(wx, 31, 5, 5, OL); mc.ell(wx, 31, 3, 3, S_[3])
+    mc.stamp_on(c, 20, 158)
+    # picareta encostada e caixotes
+    c.line(300, 140, 316, 190, W_[2]); c.line(301, 140, 317, 190, W_[3]); c.poly([(290, 142), (312, 134), (314, 138), (294, 146)], S_[4])
+    for i in range(2):
+        cr = Sprite(30, 22); cr.rect(0, 0, 29, 21, W_[3]); cr.hline(0, 29, 0, W_[4]); cr.box(4, 6, 25, 15, W_[2]); text(cr, 7, 8, "XX", CR[2])
+        cr.stamp_on(c, 336, 170 - i * 22)
+    # lampiões (a chama é animada; a luz vem do "dark")
+    for x in (72, 312):
+        c.vline(x, 14, 26, OL)
+        ln = Sprite(11, 14); ln.rect(0, 0, 10, 2, S_[2]); ln.rect(1, 3, 9, 11, G_[4]); ln.rect(0, 12, 10, 13, S_[2]); ln.vline(0, 3, 11, S_[2]); ln.vline(10, 3, 11, S_[2])
+        ln.stamp_on(c, x - 5, 26)
+    return c, {"w": W, "h": H, "floor": F, "dark": {"a": 0.55, "tint": "26,20,32", "lights": [[72, 40, 110], [312, 40, 110]], "flicker": True},
+               "anims": [["lantern", 72, 32], ["lantern", 312, 32], ["sparkle", 0, 4, W, F]]}
+
+
+# ======================================================================= 12 · Bunker Militar (384x216)
+def bunker():
+    W, H, F = 384, 216, 84
+    c = Cv(W, H, 13); r = random.Random(131)
+    c.rect(0, 0, W - 1, F - 1, S_[3])
+    for y in range(0, F, 21):                                         # painéis de concreto com rebites
+        for x in range((y // 21 % 2) * 24, W, 48):
+            c.rect(x + 1, y + 1, x + 46, y + 19, S_[3]); c.hline(x + 1, x + 46, y + 1, S_[4]); c.vline(x + 1, y + 1, y + 19, S_[4])
+            c.hline(x, x + 47, y + 20, S_[2]); c.vline(x + 47, y, y + 20, S_[2])
+            for (rx, ry) in ((4, 4), (43, 4), (4, 16), (43, 16)):
+                c.set(x + rx, y + ry, S_[2]); c.set(x + rx - 1, y + ry - 1, S_[5])
+    for _ in range(60):
+        c.set(r.uniform(0, W), r.uniform(0, F), S_[2])
+    # canos
+    c.rect(0, 4, W - 1, 8, TE[1]); c.hline(0, W - 1, 4, TE[2]); c.hline(0, W - 1, 9, OL)
+    # porta blindada redonda com volante
+    c.ell(58, 44, 36, 36, OL); c.ell(58, 44, 35, 35, S_[4]); c.ell(58, 44, 30, 30, S_[3]); c.ell(58, 44, 26, 26, S_[4])
+    c.tone(30, 10, 92, 82, -1, mask=lambda x, y: ((x - 58) ** 2 + (y - 44) ** 2 <= 26 ** 2) and (x - 58) + (y - 44) > 8)
+    for a in range(0, 360, 45):
+        x = 58 + 32.5 * math.cos(math.radians(a)); y = 44 + 32.5 * math.sin(math.radians(a))
+        c.ell(x, y, 2, 2, S_[2]); c.set(x - 1, y - 1, S_[5])
+    c.ell(58, 44, 12, 12, OL); c.ell(58, 44, 11, 11, CR[2]); c.ell(58, 44, 8, 8, S_[3])
+    for a in (0, 60, 120):
+        c.line(58 - 11 * math.cos(math.radians(a)), 44 - 11 * math.sin(math.radians(a)), 58 + 11 * math.cos(math.radians(a)), 44 + 11 * math.sin(math.radians(a)), CR[3])
+    c.ell(58, 44, 3, 3, S_[5])
+    # faixa de perigo
+    for x in range(0, W):
+        c.vline(x, F - 10, F - 6, G_[3] if ((x + 0) // 7) % 2 else OL)
+    # monitores com radar e gráficos
+    for i, x in enumerate((150, 196, 242)):
+        c.box(x, 14, x + 40, 44, S_[1])
+        c.rect(x + 3, 17, x + 37, 41, TE[0])
+        if i == 0:
+            c.ell(x + 20, 29, 10, 10, TE[1]); c.ell(x + 20, 29, 6, 6, TE[0]); c.line(x + 20, 29, x + 28, 23, TE[4]); c.set(x + 14, 26, CR[3])
+        elif i == 1:
+            for k in range(30):
+                c.set(x + 5 + k, 30 + round(6 * math.sin(k / 3)), TE[4])
+        else:
+            for k in range(5):
+                c.hline(x + 6, x + 6 + 6 + (k * 7) % 22, 20 + k * 4, TE[4] if k % 2 else G_[3])
+        c.rect(x + 16, 45, x + 24, 48, S_[2])
+    # armários
+    for i in range(3):
+        lk = Sprite(22, 56); lk.rect(0, 0, 21, 55, L_[2]); lk.hline(0, 21, 0, L_[3]); lk.vline(0, 0, 55, L_[3])
+        for yy in range(6, 16, 3):
+            lk.hline(5, 16, yy, L_[1])
+        lk.rect(16, 26, 18, 32, S_[4])
+        lk.stamp_on(c, 300 + i * 24, 26)
+    concrete(c, F, base=3, seed=133, joints=44)
+    baseboard(c, F, S_[1])
+    # sacos de areia
+    for row in range(3):
+        for i in range(4 - row):
+            sb = Sprite(22, 11); sb.ell(11, 5, 10, 5, W_[4]); sb.ell(10, 4, 7, 2, W_[5]); sb.hline(3, 18, 8, W_[3]); sb.set(2, 5, W_[2]); sb.set(19, 5, W_[2])
+            sb.stamp_on(c, 288 + i * 20 + row * 10, 188 - row * 9)
+    # caixas de suprimento
+    for i in range(2):
+        bx = Sprite(34, 22); bx.rect(0, 0, 33, 21, L_[2]); bx.hline(0, 33, 0, L_[3]); bx.rect(0, 9, 33, 11, L_[1]); text(bx, 4, 13, "BUNK", "#fffbef") if False else bx.rect(4, 14, 14, 16, "#fffbef")
+        bx.stamp_on(c, 14 + i * 36, 176)
+    return c, {"w": W, "h": H, "floor": F, "anims": [["siren", 120, 0]]}
+
+
+# ======================================================================= 13 · Estação Espacial (384x216)
+def estacao():
+    W, H, F = 384, 216, 84
+    c = Cv(W, H, 14); r = random.Random(141)
+    c.rect(0, 0, W - 1, F - 1, S_[3])
+    for x in range(0, W, 48):                                         # painéis
+        c.rect(x, 0, x + 47, F - 1, S_[3]); c.vline(x, 0, F - 1, S_[5]); c.vline(x + 47, 0, F - 1, S_[2]); c.vline(x + 1, 0, F - 1, S_[4])
+        for y in range(10, F, 22):
+            c.hline(x + 3, x + 44, y, S_[2])
+    # janelão com a Terra
+    wx, wy, ww, wh = 96, 6, 192, 60
+    c.box(wx - 4, wy - 4, wx + ww + 3, wy + wh + 3, S_[2])
+    c.rect(wx, wy, wx + ww - 1, wy + wh - 1, PL[0])
+    for _ in range(120):
+        c.set(wx + r.uniform(0, ww), wy + r.uniform(0, wh), r.choice([S_[5], S_[4], "#fffbef", PL[3]]))
+    cx, cy, R = wx + 140, wy + 110, 92
+    for y in range(wy, wy + wh):
+        for x in range(wx, wx + ww):
+            d = math.hypot(x - cx, y - cy)
+            if d <= R:
+                nx, ny = (x - cx) / R, (y - cy) / R
+                lit = -(-0.6 * nx - 0.8 * ny)
+                col = D_[3] if lit > 0.55 else D_[2] if lit > 0.2 else D_[1]
+                n = math.sin(x / 7) * math.cos(y / 5) + math.sin((x + y) / 11)
+                if n > 0.9:
+                    col = L_[4] if lit > 0.4 else L_[3]
+                if n < -1.3:
+                    col = "#fffbef"
+                c.set(x, y, col)
+            elif d <= R + 2:
+                c.set(x, y, D_[4])
+    c.ell(wx + 30, wy + 16, 6, 6, S_[5]); c.ell(wx + 28, wy + 14, 3, 3, "#fffbef")          # lua
+    c.rect(wx + ww // 2 - 2, wy, wx + ww // 2 + 1, wy + wh - 1, S_[2])
+    # luzes e painéis de controle
+    c.hline(0, W - 1, 2, TE[4]); c.hline(0, W - 1, F - 12, TE[4]); c.hline(0, W - 1, F - 11, TE[3])
+    for (x, kind) in ((14, 0), (304, 1)):
+        c.box(x, 14, x + 66, 50, S_[1]); c.rect(x + 3, 17, x + 63, 47, S_[0])
+        if kind == 0:
+            for k in range(5):
+                c.hline(x + 6, x + 6 + 10 + (k * 13) % 40, 21 + k * 5, TE[4] if k % 2 else CR[3])
+        else:
+            for k in range(8):
+                c.box(x + 6 + (k % 4) * 14, 22 + (k // 4) * 12, x + 16 + (k % 4) * 14, 30 + (k // 4) * 12, TE[3] if k % 3 else G_[3], S_[1])
+    # piso de grade metálica
+    c.rect(0, F, W - 1, H - 1, S_[2])
+    for y in range(F, H, 16):
+        c.hline(0, W - 1, y, S_[1]); c.hline(0, W - 1, y + 1, S_[3])
+    for x in range(0, W, 16):
+        c.vline(x, F, H - 1, S_[1]); c.vline(x + 1, F, H - 1, S_[3])
+    for y in range(F + 8, H, 16):
+        for x in range(8, W, 16):
+            c.set(x, y, S_[4])
+    baseboard(c, F, S_[1])
+    # braço robótico no canto e cápsula de suprimentos
+    c.rect(356, F - 6, 372, F + 30, S_[4]); c.vline(356, F - 6, F + 30, "#fffbef")
+    c.line(364, F - 6, 340, F - 30, S_[4]); c.line(365, F - 6, 341, F - 30, S_[4]); c.line(366, F - 6, 342, F - 30, S_[3])
+    c.box(334, F - 36, 346, F - 28, G_[3])
+    cap = Sprite(40, 24); cap.ell(20, 12, 19, 11, S_[5]); cap.ell(20, 10, 15, 7, "#fffbef"); cap.rect(8, 10, 32, 13, TE[3]); cap.stamp_on(c, 10, 182)
+    return c, {"w": W, "h": H, "floor": F, "anims": [["stars", wx, wy, wx + ww, wy + wh]]}
+
+
+SCENES = {0: quartinho, 1: armario, 2: garagem, 3: porao, 4: terreno, 5: container, 6: sobrado, 7: galpao,
+          8: sitio, 9: fazenda, 10: ilha, 11: mina, 12: bunker, 13: estacao}
 
 
 if __name__ == "__main__":

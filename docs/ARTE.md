@@ -166,8 +166,10 @@ Regras:
   (nada de ampliar 2× só a planta, que dá "mixels").
 - Os cenários são PNGs gerados por `tools/arte/cenarios.py`: luz da janela ou da lâmpada, sombra de contato,
   oclusão nos cantos, veio de madeira e textura. Luz e sombra trocam a cor pelo degrau vizinho da mesma rampa.
-- Prontos com o acabamento novo: Quartinho, Armário Grow, Garagem do Vizinho e Porão Abandonado. Os outros 10
-  ainda usam a versão simples, desenhada em código (`scenes.js`).
+- Os 14 imóveis estão com o acabamento novo (`docs/arte/cenarios-imoveis.png`). Animações por cima do PNG
+  (goteira, fogo, ondas, tocha, lampiões, brilho do ouro, sirene, estrelas) e escuridão com focos de luz no
+  Armário, no Porão e na Mina. Tamanhos: 240×135 (Quartinho, Armário, Garagem), 320×180 (do Porão à Fazenda)
+  e 384×216 (Ilha, Mina, Bunker, Estação).
 
 ## 8. Interface
 

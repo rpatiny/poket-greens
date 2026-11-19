@@ -43,10 +43,10 @@
     ["led", "Painel LED", 120000, 0.08, { speed: 0.15 }, "Cresce 15% mais rápido"],
     ["hidro", "Sistema hidropônico", 300000, 0.1, { speed: 0.15 }, "Cresce 15% mais rápido"],
     ["co2", "Gerador de CO2", 800000, 0.09, { speed: 0.15 }, "Cresce 15% mais rápido"],
-    ["cameras", "Câmeras 4K", 1.5e6, 0.03, { guard: 0.1 }, "Batidas levam 10% menos"],
+    ["cameras", "Câmeras 4K", 1.5e6, 0.03, { guard: 0.1 }, "Rondas têm 10% menos chance de te achar"],
     ["osmose", "Osmose reversa", 4e6, 0.08, {}, ""],
     ["ia", "Controlador IA", 1e7, 0.15, { tap: 1 }, "Toque 100% mais forte"],
-    ["bunker", "Kit bunker", 3.5e7, 0.12, { guard: 0.25 }, "Batidas levam 25% menos"],
+    ["bunker", "Kit bunker", 3.5e7, 0.12, { guard: 0.25 }, "Rondas têm 25% menos chance de te achar"],
     ["lab", "Lab. de genética", 1.5e8, 0.2, { speed: 0.25 }, "Cresce 25% mais rápido"],
   ].map(([id, name, price, prod, fx, fxText], i) => ({ id, name, price, prod, fx, fxText, frame: i }));
   const EQUIP_LEVEL_MULT = 2.4; // cada nível extra custa 2,4x o anterior
@@ -404,16 +404,17 @@
     if (s.cheat && s.cheat.noPolice) { s.para = Math.min(s.para, 99); return; }
     if (s.para >= 100) bust(s, "A Paranoia chegou a 100%.");
   }
+  // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Quartinho.
+  // Fica só o que é do personagem: atributos, Respeito e Lenda (+ metade da Lenda da rodada).
   function bust(s, why) {
     const gain = Math.floor(legendFor(s.runEarned) / 2);
-    const keepClean = Math.min(0.4, fxSum(s, "guard") + s.attrs.seg * 0.01) * s.clean;
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
-    const keep = { legend: s.legend + gain, attrs: { ...s.attrs, seg: 1, fur: 1 }, timesArrested: s.timesArrested + 1 };
+    const keep = { legend: s.legend + gain, attrs: { ...s.attrs }, timesArrested: s.timesArrested + 1 };
     reset(s, keep);
     s.dirty = 15 * s.legend; // sai da delegacia só com a roupa do corpo (a Lenda ajuda um pouco)
-    s.clean = Math.floor(keepClean);
+    s.clean = 0;
     s.busts++;
-    s.lastBust = { why, gain, kept: Math.floor(keepClean) };
+    s.lastBust = { why, gain, kept: 0 };
   }
   function retire(s) {
     const gain = legendFor(s.runEarned);
@@ -454,7 +455,8 @@
     s.raidT += dt;
     if (s.raidT >= R.raidEvery) {
       s.raidT = 0;
-      if (!(s.cheat && s.cheat.noPolice) && s.para > R.raidAt && rand(s) < R.raidChance) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
+      const raid = R.raidChance * (1 - Math.min(0.6, fxSum(s, "guard") + s.attrs.seg * 0.005));
+      if (!(s.cheat && s.cheat.noPolice) && s.para > R.raidAt && rand(s) < raid) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
     }
     checkBust(s);
   }

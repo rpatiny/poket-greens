@@ -42,7 +42,7 @@ Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 | 13 imóveis | Do Quartinho (2 vasos) à Estação Espacial (60 vasos). O visual muda: gambiarra → profissional → high-tech. |
 | 5 níveis de venda | Por porcentagem do estoque: Discreto 5%, Normal 15%, Ousado 35%, Agressivo 70% e All-in 100% (maior risco). Cada nível tem Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
 | Flagrante | Perde a mercadoria, paga multa de 5–25% da grana suja, −20⚡, +15 Paranoia. |
-| Batida | Perde tudo (fora atributos e Lenda), Furtividade e Segurança voltam a 1; ganha metade da Lenda. Câmeras e bunker salvam parte da grana limpa. |
+| Batida | Perde **tudo**: grana suja e limpa, estoque, equipamentos e o esconderijo (volta ao Quartinho). Mantém atributos (Botânica, Lábia, Furtividade, Segurança), Respeito e Lenda, e ganha metade da Lenda da rodada. Câmeras, bunker e Segurança diminuem a chance de a ronda te achar. |
 | Lavagem | Laranjas, NFTs, Crypto e Consultoria, com taxa, tempo, Paranoia e Lábia do GDD. Vários processos ao mesmo tempo. |
 | Cidade | Café, Energético, Bar, Biblioteca, Academia, Beco, Praça, Spa e Fliperama, com tempo real, uma por vez. |
 | Atributos | Botânica, Lábia, Furtividade e Segurança sobem por experiência (colher, vender, arriscar) e com a cidade. Ficam com você ao passar o ponto. |

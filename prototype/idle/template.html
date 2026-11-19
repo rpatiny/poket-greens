@@ -515,7 +515,7 @@ function perfil() {
     bot: "Sobe colhendo e na Biblioteca. +2% de produção e +5% de velocidade por ponto; libera sementes.",
     lab: "Sobe vendendo e no Bar ou na Praça. +2% no preço por ponto; libera métodos de lavagem.",
     fur: "Sobe vendendo arriscado e no Beco. Menos risco de flagrante e menos Paranoia por venda.",
-    seg: "Sobe na Academia. Reduz a multa do flagrante e protege grana limpa nas batidas.",
+    seg: "Sobe na Academia. Reduz a multa do flagrante e a chance de a ronda te achar.",
   };
   for (const k of Object.keys(E.ATTRS)) {
     const c = el(`<div class="card attr"><b>${E.ATTRS[k]}</b><span class="v">${S.attrs[k]}</span><div class="prog"><i></i></div><small>${info[k]}</small></div>`);
@@ -525,7 +525,7 @@ function perfil() {
   h3("Lenda");
   const gain = E.legendFor(S.runEarned);
   const c = el(`<div class="card"><p>Lenda é a sua fama. Cada ponto dá <b>+10%</b> no preço de tudo, para sempre. Agora: <span class="big">${S.legend}</span> (×${E.legendMult(S).toFixed(1).replace(".", ",")}).</p>
-    <p><b>Passar o ponto</b>: você recomeça (grana, equipamentos, imóveis) mas mantém atributos e Lenda. Se a polícia te pegar, ganha só a metade e perde Furtividade e Segurança.</p>
+    <p><b>Passar o ponto</b>: você recomeça (grana, equipamentos, imóveis) mas mantém atributos e Lenda. Se a polícia te pegar, você perde tudo do mesmo jeito (até o esconderijo), mas ganha só metade da Lenda.</p>
     <p>Vendido nesta rodada: ${$$(S.runEarned)} · vale <span class="big">+${gain}</span> Lenda</p></div>`);
   const b = el(`<button class="danger">${gain > 0 ? `Passar o ponto (+${gain} Lenda)` : "Venda $100 mil nesta rodada para passar o ponto"}</button>`);
   b.disabled = gain < 1;
@@ -586,8 +586,8 @@ function refresh() {
 function bustModal(b) {
   const m = el(`<div class="modal"><div class="card">
     <b style="font-size:18px">🚨 BATIDA POLICIAL</b>
-    <p>${b.why || ""}<br>A polícia levou tudo: dinheiro, estoque, equipamentos e imóveis. Furtividade e Segurança voltam a 1.</p>
-    <p>Na delegacia você ficou famoso: <span class="big">+${b.gain || 0} Lenda</span>${b.kept ? `<br>Suas câmeras e o bunker salvaram ${$$(b.kept)} limpos.` : ""}</p>
+    <p>${b.why || ""}<br>A polícia levou <b>tudo</b>: grana suja e limpa, estoque, equipamentos e o esconderijo. Você volta para o Quartinho dos fundos.</p>
+    <p>O que é seu ninguém tira: <b>Botânica, Lábia, Furtividade, Segurança</b>, Respeito e Lenda.<br>Na delegacia você ficou famoso: <span class="big">+${b.gain || 0} Lenda</span></p>
     <p style="text-align:left;border-top:2px solid var(--line);padding-top:8px"><b>Saiu só com a roupa do corpo?</b> Seus vasos ainda têm a última muda. Para conseguir grana e recomeçar:</p>
     <div class="help" style="display:flex;flex-direction:column;gap:6px"></div>
     <small data-res style="color:var(--leaf-2);min-height:16px;display:block"></small>

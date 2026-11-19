@@ -564,6 +564,37 @@
         else { const sp = (k - 0.75) / 0.25; ell(x, y1 + 2, Math.round(2 + sp * 8), 1, "rgba(166,203,234," + (0.7 - sp * 0.7) + ")"); }
       }
       if (id === 1 && Math.floor(t * 2) % 9 !== 0) R(83, 18, 74, 2, "#8160a8");   // luz roxa do armário
+      for (const an of png.meta.anims || []) {
+        const [kind, ...a] = an;
+        if (kind === "fire") {                       // fogo da lareira: [x, base, largura]
+          const [x, y, w] = a;
+          for (let i = 0; i < w / 4; i++) {
+            const h = 6 + Math.round((Math.sin(t * 9 + i * 1.7) + 1) * 5);
+            R(x + i * 4, y - h, 3, h, i % 2 ? "#d1952e" : "#d95463");
+            R(x + i * 4 + 1, y - Math.round(h / 2), 1, Math.round(h / 2), "#fff0a6");
+          }
+        } else if (kind === "waves") {              // brilho do mar entre y0 e y1
+          const [y0, y1] = a;
+          for (let x = 0; x < png.meta.w; x += 18) {
+            const o = Math.round(Math.sin(t * 2 + x / 30) * 3);
+            R(x + o + 4, y0 + 4 + ((x / 18) % 3) * 7, 7, 1, "#fffbef");
+          }
+          R(0, y1 + Math.round(Math.sin(t * 1.5)), png.meta.w, 2, "#fffbef");
+        } else if (kind === "torch" || kind === "lantern") {
+          const [x, y] = a, f = Math.sin(t * 13 + x) > 0;
+          R(x - 2, y - 2, 5, 6, f ? "#f0c94f" : "#d1952e"); R(x - 1, y, 3, 3, "#fff0a6");
+        } else if (kind === "sparkle") {            // ouro brilhando na rocha
+          const [x0, y0, x1, y1] = a, rr = rng(Math.floor(t * 2));
+          for (let i = 0; i < 6; i++) { const x = x0 + rr() * (x1 - x0), y = y0 + rr() * (y1 - y0); R(x, y, 1, 1, "#fff0a6"); R(x - 1, y, 3, 1, "#f0c94f"); }
+        } else if (kind === "siren") {
+          const [x, y] = a, on = Math.floor(t * 2) % 2;
+          R(x - 1, y, 14, 9, "#1a1420"); R(x, y + 1, 12, 7, on ? "#d95463" : "#6e1b3d");
+          if (on) R(x + 3, y + 2, 4, 2, "#f2918a");
+        } else if (kind === "stars") {
+          const [x0, y0, x1, y1] = a, rr = rng(Math.floor(t * 3));
+          for (let i = 0; i < 12; i++) R(x0 + rr() * (x1 - x0), y0 + rr() * (y1 - y0), 1, 1, "#fffbef");
+        }
+      }
       return;
     }
     if (!cache[id]) {
