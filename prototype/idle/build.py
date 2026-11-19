@@ -15,6 +15,7 @@ def data_uri(name):
 
 html = (HERE / "template.html").read_text()
 html = html.replace("/*ECON*/", (HERE / "econ.js").read_text())
+html = html.replace("/*SCENES*/", (HERE / "scenes.js").read_text())
 html = html.replace("__ESTAGIOS__", data_uri("plantas_estagios.png"))
 html = html.replace("__EQUIP__", data_uri("equipamentos.png"))
 html = html.replace("__VASOS__", data_uri("vasos.png"))

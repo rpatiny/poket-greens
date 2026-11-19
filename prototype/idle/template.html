@@ -135,6 +135,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 
 <script>
 /*ECON*/
+/*SCENES*/
 </script>
 <script>
 "use strict";
@@ -270,7 +271,7 @@ function draw() {
   const tier = E.PLACES[S.place].tier;
   g.save();
   if (shake > 0) g.translate(Math.round((Math.random() - 0.5) * shake), 0);
-  drawRoom(tier);
+  SCENES.background(g, S.place);
   const L = layout(S.pots.length), z = L.z;
   L.pts.forEach(([x, y], i) => {
     x = Math.round(x); y = Math.round(y);
@@ -296,6 +297,7 @@ function draw() {
       g.fillStyle = "#7cb342"; g.fillRect(x + 6 * z + 1, y + 25 * z + 1, Math.round((20 * z - 2) * Math.min(1, f)), 1);
     }
   });
+  SCENES.lighting(g, S.place);
   g.restore();
   for (let i = fx.length - 1; i >= 0; i--) {
     const p = fx[i]; p.t += 1 / 60; p.y -= 0.45;
