@@ -228,3 +228,11 @@ sorri quando tem planta pronta ou na colheita; laboratório de genética ao lado
 Lâmpada com alumínio, mini estufa, osmose e kit bunker não aparecem (só dão o bônus). O gerador dos
 cômodos compara a parede antes e depois dos enfeites (`wallBusy` no `meta.json`), para nada ser
 pendurado em cima de janela, pôster ou prateleira.
+
+**Personagens.** `python3 tools/arte/personagens.py` gera `assets/sprites/v2/personagens.png`: corpos 32x48
+(Vó parada, Vó falando com o pacotinho de semente, neto parado, neto pensando) e retratos 48x48 para a caixa
+de diálogo. Mesmo padrão dos cenários: 3-4 tons por material com luz de cima à esquerda, transição
+pontilhada, contorno escuro só na silhueta e linhas internas no tom escuro do próprio material. Vó Dita: coque
+grisalho com grampo, óculos redondos de armação dourada, brincos de pérola, casaquinho roxo com broche e
+saia florida. Neto: boné verde virado para trás, cabelo castanho bagunçado, moletom verde com cordões e
+bolso canguru, jeans e tênis.

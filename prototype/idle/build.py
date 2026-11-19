@@ -19,6 +19,7 @@ html = html.replace("/*SCENES*/", (HERE / "scenes.js").read_text())
 html = html.replace("__ESTAGIOS__", data_uri("plantas_estagios.png"))
 html = html.replace("__EQUIP__", data_uri("equipamentos.png"))
 html = html.replace("__VASOS__", data_uri("vasos.png"))
+html = html.replace("__CHARS__", data_uri("personagens.png"))
 import json
 rooms = {}
 meta = json.loads((SPR / "comodos" / "meta.json").read_text())

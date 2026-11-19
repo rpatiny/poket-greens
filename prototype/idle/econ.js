@@ -653,7 +653,7 @@
     if (s.city && s.time >= s.city.end) finishCity(s);
     runFronts(s, dt);
     fiscalCheck(s, dt);
-    if (!s.away && !s.surprise && s.time > 600) {
+    if (!s.away && !s.surprise && s.time > 600 && !(s.tut < 99)) {
       s.surpT += dt;
       if (s.surpT >= R.surpriseEvery) {
         s.surpT = 0;
