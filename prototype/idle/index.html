@@ -76,6 +76,17 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 .emo{display:grid;place-items:center;font-size:24px}
 .t{min-width:0} .t b{display:block;font-size:15px} .t small{display:block;font-size:12px;color:var(--muted);line-height:1.35}
 .t .req{color:#f2918a} .t .ok{color:var(--leaf-2)}
+.cashcard{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#1b4a55;border:2px solid var(--clean);padding:8px 12px;margin-bottom:6px}
+.cashcard span{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#8fd4a8}
+.cashcard b{font-family:var(--num);font-size:22px;color:#8fd4a8}
+.machine{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:var(--panel);border:2px solid var(--line);padding:10px}
+.machine .big{font-size:13px} .machine small{color:var(--muted)}
+.machine button{font-size:15px;padding:14px 16px;background:#48a38a;color:#1a1420;font-weight:bold;border:2px solid #1a1420;box-shadow:0 3px 0 #1a1420;touch-action:manipulation}
+.machine button:active{transform:translateY(2px);box-shadow:0 1px 0 #1a1420}
+.machine .combo{font-family:var(--num);color:var(--dirty);font-size:16px}
+.machine .got{color:#8fd4a8;font-family:var(--num);min-height:18px}
+canvas.spark{display:inline-block;width:72px;height:18px;vertical-align:middle;image-rendering:pixelated;margin-right:4px}
+.t .good{color:#7cdc5a;font-weight:bold} .t .bad{color:#f2918a;font-weight:bold}
 .t .gain{color:#7cdc5a;font-weight:bold;font-family:var(--num);font-size:13px} .t .gain2{color:#7cb342}
 .t .best{background:#7cdc5a;color:#1a1420;padding:0 4px;font-size:11px;font-weight:bold}
 .lv{font-family:var(--num);font-size:11px;color:var(--dirty);margin-left:6px}
@@ -260,6 +271,19 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     { id: "fliperama", name: "Fliperama", cost: 10, sta: 0, time: 300, fx: { para: -20, sta: 5 } },
   ];
 
+  // Fachadas: negócios que lavam sozinhos (até com o app fechado). cap = $/min no nível 1.
+  // Cada nível: custa 2,5x e lava 1,7x mais. Nunca mexem na reserva para replantar.
+  const FRONTS = [
+    { id: "lavajato", name: "Lava-jato do Primo", emoji: "🚗", cost: 300, cap: 30, fee: 0.15 },
+    { id: "pastel", name: "Pastelaria da Esquina", emoji: "🥟", cost: 3000, cap: 250, fee: 0.14 },
+    { id: "barbearia", name: "Barbearia Navalha", emoji: "💈", cost: 25000, cap: 2000, fee: 0.13 },
+    { id: "igreja", name: "Igreja da Prosperidade", emoji: "⛪", cost: 200000, cap: 16000, fee: 0.12 },
+    { id: "cambio", name: "Casa de Câmbio", emoji: "💱", cost: 2e6, cap: 150000, fee: 0.12 },
+    { id: "galeria", name: "Galeria de Arte", emoji: "🖼️", cost: 2e7, cap: 1.4e6, fee: 0.11 },
+    { id: "futebol", name: "Time de Futebol", emoji: "⚽", cost: 3e8, cap: 2e7, fee: 0.1 },
+  ];
+  const FRONT_MAX = 10;
+
   const ATTRS = { bot: "Botânica", lab: "Lábia", fur: "Furtividade", seg: "Segurança" };
 
   // ---------------------------------------------------------------- regras
@@ -272,6 +296,9 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     staRegen: 1 / 20, // Estamina: +1 a cada 20 s
     raidEvery: 300, raidAt: 80, raidChance: 0.5,
     zeCost: 300, zeEvery: 20, zeMaxPara: 60,
+    frontPara: 0.4 / 60, // cada fachada lavando: +0,4 de Paranoia por minuto
+    fiscalEvery: 420, fiscalChance: 0.35, fiscalClose: 900, // fiscal da Receita: a cada 7 min, 35%; fechar = 15 min
+    billSta: 1, billPara: 0.15, // maquininha: por toque
     avoEvery: 180,
     loan: 500, loanBack: 750,
     offlineCap: 8 * 3600,
@@ -292,6 +319,9 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
       stock: Array(SEEDS.length).fill(0),
       equip: {},
       laundry: [], // { amount, done(t), fee }
+      fronts: {}, // id -> nível
+      closed: {}, // id -> até quando a fachada fica fechada
+      fiscal: null, fiscalT: 0, // fiscal da Receita esperando resposta
       city: null, // { id, end }
       ze: false, zeT: 0,
       avoT: 0, debt: 0,
@@ -452,6 +482,99 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     return { units, money, caught: false };
   }
 
+  // Mercado: a taxa do crypto e dos NFTs sobe e desce (ciclos de ~10 min e ~3 min).
+  function marketMult(id, t) {
+    const ph = id === "nft" ? 2.1 : 0;
+    const m = 1 + 0.55 * Math.sin((2 * Math.PI * t) / 600 + ph) + 0.2 * Math.sin((2 * Math.PI * t) / 170 + ph * 1.7);
+    return Math.max(0.3, Math.min(1.8, m));
+  }
+  const marketFee = (s, id, t = s.time) => {
+    const m = LAUNDRY.find((x) => x.id === id);
+    return id === "crypto" || id === "nft" ? Math.min(0.9, m.fee * marketMult(id, t)) : m.fee;
+  };
+  // reserva para replantar: fachadas e maquininha não encostam nela
+  const reserve = (s) => Math.max(30, SEEDS[s.seed].price * s.pots.length * 3);
+  const frontLvl = (s, id) => (s.fronts && s.fronts[id]) || 0;
+  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)));
+  const frontCap = (f, l) => (l ? f.cap * Math.pow(1.7, l - 1) : 0); // $/min
+  function buyFront(s, id) {
+    const f = FRONTS.find((x) => x.id === id);
+    if (frontLvl(s, id) >= FRONT_MAX) return false;
+    const c = frontCost(s, f);
+    if (s.clean < c) return false;
+    s.clean -= c;
+    s.fronts[id] = frontLvl(s, id) + 1;
+    return true;
+  }
+  const frontOpen = (s, id) => !(s.closed && s.closed[id] > s.time) && !(s.fiscal && s.fiscal.id === id);
+  function runFronts(s, dt) {
+    let avail = Math.max(0, s.dirty - reserve(s)), active = 0;
+    for (const f of FRONTS) {
+      const l = frontLvl(s, f.id);
+      if (!l || !frontOpen(s, f.id) || avail <= 0) continue;
+      const amt = Math.min(avail, (frontCap(f, l) / 60) * dt);
+      avail -= amt; s.dirty -= amt;
+      s.clean += amt * (1 - f.fee);
+      active++;
+    }
+    if (active) s.para += active * R.frontPara * dt;
+    return active;
+  }
+  // Fiscal da Receita: aparece numa fachada que está lavando
+  function fiscalCheck(s, dt) {
+    if (s.fiscal) {
+      if (s.time - s.fiscal.at > 120) fiscalClose(s, true); // ninguém respondeu: fecha sozinha
+      return;
+    }
+    s.fiscalT += dt;
+    if (s.fiscalT < R.fiscalEvery) return;
+    s.fiscalT = 0;
+    const open = FRONTS.filter((f) => frontLvl(s, f.id) && frontOpen(s, f.id));
+    if (!open.length || s.dirty <= reserve(s) || rand(s) > R.fiscalChance) return;
+    const f = open[open.length - 1]; // a maior chama mais atenção
+    const bribe = Math.round(frontCap(f, frontLvl(s, f.id)) * 8 * Math.max(0.5, 1 - s.attrs.lab * 0.01));
+    s.fiscal = { id: f.id, at: s.time, bribe };
+    note(s, "fiscal", `Fiscal da Receita na ${f.name}!`);
+  }
+  function fiscalBribe(s) {
+    if (!s.fiscal || s.clean < s.fiscal.bribe) return false;
+    s.clean -= s.fiscal.bribe;
+    note(s, "city", "O fiscal pegou o envelope e foi embora.");
+    s.fiscal = null;
+    return true;
+  }
+  function fiscalClose(s, auto) {
+    if (!s.fiscal) return false;
+    s.closed[s.fiscal.id] = s.time + R.fiscalClose;
+    note(s, "city", auto ? "Ninguém atendeu o fiscal: a fachada ficou fechada por 15 min." : "Você fechou a fachada por 15 min até a poeira baixar.");
+    s.fiscal = null;
+    return true;
+  }
+  function fiscalRisk(s) {
+    if (!s.fiscal) return null;
+    s.fiscal = null;
+    if (rand(s) < 0.5 + s.attrs.lab * 0.005) { note(s, "city", "Você enrolou o fiscal. Passou!"); return true; }
+    const fine = Math.round(s.clean * 0.3);
+    s.clean -= fine;
+    s.para += 20;
+    note(s, "flagrante", `O fiscal não engoliu: multa de $${fine} e +20 Paranoia.`);
+    checkBust(s);
+    return false;
+  }
+  // Maquininha de contar notas: lava sem taxa, mas cansa. combo de 1 a 3.
+  const billValue = (s) => Math.max(10, incomePerSec(s) * 1.5);
+  function countBills(s, combo) {
+    const cost = staCost(s, R.billSta);
+    if (s.sta < cost) return 0;
+    const amt = Math.min(Math.max(0, s.dirty - reserve(s)), billValue(s) * Math.max(1, Math.min(3, combo)));
+    if (amt < 1) return 0;
+    if (!safe(s, R.billPara)) return 0;
+    s.sta -= cost;
+    s.dirty -= amt; s.clean += amt;
+    s.para += R.billPara;
+    return amt;
+  }
+
   function launder(s, methodId, fraction) {
     const m = LAUNDRY.find((x) => x.id === methodId);
     if (s.attrs.lab < m.lab) return false;
@@ -459,7 +582,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     if (amount < 1) return false;
     s.dirty -= amount;
     if (!safe(s, m.para)) return false;
-    const net = Math.floor(amount * (1 - m.fee));
+    const net = Math.floor(amount * (1 - marketFee(s, methodId)));
     s.para += m.para;
     if (m.time === 0) s.clean += net;
     else s.laundry.push({ id: m.id, net, done: s.time + m.time });
@@ -633,6 +756,8 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
       if (s.time >= s.laundry[i].done) { s.clean += s.laundry[i].net; s.laundry.splice(i, 1); }
     }
     if (s.city && s.time >= s.city.end) finishCity(s);
+    runFronts(s, dt);
+    fiscalCheck(s, dt);
     if (s.ze) {
       s.zeT += dt;
       if (s.zeT >= R.zeEvery) {
@@ -671,7 +796,8 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    equipBlock, bestSeed, lawyer, lawyerCost, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
+    equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
   };
@@ -1891,6 +2017,7 @@ function checkEvents() {
     bustModal(b);
     renderPanel();
   }
+  if (S.fiscal && fiscalSeen !== S.fiscal.at && !document.querySelector(".modal")) { fiscalSeen = S.fiscal.at; fiscalModal(); }
   while (seenLog < S.log.length) {
     const l = S.log[seenLog++];
     if (l.kind === "attr" || l.kind === "city" || l.kind === "avo") toast(l.text);
@@ -1966,20 +2093,100 @@ function estufa() {
   });
 }
 
+let billCombo = 1, billLast = 0;
+function sparkline(id) {
+  const c = document.createElement("canvas"); c.className = "spark"; c.width = 72; c.height = 18;
+  const x = c.getContext("2d");
+  const draw = () => {
+    x.clearRect(0, 0, 72, 18);
+    x.fillStyle = "#272436"; x.fillRect(0, 0, 72, 18);
+    x.fillStyle = "#403d54"; x.fillRect(0, 9, 72, 1);                   // taxa normal
+    for (let i = 0; i < 72; i++) {
+      const m = E.marketMult(id, S.time - 600 + (i * 600) / 71);
+      const y = Math.round(16 - ((m - 0.3) / 1.5) * 14);
+      x.fillStyle = m < 0.8 ? "#7cdc5a" : m > 1.2 ? "#d95463" : "#bfbfc8";
+      x.fillRect(i, y, 1, 2);
+    }
+    const m = E.marketMult(id, S.time), y = Math.round(16 - ((m - 0.3) / 1.5) * 14);
+    x.fillStyle = "#fffbef"; x.fillRect(69, y - 1, 3, 3);
+  };
+  draw(); bind(draw);
+  return c;
+}
 function lavagem() {
-  panel.appendChild(el(`<div class="card"><p>Venda dá <b>grana suja</b>. Equipamentos, imóveis e a cidade só aceitam <b>grana limpa</b>. Lavar tem taxa, demora e chama atenção. Deixe um pouco de grana suja para replantar as sementes.</p></div>`));
-  h3("Métodos");
+  panel.appendChild(el(`<div class="card"><p>Venda dá <b>grana suja</b>. Equipamentos, imóveis e a cidade só aceitam <b>grana limpa</b>. A <b>reserva para replantar</b> (<span data-r></span>) fica sempre guardada: fachadas e maquininha não encostam nela.</p></div>`));
+  bind(() => (panel.querySelector("[data-r]").textContent = $$(E.reserve(S))));
+  cashCard();
+
+  // ---- maquininha de contar notas
+  h3("Maquininha de contar notas");
+  const mc = el(`<div class="machine"><div><div class="big">📠 Toque rápido para passar os maços. <b>Sem taxa.</b></div>
+    <small data-v></small><div><span class="combo" data-c>×1</span> <span class="got" data-g></span></div></div>
+    <button data-b>CONTAR</button></div>`);
+  const got = mc.querySelector("[data-g]"), comboEl = mc.querySelector("[data-c]");
+  mc.querySelector("[data-b]").addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    const now = performance.now() / 1000;
+    billCombo = now - billLast < 0.5 ? Math.min(3, billCombo + 0.25) : 1;
+    billLast = now;
+    const amt = E.countBills(S, billCombo);
+    if (amt > 0) { got.textContent = "+" + $$(amt) + " limpos"; got.style.color = ""; }
+    else { got.textContent = S.sta < 1 ? "Sem energia ⚡" : S.dirty <= E.reserve(S) ? "Só sobrou a reserva" : "Paranoia alta demais"; got.style.color = "#f2918a"; }
+    comboEl.textContent = "×" + billCombo.toFixed(2).replace(/\.?0+$/, "");
+    refresh();
+  });
+  bind(() => {
+    mc.querySelector("[data-v]").textContent = `${$$(E.billValue(S))} por toque (até ×3 no combo) · −1⚡ · +0,15 Paranoia`;
+    if (performance.now() / 1000 - billLast > 0.8) { billCombo = 1; comboEl.textContent = "×1"; }
+  });
+  panel.appendChild(mc);
+
+  // ---- fachadas
+  h3("Fachadas (lavam sozinhas, até com o jogo fechado)");
+  E.FRONTS.forEach((f, i) => {
+    const lv = E.frontLvl(S, f.id), cost = E.frontCost(S, f);
+    const prev = E.FRONTS[i - 1];
+    if (!lv && prev && !E.frontLvl(S, prev.id)) return;                    // mostra só a próxima a abrir
+    const capNow = E.frontCap(f, lv), capNext = E.frontCap(f, lv + 1);
+    const d = row({
+      emoji: f.emoji, title: f.name, lv: lv ? `nv ${lv}/${E.FRONT_MAX}` : "fechada",
+      desc: (lv ? `Lava <span class="gain">${$$(capNow)}/min</span> · taxa ${pct(f.fee)} · <span data-st></span>` : `Abre lavando <span class="gain">${$$(capNext)}/min</span> · taxa ${pct(f.fee)}`) +
+        (lv < E.FRONT_MAX && lv ? `<br><span class="gain2">Próximo nível: ${$$(capNext)}/min</span>` : ""),
+      btn: lv >= E.FRONT_MAX ? "Máximo" : $$(cost), btnCls: "clean",
+      enabled: () => lv < E.FRONT_MAX && S.clean >= cost, onClick: () => E.buyFront(S, f.id),
+    });
+    const st = d.querySelector("[data-st]");
+    if (st) bind(() => {
+      const closed = S.closed && S.closed[f.id] > S.time;
+      st.innerHTML = S.fiscal && S.fiscal.id === f.id ? `<span class="bad">fiscal na porta!</span>`
+        : closed ? `<span class="bad">fechada por ${dur(S.closed[f.id] - S.time)}</span>`
+        : S.dirty > E.reserve(S) ? `<span class="good">lavando</span>` : `parada (só tem a reserva)`;
+    });
+  });
+
+  // ---- lavagem na hora (com mercado)
+  h3("Lavar na hora");
   E.LAUNDRY.forEach((m) => {
     const lock = S.attrs.lab < m.lab;
+    const market = m.id === "crypto" || m.id === "nft";
     const d = row({
       emoji: { laranjas: "🍊", nft: "🖼️", crypto: "₿", consultoria: "📊" }[m.id], title: m.name, cls: lock ? "locked" : "",
-      desc: lock ? `<span class="req">Precisa de Lábia ${m.lab}</span>` : `Taxa ${pct(m.fee)} · ${m.time ? dur(m.time) : "na hora"} · +${m.para} Paranoia`,
+      desc: lock ? `<span class="req">Precisa de Lábia ${m.lab}</span>` : market ? `<span data-sp></span><br><span data-fee></span> · ${m.time ? dur(m.time) : "na hora"} · +${m.para} Paranoia`
+        : `Taxa ${pct(m.fee)} · ${m.time ? dur(m.time) : "na hora"} · +${m.para} Paranoia`,
     });
+    if (market && !lock) {
+      d.querySelector("[data-sp]").replaceWith(sparkline(m.id));
+      const fe = d.querySelector("[data-fee]");
+      bind(() => {
+        const fee = E.marketFee(S, m.id), k = E.marketMult(m.id, S.time);
+        fe.innerHTML = `Taxa <b>${pct(fee)}</b>${k < 0.8 ? ' <span class="good">boa hora!</span>' : k > 1.2 ? ' <span class="bad">cara</span>' : ""}`;
+      });
+    }
     if (!lock) {
       const chips = el(`<div class="chips"></div>`);
-      [0.25, 0.5, 1].forEach((f) => {
-        const b = el(`<button class="buy clean">${f === 1 ? "Tudo" : pct(f)}</button>`);
-        b.onclick = () => { if (E.launder(S, m.id, f)) { renderPanel(); refresh(); } else toast("Agora não: Paranoia alta demais ou sem grana suja.", true); };
+      [0.25, 0.5, 1].forEach((fr) => {
+        const b = el(`<button class="buy clean">${fr === 1 ? "Tudo" : pct(fr)}</button>`);
+        b.onclick = () => { if (E.launder(S, m.id, fr)) { renderPanel(); refresh(); } else toast("Agora não: Paranoia alta demais ou sem grana suja.", true); };
         bind(() => (b.disabled = S.dirty < 1));
         chips.appendChild(b);
       });
@@ -1997,8 +2204,42 @@ function lavagem() {
   }
 }
 
+// Fiscal da Receita: escolha na hora
+let fiscalSeen = -1;
+function fiscalModal() {
+  const fz = S.fiscal, f = E.FRONTS.find((x) => x.id === fz.id);
+  const m = el(`<div class="modal"><div class="card">
+    <b style="font-size:18px">🧾 FISCAL DA RECEITA</b>
+    <p>Um fiscal apareceu na <b>${f.emoji} ${f.name}</b> e quer ver os livros. Ela fica parada até você resolver.</p>
+    <div class="help" style="display:flex;flex-direction:column;gap:6px"></div>
+    <small data-res style="min-height:16px;display:block"></small>
+  </div></div>`);
+  const box = m.querySelector(".help"), res = m.querySelector("[data-res]");
+  const close = () => { m.parentNode && m.parentNode.removeChild(m); renderPanel(); refresh(); };
+  const opts = [
+    ["💸", "Subornar", `Um envelope de ${$$(fz.bribe)} (grana limpa). Lábia deixa mais barato.`, () => S.clean >= fz.bribe, () => { E.fiscalBribe(S); close(); }],
+    ["🔒", "Fechar por 15 min", "Baixa as portas até a poeira baixar. Sem risco, mas a fachada não lava.", () => true, () => { E.fiscalClose(S); close(); }],
+    ["🎲", "Enrolar o fiscal", "50% de chance (mais com Lábia). Se der errado: multa de 30% da grana limpa e +20 Paranoia.", () => true,
+      () => { const ok = E.fiscalRisk(S); res.textContent = ok ? "Passou! Ele foi embora." : "Deu ruim: multa e Paranoia."; res.style.color = ok ? "#7cdc5a" : "#f2918a"; setTimeout(close, 1200); }],
+  ];
+  for (const [emo, title, desc, can, act] of opts) {
+    const b = el(`<button class="row" style="text-align:left;width:100%"><div class="ico emo">${emo}</div><div class="t"><b>${title}</b><small>${desc}</small></div><span></span></button>`);
+    if (!can()) { b.disabled = true; b.style.opacity = 0.5; }
+    b.onclick = act;
+    box.appendChild(b);
+  }
+  document.body.appendChild(m);
+}
+
+function cashCard() {
+  const c = el(`<div class="cashcard"><span>💵 Sua grana limpa</span><b>$0</b></div>`);
+  bind(() => (c.lastElementChild.textContent = $$(S.clean)));
+  panel.appendChild(c);
+}
 function loja() {
   const nextLocked = E.SEEDS.find((sd) => E.seedLocked(S, sd).length);
+  cashCard();
+  const inc0 = E.incomePerSec(S);
   panel.appendChild(el(`<div class="card"><p>Cada equipamento sobe até o <b>nível 5</b>, e cada nível custa 3× o anterior. Ao se mudar, os equipamentos <b>ficam para trás</b> e você compra de novo no lugar novo. Drone, hidroponia e controlador IA são <b>compra única</b> e vão com você.</p></div>`));
   h3("Equipamentos (grana limpa)");
   E.EQUIP.forEach((e, i) => {
@@ -2006,10 +2247,14 @@ function loja() {
     const needed = nextLocked && nextLocked.req.includes(e.id) && !lv;
     const c = E.equipCost(S, e);
     const room = block && S.place < e.place;
+    // quanto a renda sobe com mais um nível, e em quanto tempo se paga
+    const s2 = { ...S, equip: { ...S.equip, [e.id]: lv + 1 } };
+    const dInc = Math.max(0, E.incomePerSec(s2) - inc0);
+    const worth = !block ? (dInc > 0 ? `<br><span class="gain">+${$$(dInc * 60)}/min de renda</span> <span class="gain2">· se paga em ${dur(c / dInc)}</span>` : "") : "";
     row({
       ico: equipIcon(i), title: e.name, lv: e.max === 1 ? (lv ? "instalado" : "compra única") : `nv ${lv}/${e.max}`, cls: room ? "locked" : "",
       desc: `+${pct(e.prod)} de produção${e.max > 1 ? " por nível" : ""}${e.fxText ? " · " + e.fxText : ""}${e.keep && !e.only ? " · vai com você" : ""}` +
-        (room ? `<br><span class="req">${block}</span>` : needed ? `<br><span class="ok">Exigido por ${nextLocked.name}</span>` : ""),
+        (room ? `<br><span class="req">${block}</span>` : needed ? `<br><span class="best">🔓 libera ${nextLocked.name}</span>` : "") + worth,
       btn: block ? (room ? null : block === "Já instalado" ? "Instalado" : "Máximo") : $$(c), btnCls: "clean",
       enabled: () => !block && S.clean >= c, onClick: () => E.buyEquip(S, e.id),
     });

@@ -111,6 +111,19 @@
     { id: "fliperama", name: "Fliperama", cost: 10, sta: 0, time: 300, fx: { para: -20, sta: 5 } },
   ];
 
+  // Fachadas: negócios que lavam sozinhos (até com o app fechado). cap = $/min no nível 1.
+  // Cada nível: custa 2,5x e lava 1,7x mais. Nunca mexem na reserva para replantar.
+  const FRONTS = [
+    { id: "lavajato", name: "Lava-jato do Primo", emoji: "🚗", cost: 300, cap: 30, fee: 0.15 },
+    { id: "pastel", name: "Pastelaria da Esquina", emoji: "🥟", cost: 3000, cap: 250, fee: 0.14 },
+    { id: "barbearia", name: "Barbearia Navalha", emoji: "💈", cost: 25000, cap: 2000, fee: 0.13 },
+    { id: "igreja", name: "Igreja da Prosperidade", emoji: "⛪", cost: 200000, cap: 16000, fee: 0.12 },
+    { id: "cambio", name: "Casa de Câmbio", emoji: "💱", cost: 2e6, cap: 150000, fee: 0.12 },
+    { id: "galeria", name: "Galeria de Arte", emoji: "🖼️", cost: 2e7, cap: 1.4e6, fee: 0.11 },
+    { id: "futebol", name: "Time de Futebol", emoji: "⚽", cost: 3e8, cap: 2e7, fee: 0.1 },
+  ];
+  const FRONT_MAX = 10;
+
   const ATTRS = { bot: "Botânica", lab: "Lábia", fur: "Furtividade", seg: "Segurança" };
 
   // ---------------------------------------------------------------- regras
@@ -123,6 +136,9 @@
     staRegen: 1 / 20, // Estamina: +1 a cada 20 s
     raidEvery: 300, raidAt: 80, raidChance: 0.5,
     zeCost: 300, zeEvery: 20, zeMaxPara: 60,
+    frontPara: 0.4 / 60, // cada fachada lavando: +0,4 de Paranoia por minuto
+    fiscalEvery: 420, fiscalChance: 0.35, fiscalClose: 900, // fiscal da Receita: a cada 7 min, 35%; fechar = 15 min
+    billSta: 1, billPara: 0.15, // maquininha: por toque
     avoEvery: 180,
     loan: 500, loanBack: 750,
     offlineCap: 8 * 3600,
@@ -143,6 +159,9 @@
       stock: Array(SEEDS.length).fill(0),
       equip: {},
       laundry: [], // { amount, done(t), fee }
+      fronts: {}, // id -> nível
+      closed: {}, // id -> até quando a fachada fica fechada
+      fiscal: null, fiscalT: 0, // fiscal da Receita esperando resposta
       city: null, // { id, end }
       ze: false, zeT: 0,
       avoT: 0, debt: 0,
@@ -303,6 +322,99 @@
     return { units, money, caught: false };
   }
 
+  // Mercado: a taxa do crypto e dos NFTs sobe e desce (ciclos de ~10 min e ~3 min).
+  function marketMult(id, t) {
+    const ph = id === "nft" ? 2.1 : 0;
+    const m = 1 + 0.55 * Math.sin((2 * Math.PI * t) / 600 + ph) + 0.2 * Math.sin((2 * Math.PI * t) / 170 + ph * 1.7);
+    return Math.max(0.3, Math.min(1.8, m));
+  }
+  const marketFee = (s, id, t = s.time) => {
+    const m = LAUNDRY.find((x) => x.id === id);
+    return id === "crypto" || id === "nft" ? Math.min(0.9, m.fee * marketMult(id, t)) : m.fee;
+  };
+  // reserva para replantar: fachadas e maquininha não encostam nela
+  const reserve = (s) => Math.max(30, SEEDS[s.seed].price * s.pots.length * 3);
+  const frontLvl = (s, id) => (s.fronts && s.fronts[id]) || 0;
+  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)));
+  const frontCap = (f, l) => (l ? f.cap * Math.pow(1.7, l - 1) : 0); // $/min
+  function buyFront(s, id) {
+    const f = FRONTS.find((x) => x.id === id);
+    if (frontLvl(s, id) >= FRONT_MAX) return false;
+    const c = frontCost(s, f);
+    if (s.clean < c) return false;
+    s.clean -= c;
+    s.fronts[id] = frontLvl(s, id) + 1;
+    return true;
+  }
+  const frontOpen = (s, id) => !(s.closed && s.closed[id] > s.time) && !(s.fiscal && s.fiscal.id === id);
+  function runFronts(s, dt) {
+    let avail = Math.max(0, s.dirty - reserve(s)), active = 0;
+    for (const f of FRONTS) {
+      const l = frontLvl(s, f.id);
+      if (!l || !frontOpen(s, f.id) || avail <= 0) continue;
+      const amt = Math.min(avail, (frontCap(f, l) / 60) * dt);
+      avail -= amt; s.dirty -= amt;
+      s.clean += amt * (1 - f.fee);
+      active++;
+    }
+    if (active) s.para += active * R.frontPara * dt;
+    return active;
+  }
+  // Fiscal da Receita: aparece numa fachada que está lavando
+  function fiscalCheck(s, dt) {
+    if (s.fiscal) {
+      if (s.time - s.fiscal.at > 120) fiscalClose(s, true); // ninguém respondeu: fecha sozinha
+      return;
+    }
+    s.fiscalT += dt;
+    if (s.fiscalT < R.fiscalEvery) return;
+    s.fiscalT = 0;
+    const open = FRONTS.filter((f) => frontLvl(s, f.id) && frontOpen(s, f.id));
+    if (!open.length || s.dirty <= reserve(s) || rand(s) > R.fiscalChance) return;
+    const f = open[open.length - 1]; // a maior chama mais atenção
+    const bribe = Math.round(frontCap(f, frontLvl(s, f.id)) * 8 * Math.max(0.5, 1 - s.attrs.lab * 0.01));
+    s.fiscal = { id: f.id, at: s.time, bribe };
+    note(s, "fiscal", `Fiscal da Receita na ${f.name}!`);
+  }
+  function fiscalBribe(s) {
+    if (!s.fiscal || s.clean < s.fiscal.bribe) return false;
+    s.clean -= s.fiscal.bribe;
+    note(s, "city", "O fiscal pegou o envelope e foi embora.");
+    s.fiscal = null;
+    return true;
+  }
+  function fiscalClose(s, auto) {
+    if (!s.fiscal) return false;
+    s.closed[s.fiscal.id] = s.time + R.fiscalClose;
+    note(s, "city", auto ? "Ninguém atendeu o fiscal: a fachada ficou fechada por 15 min." : "Você fechou a fachada por 15 min até a poeira baixar.");
+    s.fiscal = null;
+    return true;
+  }
+  function fiscalRisk(s) {
+    if (!s.fiscal) return null;
+    s.fiscal = null;
+    if (rand(s) < 0.5 + s.attrs.lab * 0.005) { note(s, "city", "Você enrolou o fiscal. Passou!"); return true; }
+    const fine = Math.round(s.clean * 0.3);
+    s.clean -= fine;
+    s.para += 20;
+    note(s, "flagrante", `O fiscal não engoliu: multa de $${fine} e +20 Paranoia.`);
+    checkBust(s);
+    return false;
+  }
+  // Maquininha de contar notas: lava sem taxa, mas cansa. combo de 1 a 3.
+  const billValue = (s) => Math.max(10, incomePerSec(s) * 1.5);
+  function countBills(s, combo) {
+    const cost = staCost(s, R.billSta);
+    if (s.sta < cost) return 0;
+    const amt = Math.min(Math.max(0, s.dirty - reserve(s)), billValue(s) * Math.max(1, Math.min(3, combo)));
+    if (amt < 1) return 0;
+    if (!safe(s, R.billPara)) return 0;
+    s.sta -= cost;
+    s.dirty -= amt; s.clean += amt;
+    s.para += R.billPara;
+    return amt;
+  }
+
   function launder(s, methodId, fraction) {
     const m = LAUNDRY.find((x) => x.id === methodId);
     if (s.attrs.lab < m.lab) return false;
@@ -310,7 +422,7 @@
     if (amount < 1) return false;
     s.dirty -= amount;
     if (!safe(s, m.para)) return false;
-    const net = Math.floor(amount * (1 - m.fee));
+    const net = Math.floor(amount * (1 - marketFee(s, methodId)));
     s.para += m.para;
     if (m.time === 0) s.clean += net;
     else s.laundry.push({ id: m.id, net, done: s.time + m.time });
@@ -484,6 +596,8 @@
       if (s.time >= s.laundry[i].done) { s.clean += s.laundry[i].net; s.laundry.splice(i, 1); }
     }
     if (s.city && s.time >= s.city.end) finishCity(s);
+    runFronts(s, dt);
+    fiscalCheck(s, dt);
     if (s.ze) {
       s.zeT += dt;
       if (s.zeT >= R.zeEvery) {
@@ -522,7 +636,8 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    equipBlock, bestSeed, lawyer, lawyerCost, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
+    equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
   };

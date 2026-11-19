@@ -59,6 +59,9 @@ function brain(s, p) {
       if (s.clean < E.equipCost(s, e)) break; // juntando para o equipamento exigido
     }
     if (s.pots.length >= E.maxPots(s) && E.PLACES[s.place + 1] && E.buyPlace(s)) continue;
+    // fachadas: compra/sobe a mais barata se custar até 25% da grana limpa
+    const fr = E.FRONTS.filter((f) => E.frontLvl(s, f.id) < E.FRONT_MAX).map((f) => [E.frontCost(s, f), f]).sort((x, y) => x[0] - y[0])[0];
+    if (fr && fr[0] <= s.clean * 0.25 && E.buyFront(s, fr[1].id)) continue;
     // equipamento mais barato que ainda não estoura o orçamento para o próximo imóvel
     const opts = E.EQUIP.filter((e) => !E.equipBlock(s, e)).map((e) => [E.equipCost(s, e), e]).sort((a, b) => a[0] - b[0]);
     if (!opts.length) break;
@@ -67,6 +70,10 @@ function brain(s, p) {
     if (opts[0][0] <= budget && E.buyEquip(s, opts[0][1].id)) continue;
     break;
   }
+  // fiscal: suborna se der, senão fecha
+  if (s.fiscal) { if (!E.fiscalBribe(s)) E.fiscalClose(s); }
+  // maquininha (só quem joga ativo)
+  if (p.bills && s.sta > 50) for (let k = 0; k < 3; k++) E.countBills(s, 2);
   // 6) cidade: Spa se a Paranoia apertar; senão treina
   if (!s.city) {
     if (s.para > 55 && s.clean > 150) E.startCity(s, "spa");
@@ -113,7 +120,7 @@ function run(name, p) {
     `Bot ${s.attrs.bot} Láb ${s.attrs.lab} Fur ${s.attrs.fur} Seg ${s.attrs.seg} · nível ${E.level(s)} · flagrantes ${s.timesArrested} · batidas ${s.busts}`);
 }
 
-const base = { taps: 5, risk: 0.05, paraLimit: 70, retireAt: 1 };
+const base = { taps: 5, risk: 0.05, paraLimit: 70, retireAt: 1, bills: true };
 run("Ativo cauteloso", { ...base, hours: 8 });
 run("Ativo arriscado", { ...base, risk: 0.3, paraLimit: 95, hours: 8 });
 run("Casual: 15 min a cada 4h", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, hours: 24 * 5 });
