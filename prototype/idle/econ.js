@@ -407,6 +407,7 @@
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
     const keep = { legend: s.legend + gain, attrs: { ...s.attrs, seg: 1, fur: 1 }, timesArrested: s.timesArrested + 1 };
     reset(s, keep);
+    s.dirty = 15 * s.legend; // sai da delegacia só com a roupa do corpo (a Lenda ajuda um pouco)
     s.clean = Math.floor(keepClean);
     s.busts++;
     s.lastBust = { why, gain, kept: Math.floor(keepClean) };

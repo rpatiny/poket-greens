@@ -543,6 +543,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
     const keep = { legend: s.legend + gain, attrs: { ...s.attrs, seg: 1, fur: 1 }, timesArrested: s.timesArrested + 1 };
     reset(s, keep);
+    s.dirty = 15 * s.legend; // sai da delegacia só com a roupa do corpo (a Lenda ajuda um pouco)
     s.clean = Math.floor(keepClean);
     s.busts++;
     s.lastBust = { why, gain, kept: Math.floor(keepClean) };
@@ -826,7 +827,7 @@ function checkEvents() {
   if (S.busts > seenBusts) {
     seenBusts = S.busts; shake = 10;
     const b = S.lastBust || {};
-    modal("🚨 BATIDA POLICIAL", `${b.why || ""}<br>A polícia levou tudo: dinheiro, estoque, equipamentos e imóveis. Furtividade e Segurança voltam a 1.<br>Na delegacia você ficou famoso: <span class="big">+${b.gain || 0} Lenda</span>${b.kept ? `<br>Suas câmeras e o bunker salvaram ${$$(b.kept)} limpos.` : ""}`);
+    bustModal(b);
     renderPanel();
   }
   while (seenLog < S.log.length) {
@@ -1024,7 +1025,7 @@ function refresh() {
   if (p > E.R.raidAt) { st.className = "status danger"; st.textContent = `🚨 Polícia rondando! Próxima ronda em ${dur(nextRaid)} (50% de chance de batida)`; }
   else if (p >= 60) { st.className = "status warn"; st.textContent = "Paranoia alta: tudo na cidade custa o dobro de Estamina. Acima de 80% a polícia faz rondas."; }
   else if (S.debt > 0) { st.className = "status warn"; st.textContent = `Dívida com o agiota: ${$$(S.debt)} (+3 Paranoia/min)`; }
-  else if (S.pots.some((x) => !x.on)) { st.className = "status warn"; st.textContent = `Falta grana suja para replantar (${$$(E.SEEDS[S.seed].price)} por vaso).`; }
+  else if (S.pots.some((x) => !x.on)) { st.className = "status warn"; st.textContent = `Sem grana para replantar (${$$(E.SEEDS[S.seed].price)} por vaso). Venda o estoque, mendigue, visite a Vó ou encare o agiota (aba Cidade).`; }
   else { st.className = "status"; st.textContent = `Renda estimada ${$$(E.incomePerSec(S))}/s · Lenda ${S.legend}`; }
   $("units").textContent = fmt(E.stockUnits(S));
   $("value").textContent = $$(E.stockValue(S) * E.priceMult(S, 0));
@@ -1050,6 +1051,38 @@ function refresh() {
 }
 
 // ---------------------------------------------------------------- avisos
+function bustModal(b) {
+  const m = el(`<div class="modal"><div class="card">
+    <b style="font-size:18px">🚨 BATIDA POLICIAL</b>
+    <p>${b.why || ""}<br>A polícia levou tudo: dinheiro, estoque, equipamentos e imóveis. Furtividade e Segurança voltam a 1.</p>
+    <p>Na delegacia você ficou famoso: <span class="big">+${b.gain || 0} Lenda</span>${b.kept ? `<br>Suas câmeras e o bunker salvaram ${$$(b.kept)} limpos.` : ""}</p>
+    <p style="text-align:left;border-top:2px solid var(--line);padding-top:8px"><b>Saiu só com a roupa do corpo?</b> Seus vasos ainda têm a última muda. Para conseguir grana e recomeçar:</p>
+    <div class="help" style="display:flex;flex-direction:column;gap:6px"></div>
+    <small data-res style="color:var(--leaf-2);min-height:16px;display:block"></small>
+    <button class="buy" data-ok style="align-self:center">Bora recomeçar</button>
+  </div></div>`);
+  const box = m.querySelector(".help"), res = m.querySelector("[data-res]");
+  const opts = [
+    ["🦈", "Pedir pro agiota", () => `Se tiver coragem: ${$$(E.R.loan)} agora, ele cobra ${$$(E.R.loanBack)} e a Paranoia sobe.`,
+      () => S.debt <= 0 && E.safe(S, 30), () => E.borrow(S) && `O agiota te passou ${$$(E.R.loan)}. Não esquece de pagar...`],
+    ["🤲", "Mendigar na calçada", () => "Gasta Estamina e rende $1–3. Pode tocar várias vezes.",
+      () => S.sta >= 16, () => { const g = E.beg(S); return g > 0 && `Alguém teve pena: +$${g}. Total: ${$$(S.dirty)}`; }],
+    ["👵", "Ir na casa da vozinha", () => "A Vó Dita te dá $5, um prato de comida (+⚡) e às vezes um pacotinho de sementes.",
+      () => S.time >= S.avoT && E.safe(S, 10), () => E.visitAvo(S) && `A Vó te deu um abraço e um troco. Total: ${$$(S.dirty)}`],
+  ];
+  const btns = [];
+  for (const [emo, title, desc, can, act] of opts) {
+    const r = el(`<button class="row" style="text-align:left;width:100%"><div class="ico emo">${emo}</div><div class="t"><b>${title}</b><small>${desc()}</small></div><span></span></button>`);
+    r.onclick = () => { const out = act(); if (out) { res.textContent = out; refresh(); } else res.textContent = "Agora não dá."; paint(); };
+    btns.push([r, can]);
+    box.appendChild(r);
+  }
+  const paint = () => btns.forEach(([r, can]) => { r.disabled = !can(); r.style.opacity = r.disabled ? 0.45 : 1; });
+  paint();
+  m.querySelector("[data-ok]").onclick = () => m.parentNode && m.parentNode.removeChild(m);
+  document.body.appendChild(m);
+}
+
 function modal(title, html) {
   const m = el(`<div class="modal"><div class="card"><b style="font-size:18px">${title}</b><p>${html}</p><button class="buy" style="align-self:center">OK</button></div></div>`);
   m.querySelector("button").onclick = () => m.remove();
