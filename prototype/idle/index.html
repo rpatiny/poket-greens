@@ -1840,7 +1840,42 @@ function skipTut() {
   S.pots[0].on = true;
   endTut();
 }
-function startStory(key, i, done) { story = { key, lines: STORY[key], i, chars: 0, full: false, done }; $("skip").hidden = false; showLine(); }
+function startStory(key, i, done, auto = 0) {
+  const lines = Array.isArray(key) ? key : STORY[key];
+  story = { key, lines, i, chars: 0, full: false, done, auto, autoAt: 0 };
+  $("skip").hidden = !inTut();                       // "pular" só na história de abertura
+  showLine();
+}
+// comentário do neto depois de uma entrega (metade das vezes): fala do cliente ou fala geral
+const DELIVERY_TALK = {
+  "Seu Jorge do bar": ["O Seu Jorge disse que vai pôr na porção de petisco. Melhor eu não perguntar."],
+  "Tia do bolo": ["A Tia do bolo me deu uma fatia de brinde. De que será que é esse bolo...?"],
+  "Playboy da faculdade": ["O playboy pagou no Pix e ainda deixou gorjeta. Faculdade particular, né."],
+  "DJ da festa": ["O DJ me chamou pra festa. Vou fingir que não ouvi."],
+  "Irmã Lurdes": ["A Irmã Lurdes disse que é pro chá do grupo de oração. Amém?"],
+  "Personal da academia": ["O personal jura que é \"suplemento natural\". Tá certo, campeão."],
+  "Artista da praça": ["O artista vai pintar um quadro inspirado nas plantas. Tomara que não seja um retrato meu."],
+  "Motoboy do bairro": ["O motoboy quer ser meu entregador. Hmm... ideia anotada."],
+};
+const DELIVERY_GENERIC = [
+  { t: "Entrega feita! Mais um cliente feliz." },
+  { t: "Ninguém viu nada. Profissional." },
+  { t: "{who} pagou na hora. Gosto de cliente assim." },
+  { t: "Embalei {n} un de {seed} num pote de sorvete. Ninguém desconfia de pote de sorvete." },
+  { think: true, t: "(Se a Vó soubesse que o netinho dela virou empresário...)" },
+  { t: "Mais umas entregas e eu compro um tênis novo. Ou mais vasos. Melhor mais vasos." },
+  { think: true, t: "(Já decorei o caminho da casa de cada cliente. Isso é bom ou é preocupante?)" },
+  { t: "O pessoal da rua tá comentando de mim. No bom sentido, espero." },
+  { think: true, t: "(Entreguei olhando pros dois lados três vezes. Acho que tô ficando paranoico.)" },
+  { t: "{n} un de {seed} entregues. Prazo cumprido, cliente satisfeito, cinco estrelas." },
+];
+function deliveryTalk(o) {
+  if (story || Math.random() >= 0.5) return;
+  const own = DELIVERY_TALK[o.who];
+  const pick = own && Math.random() < 0.5 ? { t: own[Math.floor(Math.random() * own.length)] } : DELIVERY_GENERIC[Math.floor(Math.random() * DELIVERY_GENERIC.length)];
+  const t = pick.t.replace("{who}", o.who).replace("{n}", o.n).replace("{seed}", E.SEEDS[o.seed].name);
+  startStory([{ who: "neto", think: !!pick.think, t }], 0, null, 6);   // some sozinha depois de 6 s
+}
 let faceKey = "";
 function drawFace(L, open = false) {
   const c = $("dlgface"), x = c.getContext("2d");
@@ -1864,6 +1899,11 @@ function showLine() {
   faceKey = ""; drawFace(L);
 }
 function storyTick(dt) {
+  if (story && story.full && story.auto) {
+    story.autoAt += dt;
+    if (story.autoAt >= story.auto) nextLine();
+    return;
+  }
   if (!story || story.full) return;
   const L = story.lines[story.i];
   story.chars += dt * 45;
@@ -2478,7 +2518,7 @@ function draw() {
 let taps = 0;
 $("scene").addEventListener("pointerdown", (e) => {
   if (e.target.closest && (e.target.closest("#skip") || e.target.closest("#dlgact") || e.target.closest("#dlg"))) return;
-  if (story) return;                                   // na conversa, só a caixa de diálogo avança
+  if (story && inTut()) return;                        // na história, só a caixa de diálogo avança
   if (inTut() && S.tut < 3) return;
   const r = cv.getBoundingClientRect();
   const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
@@ -2568,7 +2608,8 @@ function estufa() {
       const d = row({
         emoji: o.emoji, title: `${o.who}`,
         desc: `Quer <b>${o.n} un de ${sd.name}</b> · <span class="gain">paga ${$$(o.pay)}</span> · +2 Respeito<br><span data-h></span> · expira em <span data-t></span>`,
-        btn: "Entregar", btnCls: "dirty", enabled: () => S.stock[o.seed] >= o.n, onClick: () => E.deliver(S, o.id),
+        btn: "Entregar", btnCls: "dirty", enabled: () => S.stock[o.seed] >= o.n,
+        onClick: () => { const ok = E.deliver(S, o.id); if (ok) deliveryTalk(o); return ok; },
       });
       bind(() => {
         d.querySelector("[data-t]").textContent = dur(Math.max(0, o.until - S.time));
@@ -3139,7 +3180,8 @@ function openMaster() {
 // ---------------------------------------------------------------- laço
 let last = performance.now(), acc = 0, saveT = 0;
 // ---------------------------------------------------------------- dicas da Vó (1 minuto sem fazer nada)
-const TIP_IDLE = 60;
+const TIP_IDLE = 60, TIP_SHOW = 6;   // aparece com 1 min parado, fica 6 s
+let tipShownT = 0;
 let idleT = 0, tipTab = null, lastTip = "";
 function nextTip() {
   const units = E.stockUnits(S), place = E.PLACES[S.place], nextPlace = E.PLACES[S.place + 1];
@@ -3163,6 +3205,7 @@ function showTip() {
   $("tiptext").innerHTML = text;
   $("tipgo").hidden = !tabName;
   $("tip").hidden = false;
+  tipShownT = 0;
 }
 function hideTip() { $("tip").hidden = true; idleT = 0; }
 $("tipok").addEventListener("click", (e) => { e.stopPropagation(); hideTip(); });
@@ -3176,7 +3219,11 @@ for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, (e) =
 function tickTip(dt) {
   if (inTut()) { idleT = 0; return; }
   if (document.querySelector(".modal")) { idleT = 0; return; }
-  if (!$("tip").hidden) return;
+  if (!$("tip").hidden) {                              // a dica fica 6 s na tela e some sozinha
+    tipShownT += dt;
+    if (tipShownT >= TIP_SHOW) hideTip();
+    return;
+  }
   idleT += dt;
   if (idleT >= TIP_IDLE) showTip();
 }
