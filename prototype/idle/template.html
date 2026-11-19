@@ -76,6 +76,8 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 .emo{display:grid;place-items:center;font-size:24px}
 .t{min-width:0} .t b{display:block;font-size:15px} .t small{display:block;font-size:12px;color:var(--muted);line-height:1.35}
 .t .req{color:#f2918a} .t .ok{color:var(--leaf-2)}
+.t .gain{color:#7cdc5a;font-weight:bold;font-family:var(--num);font-size:13px} .t .gain2{color:#7cb342}
+.t .best{background:#7cdc5a;color:#1a1420;padding:0 4px;font-size:11px;font-weight:bold}
 .lv{font-family:var(--num);font-size:11px;color:var(--dirty);margin-left:6px}
 .buy{background:var(--leaf);color:#14292b;font-weight:700;padding:8px 8px;min-width:86px;border:2px solid #1a1420;box-shadow:inset 0 -3px 0 #0003;font-family:var(--num);font-size:12px;white-space:nowrap}
 .buy.clean{background:var(--clean);color:#0d2026} .buy.dirty{background:var(--dirty);color:#2b1a10}
@@ -653,14 +655,19 @@ function renderPanel() {
 function estufa() {
   const cur = E.SEEDS[S.seed];
   h3(`Sementes · plantando ${cur.name}`);
+  // lucro por minuto de cada vaso: é o que diz se vale a pena plantar
+  const perMin = (sd) => (Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell - sd.price) / (sd.time / E.speed(S) / 60);
+  const okSeeds = E.SEEDS.filter((sd, i) => E.seedOk(S, i));
+  const best = okSeeds.reduce((a, b) => (perMin(b) > perMin(a) ? b : a), okSeeds[0]);
   E.SEEDS.map((sd, i) => [sd, i]).reverse().forEach(([sd, i]) => {
     const lock = E.seedLocked(S, sd);
-    const profit = sd.prod * E.prodMult(S) * sd.sell - sd.price;
+    const profit = Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell - sd.price;
     if (lock.length && i > 0 && E.seedLocked(S, E.SEEDS[i - 1]).length) return; // mostra só a próxima trancada
     row({
       ico: seedIcon(i), title: sd.name, cls: (i === S.seed ? "sel" : "") + (lock.length ? " locked" : ""),
       desc: lock.length ? `<span class="req">Precisa: ${lock.join(", ")}</span>`
-        : `Semente ${$$(sd.price)} · ${sd.prod} un × ${$$(sd.sell)} · ${sd.time}s · lucro ~${$$(profit)}/colheita`,
+        : `Semente ${$$(sd.price)} · ${Math.max(1, Math.floor(sd.prod * E.prodMult(S)))} un × ${$$(sd.sell)} · ${dur(sd.time / E.speed(S))}<br>` +
+          `<span class="gain">+${$$(perMin(sd))}/min por vaso</span> <span class="gain2">(+${$$(profit)} por colheita)</span>${sd === best ? ' <span class="best">★ mais lucro</span>' : ""}`,
       btn: lock.length ? null : i === S.seed ? "Plantando" : "Plantar", enabled: () => i !== S.seed,
       onClick: () => E.chooseSeed(S, i),
     });
