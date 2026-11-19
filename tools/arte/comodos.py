@@ -482,7 +482,7 @@ def r3():
 
 # ======================================================================= 4 · Terreno Abandonado (ao ar livre)
 def r4():
-    R = Room(4, 228, 140, 34, cap=(W_[2], W_[3]), door=True, seed=5)
+    R = Room(5, 236, 142, 34, cap=(W_[2], W_[3]), door=True, seed=5)
 
     def fence(c, x0, y0, w, h):
         r = random.Random(51)
@@ -535,12 +535,12 @@ def r4():
     R.add(cart, 8, 70, 0.6)
     for i in range(5):
         R.add(box3d(9, 3, 3, B_[3], B_[2]), 150 + (i % 3) * 10, 92 - (i // 3) * 5, 0.2)
-    return R.finish((-60, -80), [L_point(60, 30, 200, 140, 0.9)], pots=(50, 20, 128, 70))
+    return R.finish((-60, -80), [L_point(60, 30, 200, 140, 0.9)], pots=(54, 20, 128, 70))
 
 
 # ======================================================================= 5 · Container Marítimo
 def r5():
-    R = Room(5, 236, 120, 30, cap=(B_[1], B_[2]), seed=6)
+    R = Room(6, 248, 124, 30, cap=(B_[1], B_[2]), seed=6)
 
     def wall(c, x0, y0, w, h):
         r = random.Random(61)
@@ -574,12 +574,12 @@ def r5():
     fan.rect(7, 16, 10, 19, S_[2])
     R.add(fan, 210, 70, 0.8)
     return R.finish((118, -10), [L_poly([(0, -6), (236, -6), (236, 6), (0, 6)], 0.6), L_point(118, 20, 140, 70, 0.8),
-                                 L_poly([(224, -10), (236, -10), (236, 90), (210, 90)], 0.5)], pots=(54, 14, 136, 64))
+                                 L_poly([(236, -10), (248, -10), (248, 90), (222, 90)], 0.5)], pots=(56, 14, 136, 64))
 
 
 # ======================================================================= 6 · Sobrado na Favela
 def r6():
-    R = Room(6, 244, 146, 34, cap=(B_[1], B_[2]), seed=7)
+    R = Room(4, 228, 140, 34, cap=(B_[1], B_[2]), seed=7)
 
     def wall(c, x0, y0, w, h):
         wall_bricks(c, x0, y0, w, h, B_, base=3, bw=10, bh=4, seed=71, plaster=[(8, 4, 30, 12), (190, 14, 24, 10)])
@@ -616,14 +616,14 @@ def r6():
     sofa.rect(0, 0, 6, 27, L_[2]); sofa.rect(53, 0, 59, 27, L_[1]); sofa.rect(0, 26, 59, 29, L_[1]); sofa.vline(29, 10, 24, L_[2])
     sofa.rect(10, 11, 22, 19, CR[3]); sofa.rect(36, 11, 46, 19, G_[3])
     R.add(sofa, 6, -6, 0.3)
-    tvc = crate(30, 12, 8); R.add(tvc, 206, 6, 0.4)
+    tvc = crate(30, 12, 8); R.add(tvc, 192, 6, 0.4)
     tv = box3d(28, 8, 14, S_[2], S_[1]); tv.rect(3, 10, 21, 19, TE[1]); tv.rect(4, 11, 9, 13, TE[3])
-    R.add(tv, 207, -10, 0.6)
+    R.add(tv, 193, -10, 0.6)
     chair = Sprite(16, 16); chair.rect(0, 0, 15, 4, WHITE); chair.rect(0, 5, 15, 13, S_[6]); chair.rect(1, 14, 2, 15, S_[5]); chair.rect(13, 14, 14, 15, S_[5])
-    R.add(chair, 210, 70, 0.5)
+    R.add(chair, 200, 70, 0.5)
     R.add(round_top(6, [D_[0], D_[1], D_[2], D_[3]]), 12, 92, 0.8)
     return R.finish((121, -50), [L_poly([(90, -20), (152, -20), (144, 70), (84, 70)], 0.9), L_point(121, 30, 170, 100, 0.55)],
-                    pots=(60, 30, 130, 76))
+                    pots=(50, 30, 128, 72))
 
 
 # ======================================================================= 7 · Galpão Industrial
@@ -757,7 +757,7 @@ def r9():
 
 # ======================================================================= 10 · Ilha Privada (deck ao ar livre)
 def r10():
-    R = Room(10, 296, 164, 40, cap=(W_[2], W_[3]), seed=11)
+    R = Room(11, 304, 168, 40, cap=(W_[2], W_[3]), seed=11)
 
     def sea(c, x0, y0, w, h):
         r = random.Random(111)
@@ -804,12 +804,12 @@ def r10():
         R.add(tk, tx, 30, 1.0)
         R.anims.append(["torch", R.x0 + tx + 3, R.fy + 29])
     R.anims.append(["waves", R.y0 + 18, R.fy - 2])
-    return R.finish((-80, -140), [L_point(148, 40, 300, 180, 1.05)], pots=(48, 24, 200, 96))
+    return R.finish((-80, -140), [L_point(152, 40, 300, 180, 1.05)], pots=(52, 24, 200, 96))
 
 
 # ======================================================================= 11 · Mina de Ouro Desativada
 def r11():
-    R = Room(11, 304, 168, 40, cap=(SO[0], SO[1]), seed=12)
+    R = Room(10, 296, 164, 40, cap=(SO[0], SO[1]), seed=12)
 
     def rock(c, x0, y0, w, h):
         r = random.Random(121)
@@ -841,7 +841,7 @@ def r11():
 
     R.shell(rock, floor)
     c, x0, y0 = R.c, R.x0, R.y0
-    for lx in (34, 152, 270):
+    for lx in (34, 148, 262):
         c.vline(x0 + lx, y0 + 6, y0 + 14, OL)
         ln = Sprite(9, 11); ln.rect(0, 0, 8, 1, S_[2]); ln.rect(1, 2, 7, 8, G_[4]); ln.rect(0, 9, 8, 10, S_[2]); ln.vline(0, 2, 8, S_[2]); ln.vline(8, 2, 8, S_[2])
         ln.stamp_on(c, x0 + lx - 4, y0 + 15)
@@ -861,7 +861,7 @@ def r11():
         R.add(cr, 270, 70 - i * 18, 0.5)
     pk = Sprite(20, 24); pk.line(4, 2, 16, 23, W_[2]); pk.line(5, 2, 17, 23, W_[3]); pk.poly([(0, 4), (12, 0), (13, 3), (2, 7)], S_[4])
     R.add(pk, 250, 90, 0.6)
-    return R.finish((152, -10), [L_point(34, 0, 120, 90, 1.05), L_point(152, 0, 110, 90, 0.95), L_point(270, 0, 120, 90, 1.05)], pots=(56, 20, 192, 86), dark=True)
+    return R.finish((152, -10), [L_point(34, 0, 120, 90, 1.05), L_point(148, 0, 110, 90, 0.95), L_point(262, 0, 120, 90, 1.05)], pots=(52, 20, 192, 86), dark=True)
 
 
 # ======================================================================= 12 · Bunker Militar
@@ -913,7 +913,7 @@ def r12():
     return R.finish((156, 0), lights, pots=(50, 22, 216, 90))
 
 
-ROOMS = [r1, r0, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12]
+ROOMS = [r1, r0, r2, r3, r6, r4, r5, r7, r8, r9, r11, r10, r12]   # ordem do jogo
 
 
 if __name__ == "__main__":

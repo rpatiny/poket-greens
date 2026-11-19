@@ -57,15 +57,15 @@
     ["Quartinho dos fundos", 100, 3, 0],
     ["Garagem do Vizinho", 1500, 4, 0],
     ["Porão Abandonado", 4000, 5, 0],
-    ["Terreno Abandonado", 10000, 6, 0],
-    ["Container Marítimo", 25000, 8, 1],
-    ["Sobrado na Favela", 75000, 10, 1],
+    ["Sobrado na Favela", 10000, 6, 0],
+    ["Terreno Abandonado", 25000, 8, 1],
+    ["Container Marítimo", 75000, 10, 1],
     ["Galpão Industrial", 200000, 12, 1],
     ["Sítio na Serra", 500000, 14, 1],
     ["Fazenda Paraíso Verde", 1.5e6, 18, 1],
-    ["Ilha Privada", 5e6, 24, 2],
-    ["Mina de Ouro Desativada", 2e7, 30, 2],
-    ["Bunker Militar", 8e7, 40, 2],
+    ["Mina de Ouro Desativada", 5e6, 24, 2],
+    ["Praia Particular", 2e7, 30, 2],
+    ["Bunker Desativado", 8e7, 40, 2],
   ].map(([name, cost, pots, tier], id) => ({ id, name, cost, pots, tier }));
 
   // Venda (GDD): quantidade máxima, Paranoia, chance de flagrante e bônus de preço.
