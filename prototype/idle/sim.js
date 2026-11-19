@@ -60,7 +60,8 @@ function brain(s, p) {
     }
     if (s.pots.length >= E.maxPots(s) && E.PLACES[s.place + 1] && E.buyPlace(s)) continue;
     // equipamento mais barato que ainda não estoura o orçamento para o próximo imóvel
-    const opts = E.EQUIP.map((e) => [E.equipCost(s, e), e]).sort((a, b) => a[0] - b[0]);
+    const opts = E.EQUIP.filter((e) => !E.equipBlock(s, e)).map((e) => [E.equipCost(s, e), e]).sort((a, b) => a[0] - b[0]);
+    if (!opts.length) break;
     const nextPlace = E.PLACES[s.place + 1];
     const budget = nextPlace ? s.clean - nextPlace.cost * 0.3 : s.clean;
     if (opts[0][0] <= budget && E.buyEquip(s, opts[0][1].id)) continue;

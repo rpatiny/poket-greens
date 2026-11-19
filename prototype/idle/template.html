@@ -35,6 +35,7 @@ header{background:var(--panel);padding-block:8px 8px;display:flex;flex-direction
 .para .bar::before{content:"";position:absolute;top:0;bottom:0;left:80%;width:2px;background:var(--heat);z-index:1}
 .para span:first-child{color:#f2918a;font-weight:700}
 .sta .bar i{background:var(--sta)}
+.para .bar b{position:absolute;inset:0 auto 0 0;width:0;z-index:2;background:repeating-linear-gradient(135deg,#1a1420 0 3px,#6e2834 3px 6px);opacity:.85}
 .status{font-size:12px;color:var(--muted);min-height:15px}
 .status.warn{color:var(--dirty)} .status.danger{color:var(--heat);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.4}}
@@ -116,7 +117,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
       <div class="m clean"><small>Grana limpa</small><b id="clean">$0</b></div>
       <div class="m lvl"><small>Nível</small><b id="lvl">1</b></div>
     </div>
-    <div class="meter para"><span>👁 Paranoia</span><div class="bar"><i id="para"></i></div><span id="paran">0%</span></div>
+    <div class="meter para"><span>👁 Paranoia</span><div class="bar"><i id="para"></i><b id="ficha" title="Ficha na polícia"></b></div><span id="paran">0%</span></div>
     <div class="meter sta"><span>⚡ Estamina</span><div class="bar"><i id="sta"></i></div><span id="stan">100</span></div>
     <div class="status" id="status"></div>
   </header>
@@ -322,7 +323,7 @@ function paintGutter(c, w, count, tier) {
 
 // ---------------------------------------------------------------- equipamentos na cena
 // onde cada um fica: pendurado em cima das plantas, voando, na parede ou no chão (lugar livre)
-const EQ_HANG = { regador: 1, lampada: 1, led: 1 };
+const EQ_HANG = { lampada: 1, led: 1 };   // a garrafa PET vai em cada vaso (drawPet)
 const EQ_BOTTOM = [32, 31, 32, 30, 31, 29, 32, 32, 22, 31, 23, 31, 32, 18, 31, 32, 32, 32];   // última linha pintada de cada sprite
 const hitR = (a, b) => !(a[2] <= b[0] || a[0] >= b[2] || a[3] <= b[1] || a[1] >= b[3]);
 let slotCache = { sig: "", slots: [] };
@@ -357,24 +358,19 @@ function placeEquip(m, plantItems, firstPlant) {
   const slots = findSlots(m, busy);
   const top = plantItems.length ? Math.min(...plantItems.map((it) => it.y)) : m.pots[1] - 40;
   const pcx = m.pots[0] + m.pots[2] / 2;
-  const onFloor = owned.filter((e) => !EQ_HANG[e.id] && e.id !== "drone" && e.id !== "cameras").reverse();   // os mais avançados primeiro
+  const onFloor = owned.filter((e) => !EQ_HANG[e.id] && !["drone", "cameras", "regador", "hidro"].includes(e.id)).reverse();   // os mais avançados primeiro
   onFloor.slice(0, Math.min(slots.length, 3 + S.place)).forEach((e, k) => {
     const [x, y] = slots[k];
     floor.push({ x, y, w: 32, h: 32, foot: 32 - EQ_BOTTOM[e.frame], key: "eq:" + e.id, paint: eqPaint(e) });
     anim.push([e.id, x, y]);
   });
   const hangs = owned.filter((e) => EQ_HANG[e.id]);
-  const lamps = hangs.filter((e) => e.id !== "regador");
+  const lamps = hangs;
   lamps.forEach((e, k) => {
     const x = Math.round(pcx - 16 + (lamps.length > 1 ? (k ? 26 : -26) : 0)), y = Math.max(y0 - 2, top - 26);
     hang.push({ x, y, w: 32, h: 32, key: "eq:" + e.id, paint: eqPaint(e), noShadow: true, cord: [x + 16, y0 - 2, y + 1] });
     anim.push([e.id, x, y]);
   });
-  if (hangs.some((e) => e.id === "regador") && firstPlant) {
-    const x = firstPlant.x + 2, y = Math.max(y0 + 1, firstPlant.y - 12);
-    hang.push({ x, y, w: 32, h: 32, key: "eq:regador", paint: eqPaint(E.EQUIP[0]), noShadow: true, cord: [x + 16, y0 - 2, y] });
-    anim.push(["regador", x, y, firstPlant.y + 36]);
-  }
   if (owned.some((e) => e.id === "cameras")) {
     const x = x0 + w - 32, y = y0 - 2;
     hang.push({ x, y, w: 32, h: 32, key: "eq:cameras", paint: eqPaint(E.EQUIP[13]), noShadow: true });
@@ -451,6 +447,43 @@ function eqAnim(a, t, m) {
     case "lab": for (let k = 0; k < 3; k++) { const f = (t * 0.4 + k / 3) % 1; P(x + 13 + k * 3, y + 22 - f * 18, 1, 1, "#fffbef"); } if (blink(1)) P(x + 6, y + 26, 1, 1, "#ff6b6b"); break;
   }
 }
+
+// Garrafa PET de 2 L de cabeça para baixo, inclinada, com o gargalo enterrado na terra do vaso.
+// Mesma escala do vaso (7 px de largura). A água baixa conforme a planta cresce e volta ao replantar.
+const PET = [
+  ".OOOOO.",
+  "OWaaaBO",
+  "OWaaaBO",
+  "OWaaaBO",
+  "ORRRRRO",
+  "OHHHHHO",
+  "OWaaaBO",
+  "OWaaaBO",
+  "OWaaaBO",
+  ".OWaBO.",
+  "..OaO..",
+  "..OCO..",
+];
+const PET_COL = { O: "#1a1420", W: "#fffbef", a: "#a6cbeb", B: "#6590cc", R: "#d95463", H: "#fffbef", C: "#4a8f40" };
+const PET_WATER = [10, 9, 8, 7, 6, 3, 2, 1];             // linhas de dentro, do gargalo para o fundo
+function petWater(f) { return Math.round((1 - Math.min(1, f) * 0.85) * PET_WATER.length); }
+function drawPet(c, cx, soil, water, flip) {
+  const wet = new Set(PET_WATER.slice(0, water));
+  const n = PET.length;
+  for (let r = 0; r < n; r++) {
+    const sh = Math.round((n - 1 - r) * 0.34) * (flip ? -1 : 1);   // inclinação: o fundo vai para o lado
+    const row = PET[r];
+    for (let k = 0; k < 7; k++) {
+      const ch = row[flip ? 6 - k : k];
+      if (ch === ".") continue;
+      let col = PET_COL[ch];
+      if (wet.has(r) && (ch === "a" || ch === "B")) col = ch === "a" ? "#3a5ea3" : "#283c74";
+      c.fillStyle = col;
+      c.fillRect(cx - 3 + k + sh, soil - n + 1 + r, 1, 1);
+    }
+  }
+}
+
 function layout(n) {
   const [ax, ay, aw, ah] = plantArea();
   let best = null;
@@ -479,7 +512,7 @@ function draw() {
   g.save();
   if (shake > 0) g.translate(Math.round((Math.random() - 0.5) * shake), 0);
   SCENES.background(g, S.place);
-  const hydro = tier >= 1;
+  const hydro = E.lvl(S, "hidro") > 0;               // as calhas chegam com o sistema hidropônico
   const plantOf = (i) => { const p = S.pots[i]; return { p, f: p.on ? p.g / E.SEEDS[p.s].time : 0, st: p.on ? stageCell(p.s, p.on ? p.g / E.SEEDS[p.s].time : 0) : null }; };
   const paintPlant = (st) => (c) => { if (st && sprites.estagios) c.drawImage(sprites.estagios, st[0] * 32, st[1] * 40, 32, 40, 0, 0, 32, 40); };
   const items = [], marks = [];
@@ -500,9 +533,15 @@ function draw() {
     layout(S.pots.length).pts.forEach(([x, y], i) => {
       const { p, f, st } = plantOf(i);
       const pf = i % 3 === 2 ? 2 : i % 2;
-      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-"),
-        paint(c) { if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24); paintPlant(st)(c); } });
-      marks.push({ on: p.on, f, x: x + 16, top: y - 25, bar: [x + 8, y + 22, 16], pot: true });
+      // garrafa PET (se comprada) faz parte do sprite do vaso: ganha a luz e a profundidade da cena
+      const pet = E.lvl(S, "regador") > 0 ? petWater(f) : -1, flip = i % 2 === 1;
+      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-") + ":" + pet + (flip ? "f" : ""),
+        paint(c) {
+          if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24);
+          paintPlant(st)(c);
+          if (pet >= 0) drawPet(c, 16 + (flip ? -7 : 7), 38, pet, flip);
+        } });
+      marks.push({ on: p.on, f, x: x + 16, top: y - 25, bar: [x + 8, y + 22, 16], pot: true, flip: i % 2 === 1 });
       if (!first) first = { x, y: y - 34 };
     });
   }
@@ -593,7 +632,7 @@ const bind = (fn) => binds.push(fn);
 function el(html) { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstElementChild; }
 function h3(text) { panel.appendChild(el(`<h3>${text}</h3>`)); }
 function row({ ico, emoji, title, lv, desc, btn, cls = "", btnCls = "", enabled, onClick }) {
-  const d = el(`<div class="row ${cls}"><div></div><div class="t"><b>${title}${lv != null ? `<span class="lv">nv ${lv}</span>` : ""}</b><small>${desc}</small></div></div>`);
+  const d = el(`<div class="row ${cls}"><div></div><div class="t"><b>${title}${lv != null ? `<span class="lv">${typeof lv === "number" ? "nv " + lv : lv}</span>` : ""}</b><small>${desc}</small></div></div>`);
   d.firstElementChild.replaceWith(ico || el(`<div class="ico emo">${emoji || ""}</div>`));
   if (btn != null) {
     const b = el(`<button class="buy ${btnCls}">${btn}</button>`);
@@ -634,7 +673,7 @@ function estufa() {
   });
   const np = E.PLACES[S.place + 1];
   if (np) row({
-    ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} vasos.${np.tier > pl.tier ? " Visual novo!" : ""} Pago com grana limpa.`,
+    ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} Pago com grana limpa.<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>`,
     btn: $$(np.cost), btnCls: "clean", enabled: () => S.clean >= np.cost, onClick: () => E.buyPlace(S),
   });
   if (!S.ze) row({
@@ -676,15 +715,19 @@ function lavagem() {
 
 function loja() {
   const nextLocked = E.SEEDS.find((sd) => E.seedLocked(S, sd).length);
+  panel.appendChild(el(`<div class="card"><p>Cada equipamento sobe até o <b>nível 5</b>, e cada nível custa 3× o anterior. Ao se mudar, os equipamentos <b>ficam para trás</b> e você compra de novo no lugar novo. Drone, hidroponia e controlador IA são <b>compra única</b> e vão com você.</p></div>`));
   h3("Equipamentos (grana limpa)");
   E.EQUIP.forEach((e, i) => {
-    const lv = E.lvl(S, e.id);
+    const lv = E.lvl(S, e.id), block = E.equipBlock(S, e);
     const needed = nextLocked && nextLocked.req.includes(e.id) && !lv;
     const c = E.equipCost(S, e);
+    const room = block && S.place < e.place;
     row({
-      ico: equipIcon(i), title: e.name, lv,
-      desc: `+${pct(e.prod)} de produção por nível${e.fxText ? " · " + e.fxText : ""}${needed ? `<br><span class="ok">Exigido por ${nextLocked.name}</span>` : ""}`,
-      btn: $$(c), btnCls: "clean", enabled: () => S.clean >= c, onClick: () => E.buyEquip(S, e.id),
+      ico: equipIcon(i), title: e.name, lv: e.max === 1 ? (lv ? "instalado" : "compra única") : `nv ${lv}/${e.max}`, cls: room ? "locked" : "",
+      desc: `+${pct(e.prod)} de produção${e.max > 1 ? " por nível" : ""}${e.fxText ? " · " + e.fxText : ""}${e.keep && !e.only ? " · vai com você" : ""}` +
+        (room ? `<br><span class="req">${block}</span>` : needed ? `<br><span class="ok">Exigido por ${nextLocked.name}</span>` : ""),
+      btn: block ? (room ? null : block === "Já instalado" ? "Instalado" : "Máximo") : $$(c), btnCls: "clean",
+      enabled: () => !block && S.clean >= c, onClick: () => E.buyEquip(S, e.id),
     });
   });
 }
@@ -707,6 +750,11 @@ function cidade() {
       onClick: () => E.startCity(S, a.id),
     });
   });
+  if (S.ficha > 0) {
+    h3("Ficha na polícia");
+    row({ emoji: "⚖️", title: "Advogado de porta de cadeia", desc: `Sua ficha: <b>${S.ficha}%</b> (a Paranoia não cai abaixo disso). O advogado baixa 10% na hora. Ou ganhe mais ${Math.max(0, S.fichaLenda + E.R.fichaLenda - S.legend)} de Lenda para baixar 5%.`,
+      btn: $$(E.lawyerCost(S)), btnCls: "clean", enabled: () => S.clean >= E.lawyerCost(S), onClick: () => E.lawyer(S) });
+  }
   h3("Na rua");
   row({ emoji: "🤲", title: "Mendigar", desc: `Gasta 3–8⚡ (dobro com Paranoia alta) e rende $1–3 de grana suja.`, btn: "Pedir", btnCls: "dirty",
     enabled: () => S.sta >= 16, onClick: () => { const got = E.beg(S); if (got) float("+$" + got, 140, 40, "#f0c94f"); return got > 0; } });
@@ -762,6 +810,7 @@ function refresh() {
   $("lvl").textContent = E.level(S);
   const p = Math.min(100, S.para);
   $("para").style.width = p + "%"; $("paran").textContent = Math.round(p) + "%";
+  $("ficha").style.width = (S.ficha || 0) + "%";   // ficha na polícia: a Paranoia não cai abaixo daqui
   $("sta").style.width = Math.min(100, S.sta) + "%"; $("stan").textContent = Math.floor(S.sta);
   const st = $("status");
   const nextRaid = E.R.raidEvery - S.raidT;
@@ -799,6 +848,7 @@ function bustModal(b) {
     <b style="font-size:18px">🚨 BATIDA POLICIAL</b>
     <p>${b.why || ""}<br>A polícia levou <b>tudo</b>: grana suja e limpa, estoque, equipamentos e o esconderijo. Você volta para o Armário, com um vaso só.</p>
     <p>O que é seu ninguém tira: <b>Botânica, Lábia, Furtividade, Segurança</b>, Respeito e Lenda.<br>Na delegacia você ficou famoso: <span class="big">+${b.gain || 0} Lenda</span></p>
+    <p style="background:#6e283455;padding:6px 8px">📁 <b>Você está fichado: ${S.ficha}%.</b> A Paranoia não cai abaixo disso. A ficha baixa 5% a cada 5 de Lenda que você ganhar, ou com um advogado (aba Cidade).</p>
     <p style="text-align:left;border-top:2px solid var(--line);padding-top:8px"><b>Saiu só com a roupa do corpo?</b> Seus vasos ainda têm a última muda. Para conseguir grana e recomeçar:</p>
     <div class="help" style="display:flex;flex-direction:column;gap:6px"></div>
     <small data-res style="color:var(--leaf-2);min-height:16px;display:block"></small>
@@ -873,7 +923,7 @@ function openMaster() {
       ["+1000 Respeito", () => (S.resp += 1000)],
     ]],
     ["Progresso", [
-      ["Todos os equipamentos", () => E.EQUIP.forEach((e) => (S.equip[e.id] = Math.max(1, E.lvl(S, e.id))))],
+      ["Todos os equipamentos que cabem aqui", () => E.EQUIP.forEach((e) => { if (S.place >= e.place) S.equip[e.id] = Math.max(1, E.lvl(S, e.id)); })],
       ["Próximo imóvel", () => { if (E.PLACES[S.place + 1]) S.place++; }],
       ["Último imóvel", () => (S.place = E.PLACES.length - 1)],
       ["Encher de vasos", () => { while (S.pots.length < E.maxPots(S)) S.pots.push({ g: 0, s: S.seed, on: false }); }],

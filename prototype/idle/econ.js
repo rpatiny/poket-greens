@@ -29,6 +29,17 @@
 
   // Equipamentos (GDD): preço em grana limpa e bônus de produção. Cada um tem níveis
   // (o 1º libera sementes; os seguintes repetem o bônus) e um efeito extra.
+  // Regras de instalação. max: níveis (5, ou 1 = compra única). keep: vai com você ao se mudar
+  // (os outros ficam para trás e são comprados de novo no lugar novo). place: lugar mínimo onde cabe.
+  const EQUIP_RULES = {
+    regador: { max: 5, place: 0 }, tesoura: { max: 5, place: 1 }, ventilador: { max: 5, place: 1 },
+    termometro: { max: 5, place: 1 }, fertilizante: { max: 5, place: 1 }, lampada: { max: 5, place: 1 },
+    ph: { max: 5, place: 1 }, estufa: { max: 5, place: 2 }, drone: { max: 1, keep: true, place: 3 },
+    filtro: { max: 5, place: 3 }, led: { max: 5, place: 3 }, hidro: { max: 1, keep: true, place: 6 },
+    co2: { max: 5, place: 6 }, cameras: { max: 5, place: 4 }, osmose: { max: 5, place: 7 },
+    ia: { max: 1, keep: true, place: 7 }, bunker: { max: 1, keep: true, place: 12, only: true },
+    lab: { max: 1, keep: true, place: 12, only: true },
+  };
   const EQUIP = [
     ["regador", "Regador de garrafa PET", 100, 0.02, { speed: 0.05 }, "Cresce 5% mais rápido"],
     ["tesoura", "Tesoura enferrujada", 150, 0.02, { tap: 0.5 }, "Toque 50% mais forte"],
@@ -48,8 +59,8 @@
     ["ia", "Controlador IA", 1e7, 0.15, { tap: 1 }, "Toque 100% mais forte"],
     ["bunker", "Kit bunker", 3.5e7, 0.12, { guard: 0.25 }, "Rondas têm 25% menos chance de te achar"],
     ["lab", "Lab. de genética", 1.5e8, 0.2, { speed: 0.25 }, "Cresce 25% mais rápido"],
-  ].map(([id, name, price, prod, fx, fxText], i) => ({ id, name, price, prod, fx, fxText, frame: i }));
-  const EQUIP_LEVEL_MULT = 2.4; // cada nível extra custa 2,4x o anterior
+  ].map(([id, name, price, prod, fx, fxText], i) => ({ id, name, price, prod, fx, fxText, frame: i, ...EQUIP_RULES[id] }));
+  const EQUIP_LEVEL_MULT = 3; // cada nível extra custa 3x o anterior (nível 5 = 81x o preço inicial)
 
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).
   const PLACES = [
@@ -105,11 +116,13 @@
   // ---------------------------------------------------------------- regras
   const R = {
     tapSeconds: 0.35, // cada toque adianta 0,35 s de crescimento em todos os vasos
-    paraDecay: 1 / 4, // Paranoia cai 1 a cada 4 s
+    paraDecay: 1 / 8, // Paranoia cai 1 a cada 8 s
+    fichaStep: 10, fichaMax: 50, // cada batida sobe a ficha na polícia (piso da Paranoia)
+    fichaLenda: 5, // a cada 5 de Lenda ganhos depois da batida, a ficha baixa 5
     loanPara: 3 / 60, // dívida com o agiota: +3 por minuto
     staRegen: 1 / 20, // Estamina: +1 a cada 20 s
     raidEvery: 300, raidAt: 80, raidChance: 0.5,
-    zeCost: 300, zeEvery: 20,
+    zeCost: 300, zeEvery: 20, zeMaxPara: 60,
     avoEvery: 180,
     loan: 500, loanBack: 750,
     offlineCap: 8 * 3600,
@@ -124,6 +137,7 @@
       attrs: { bot: 1, lab: 1, fur: 1, seg: 1 },
       xp: { bot: 0, lab: 0, fur: 0, seg: 0 },
       place: 0,
+      ficha: 0, fichaLenda: 0, // ficha na polícia: piso da Paranoia
       pots: [{ g: 0, s: 0, on: true }],
       seed: 0, // semente escolhida para replantar
       stock: Array(SEEDS.length).fill(0),
@@ -304,8 +318,16 @@
     return true;
   }
 
+  // por que não dá para comprar agora ("" = pode)
+  function equipBlock(s, e) {
+    if (lvl(s, e.id) >= e.max) return e.max === 1 ? "Já instalado" : "Nível máximo";
+    if (s.place < e.place) return e.only ? `Só no ${PLACES[e.place].name}` : `Não cabe no ${PLACES[s.place].name} · precisa de ${PLACES[e.place].name}`;
+    return "";
+  }
+  function bestSeed(s) { for (let i = SEEDS.length - 1; i >= 0; i--) if (seedOk(s, i)) return i; return 0; }
   function buyEquip(s, id) {
     const e = EQUIP.find((x) => x.id === id);
+    if (equipBlock(s, e)) return false;
     const c = equipCost(s, e);
     if (s.clean < c) return false;
     s.clean -= c;
@@ -317,6 +339,9 @@
     if (!next || s.clean < next.cost) return false;
     s.clean -= next.cost;
     s.place++;
+    // os equipamentos do lugar antigo ficam para trás; só os de compra única vêm junto
+    for (const e of EQUIP) if (!e.keep) delete s.equip[e.id];
+    if (!seedOk(s, s.seed)) s.seed = bestSeed(s);
     return true;
   }
   function buyPot(s) {
@@ -355,7 +380,7 @@
     const a = CITY.find((x) => x.id === s.city.id);
     const fx = a.fx;
     if (fx.sta) s.sta = Math.min(100, s.sta + fx.sta);
-    if (fx.para) s.para = Math.max(0, s.para + fx.para);
+    if (fx.para) s.para = Math.max(s.ficha || 0, s.para + fx.para);
     if (fx.resp) s.resp += fx.resp;
     for (const k of ["bot", "lab", "fur", "seg"]) if (fx[k]) gainXp(s, k, XP_NEED[k](s.attrs[k]) * 0.25 * fx[k]);
     note(s, "city", `${a.name}: pronto!`);
@@ -408,12 +433,25 @@
   function bust(s, why) {
     const gain = Math.floor(legendFor(s.runEarned) / 2);
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
-    const keep = { legend: s.legend + gain, attrs: { ...s.attrs }, timesArrested: s.timesArrested + 1 };
+    const ficha = Math.min(R.fichaMax, (s.ficha || 0) + R.fichaStep);
+    const keep = { legend: s.legend + gain, attrs: { ...s.attrs }, timesArrested: s.timesArrested + 1, ficha, fichaLenda: s.legend + gain };
     reset(s, keep);
+    s.para = ficha; // sai da delegacia fichado
     s.dirty = 15 * s.legend; // sai da delegacia só com a roupa do corpo (a Lenda ajuda um pouco)
     s.clean = 0;
     s.busts++;
     s.lastBust = { why, gain, kept: 0 };
+  }
+  // Advogado: baixa a ficha em 10 na hora. Fica 10x mais caro a cada 10% de ficha.
+  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10));
+  function lawyer(s) {
+    if (!s.ficha) return false;
+    const c = lawyerCost(s);
+    if (s.clean < c) return false;
+    s.clean -= c;
+    s.ficha = Math.max(0, s.ficha - 10);
+    note(s, "city", `O advogado limpou parte da sua ficha: agora ${s.ficha}%.`);
+    return true;
   }
   function retire(s) {
     const gain = legendFor(s.runEarned);
@@ -423,7 +461,7 @@
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -435,7 +473,12 @@
     s.time += dt;
     s.saleCd = Math.max(0, s.saleCd - dt);
     s.sta = Math.min(100, s.sta + R.staRegen * dt);
-    s.para = Math.max(0, s.para - R.paraDecay * dt + (s.debt > 0 ? R.loanPara * dt : 0));
+    s.para = Math.max(s.ficha || 0, s.para - R.paraDecay * dt + (s.debt > 0 ? R.loanPara * dt : 0));
+    // ficha limpa aos poucos: a cada 5 de Lenda ganhos depois da última batida
+    while (s.ficha > 0 && s.legend >= s.fichaLenda + R.fichaLenda) {
+      s.ficha = Math.max(0, s.ficha - 5); s.fichaLenda += R.fichaLenda;
+      note(s, "lenda", `Sua fama limpou a ficha: a Paranoia agora pode cair até ${s.ficha}%.`);
+    }
     growAll(s, dt * speed(s));
     for (let i = s.laundry.length - 1; i >= 0; i--) {
       if (s.time >= s.laundry[i].done) { s.clean += s.laundry[i].net; s.laundry.splice(i, 1); }
@@ -446,7 +489,7 @@
       if (s.zeT >= R.zeEvery) {
         s.zeT = 0;
         const cd = s.saleCd; s.saleCd = 0;
-        sell(s, 0, true);
+        if (s.para + paraOf(s, 0) <= R.zeMaxPara) sell(s, 0, true);   // o Zé é cuidadoso: com a Paranoia alta, ele espera
         s.saleCd = Math.max(cd, 0);
       }
     }
@@ -479,7 +522,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
+    equipBlock, bestSeed, lawyer, lawyerCost, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
   };

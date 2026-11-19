@@ -34,13 +34,16 @@ Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 | Sistema do GDD | Como ficou no idle |
 |---|---|
 | Grana suja e limpa | Venda dá grana suja (paga sementes e vasos). Lavagem vira grana limpa (equipamentos, imóveis, cidade, Zé). |
-| Paranoia 👁️ | Barra grande no topo, com marcas em 60% e 80%. Cai sozinha (−1 a cada 4 s). Em 60% a Estamina custa o dobro; acima de 80% a polícia faz **rondas** a cada 5 min (50% de chance de batida); em 100% é batida na hora. |
+| Paranoia 👁️ | Barra grande no topo, com marcas em 60% e 80%. Cai sozinha, devagar (−1 a cada 8 s). Em 60% a Estamina custa o dobro; acima de 80% a polícia faz **rondas** a cada 5 min (50% de chance de batida); em 100% é batida na hora. |
 | Estamina ⚡ | Gasta na cidade e para mendigar; recupera +1 a cada 20 s, com Café, Energético, Bar e Vó. |
 | 18 sementes | Preço, venda, produção, tempo, Botânica e equipamentos exigidos iguais ao GDD. O replantio é automático e paga a semente com grana suja. |
 | 6 estágios por planta | Semente na terra → broto → muda → jovem → crescida → adulta, com desenho próprio de cada planta. |
 | 18 equipamentos | Preços e bônus do GDD. O 1º nível libera sementes, os seguintes repetem o bônus (custo ×2,4). Alguns têm efeito extra: velocidade, toque, menos Paranoia, proteção contra batida. |
 | 13 imóveis | Do Armário Grow (1 vaso numa cadeira, dentro do guarda-roupa) ao Bunker Desativado (40 plantas). Ordem: Armário, Quartinho, Garagem, Porão, Sobrado na Favela, Terreno, Container, Galpão, Sítio, Fazenda, Mina, Praia Particular e Bunker. O Quartinho é o 2º ($100, 3 vasos). Do Terreno em diante as plantas vão para calhas de hidroponia, que cabem mais plantas no mesmo espaço. A Estação Espacial saiu: o passo seguinte vai ser mudar de cidade. O visual muda: gambiarra → profissional → high-tech. |
 | 5 níveis de venda | Por porcentagem do estoque: Discreto 5%, Normal 15%, Ousado 35%, Agressivo 70% e All-in 100% (maior risco). Cada nível tem Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
+| Ficha na polícia | Cada batida sobe a ficha em 10% (até 50%): a Paranoia nunca cai abaixo dela, então quem já foi preso joga com menos folga. A ficha baixa 5% a cada 5 de Lenda ganhos depois da batida, ou 10% na hora com o advogado (Cidade, grana limpa, 10× mais caro a cada 10% de ficha). Aparece como uma faixa listrada no começo da barra de Paranoia. |
+| Equipamentos por lugar | Até o nível 5 (cada nível custa 3× o anterior). Cada um tem um lugar mínimo onde cabe (no Armário só a garrafa PET) e não dá para comprar antes. Ao se mudar, os equipamentos ficam para trás e são comprados de novo. Drone, sistema hidropônico e controlador IA são compra única e vão com você; kit bunker e laboratório de genética só no Bunker. As calhas aparecem quando você compra o sistema hidropônico. |
+| Zé cuidadoso | O Zé só vende se a Paranoia ficar até 60%. |
 | Flagrante | Perde a mercadoria, paga multa de 5–25% da grana suja, −20⚡, +15 Paranoia. |
 | Batida | Perde **tudo**: grana suja e limpa, estoque, equipamentos e o esconderijo (volta ao Armário, com um vaso só). Mantém atributos (Botânica, Lábia, Furtividade, Segurança), Respeito e Lenda, e ganha metade da Lenda da rodada. Câmeras, bunker e Segurança diminuem a chance de a ronda te achar. |
 | Lavagem | Laranjas, NFTs, Crypto e Consultoria, com taxa, tempo, Paranoia e Lábia do GDD. Vários processos ao mesmo tempo. |
