@@ -39,7 +39,7 @@ Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 | 18 sementes | Preço, venda, produção, tempo, Botânica e equipamentos exigidos iguais ao GDD. O replantio é automático e paga a semente com grana suja. |
 | 6 estágios por planta | Semente na terra → broto → muda → jovem → crescida → adulta, com desenho próprio de cada planta. |
 | 18 equipamentos | Preços e bônus do GDD. O 1º nível libera sementes, os seguintes repetem o bônus (custo ×2,4). Alguns têm efeito extra: velocidade, toque, menos Paranoia, proteção contra batida. |
-| 13 imóveis | Do Quartinho (2 vasos) à Estação Espacial (60 vasos). O visual muda: gambiarra → profissional → high-tech. |
+| 13 imóveis | Do Quartinho (2 vasos) ao Bunker Militar (40 vasos). A Estação Espacial saiu: o passo seguinte vai ser mudar de cidade. O visual muda: gambiarra → profissional → high-tech. |
 | 5 níveis de venda | Por porcentagem do estoque: Discreto 5%, Normal 15%, Ousado 35%, Agressivo 70% e All-in 100% (maior risco). Cada nível tem Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
 | Flagrante | Perde a mercadoria, paga multa de 5–25% da grana suja, −20⚡, +15 Paranoia. |
 | Batida | Perde **tudo**: grana suja e limpa, estoque, equipamentos e o esconderijo (volta ao Quartinho). Mantém atributos (Botânica, Lábia, Furtividade, Segurança), Respeito e Lenda, e ganha metade da Lenda da rodada. Câmeras, bunker e Segurança diminuem a chance de a ronda te achar. |

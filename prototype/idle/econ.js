@@ -66,7 +66,6 @@
     ["Ilha Privada", 5e6, 24, 2],
     ["Mina de Ouro Desativada", 2e7, 30, 2],
     ["Bunker Militar", 8e7, 40, 2],
-    ["Estação Espacial", 5e8, 60, 2],
   ].map(([name, cost, pots, tier], id) => ({ id, name, cost, pots, tier }));
 
   // Venda (GDD): quantidade máxima, Paranoia, chance de flagrante e bônus de preço.

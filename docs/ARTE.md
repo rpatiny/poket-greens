@@ -129,7 +129,7 @@ profissional; no fim, é ficção científica.**
 |---|---|---|---|---|
 | **Gambiarra** | Armário, Garagem, Porão | Fita silver tape, papel alumínio, madeira de caixote, ferrugem, coisas tortas e amassadas | Lata de tinta reaproveitada, vaso rachado com fita, floreira de pallet com tábua quebrada | Regador de garrafa PET, ventilador com grade torta, termômetro preso numa tábua, adubo em saco rasgado escrito à mão, lâmpada com refletor de alumínio |
 | **Profissional** | Container, Sobrado, Galpão, Sítio | Metal escovado, plástico, cores neutras, organizado | Vaso de barro novo, bancada de cultivo | Medidor de pH, mini estufa, drone, filtro de carbono, painel LED, hidropônico, CO2, câmeras |
-| **Alta tecnologia** | Fazenda, Ilha, Mina, Bunker, Estação | Escuro, luzes verde-água e roxas, vidro, brilho | Rack hidropônico, torre de vidro | Osmose reversa, Controlador IA (com rosto), porta de bunker, laboratório de DNA |
+| **Alta tecnologia** | Fazenda, Ilha, Mina, Bunker | Escuro, luzes verde-água e roxas, vidro, brilho | Rack hidropônico, torre de vidro | Osmose reversa, Controlador IA (com rosto), porta de bunker, laboratório de DNA |
 
 Regras:
 - **Gambiarra sempre tem uma "marca"**: um pedaço de fita, um amassado, uma lasca, um prego torto
@@ -169,7 +169,7 @@ Regras:
 - Os 14 imóveis estão com o acabamento novo (`docs/arte/cenarios-imoveis.png`). Animações por cima do PNG
   (goteira, fogo, ondas, tocha, lampiões, brilho do ouro, sirene, estrelas) e escuridão com focos de luz no
   Armário, no Porão e na Mina. Tamanhos: 240×135 (Quartinho, Armário, Garagem), 320×180 (do Porão à Fazenda)
-  e 384×216 (Ilha, Mina, Bunker, Estação).
+  e 384×216 (Ilha, Mina, Bunker).
 
 ## 8. Interface
 

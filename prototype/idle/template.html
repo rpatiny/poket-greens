@@ -175,6 +175,7 @@ function load() {
     if (raw) {
       const d = JSON.parse(raw);
       S = Object.assign(E.newState(), d.s);
+      S.place = Math.min(S.place, E.PLACES.length - 1); // saves antigos podiam estar na Estação Espacial
       const away = (Date.now() - d.at) / 1000;
       if (away > 30) {
         const r = E.offline(S, away);

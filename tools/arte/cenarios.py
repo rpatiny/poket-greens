@@ -1307,7 +1307,7 @@ def estacao():
 
 
 SCENES = {0: quartinho, 1: armario, 2: garagem, 3: porao, 4: terreno, 5: container, 6: sobrado, 7: galpao,
-          8: sitio, 9: fazenda, 10: ilha, 11: mina, 12: bunker, 13: estacao}
+          8: sitio, 9: fazenda, 10: ilha, 11: mina, 12: bunker}
 
 
 if __name__ == "__main__":
