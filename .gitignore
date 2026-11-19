@@ -2,3 +2,5 @@
 *.translation
 /export/
 /build/
+__pycache__/
+*.pyc
