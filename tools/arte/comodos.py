@@ -130,7 +130,7 @@ class Room:
         return {
             "w": FW, "h": FH, "room": [x0, y0, w, h], "floor": fy,
             "pots": [x0 + px, fy + py, pw, ph], "light": list(L),
-            "anims": s.anims, **({"bulb": s.bulb} if s.bulb else {}),
+            "anims": s.anims, **({"bulb": s.bulb} if s.bulb else {}), **({"glow": s.glow} if getattr(s, "glow", None) else {}),
         }
 
 
@@ -262,7 +262,7 @@ def hanging_clothes(c, x, y, cols):
 
 # ======================================================================= 0 · Quartinho
 def r0():
-    R = Room(0, 140, 112, 30, seed=1)
+    R = Room(1, 140, 112, 30, seed=1)
     R.shell(wallpaper_region, lambda c, x, y, w, h: planks_region(c, x, y, w, h, 3, 6, 4))
     c, x0, y0, fy = R.c, R.x0, R.y0, R.fy
     wx, wy = x0 + 82, y0 + 5
@@ -305,45 +305,91 @@ def r0():
         cn = Sprite(4, 6); cn.rect(0, 0, 3, 5, col); cn.vline(0, 0, 5, shift(col, 1)); cn.hline(0, 3, 0, S_[5])
         R.add(cn, 34 + i * 5, 66 - (i % 2) * 3, 1.0)
     return R.finish((96, -60), [L_poly([(80, -30), (112, -30), (98, 52), (66, 52)], 0.95), L_point(96, 18, 80, 56, 0.55),
-                                L_point(44, 6, 30, 20, 0.9), L_point(110, 18, 18, 12, 0.5)], pots=(62, 4, 40, 40))
+                                L_point(44, 6, 30, 20, 0.9), L_point(110, 18, 18, 12, 0.5)], pots=(46, 14, 52, 30))
 
 
 # ======================================================================= 1 · Armário Grow
 def r1():
-    R = Room(1, 152, 116, 30, seed=2)
+    """Armário Grow: dentro de um guarda-roupa. Uma planta só, num vaso em cima de uma cadeira, debaixo da luz roxa."""
+    R = Room(0, 104, 96, 38, cap=(W_[1], W_[2]), door=False, seed=2)
 
-    def foil(c, x0, y0, w, h, floor=False):
-        r = random.Random(3 if floor else 5)
-        c.rect(x0, y0, x0 + w - 1, y0 + h - 1, S_[4])
-        for _ in range(w * h // 20):
-            x, y = r.uniform(x0, x0 + w - 3), r.uniform(y0, y0 + h - 2)
-            col = r.choice([S_[3], S_[4], S_[5], S_[4]])
-            c.poly([(x, y), (x + r.uniform(3, 7), y + r.uniform(-1, 1)), (x + r.uniform(2, 5), y + r.uniform(2, 4))], col)
-        for _ in range(w * h // 60):
-            c.set(r.uniform(x0, x0 + w), r.uniform(y0, y0 + h), WHITE)
-        if not floor:
-            c.hline(x0, x0 + w - 1, y0 + h - 4, S_[3]); c.rect(x0, y0 + h - 3, x0 + w - 1, y0 + h - 1, S_[2])
+    def back(c, x0, y0, w, h):
+        c.rect(x0, y0, x0 + w - 1, y0 + h - 1, W_[2])
+        for x in range(x0, x0 + w, 9):                       # tábuas do fundo do armário
+            c.vline(x, y0, y0 + h - 1, W_[1]); c.vline(x + 1, y0, y0 + h - 1, W_[3])
+        r = random.Random(21)
+        for _ in range(30):
+            gx, gy = r.uniform(x0, x0 + w), r.uniform(y0, y0 + h - 6)
+            c.vline(gx, gy, gy + r.randrange(3, 8), W_[1])
+        c.rect(x0, y0, x0 + w - 1, y0 + 4, W_[3]); c.hline(x0, x0 + w - 1, y0, W_[4]); c.hline(x0, x0 + w - 1, y0 + 4, W_[1])   # prateleira de cima
+        c.hline(x0, x0 + w - 1, y0 + h - 4, W_[1]); c.rect(x0, y0 + h - 3, x0 + w - 1, y0 + h - 1, W_[1])
 
-    R.shell(lambda c, x, y, w, h: foil(c, x, y, w, h), lambda c, x, y, w, h: planks_region(c, x, y, w, h, 2, 6, 9))
-    c, x0, y0, fy = R.c, R.x0, R.y0, R.fy
-    hanging_clothes(c, x0 + 4, y0 + 4, [CR[2], D_[2], L_[2], G_[2]])
-    hanging_clothes(c, x0 + 118, y0 + 4, [PL[2], CR[1], S_[3], D_[3]])
-    c.vline(x0 + 76, y0 - 4, y0 + 8, OL)
-    lamp = Sprite(60, 8); lamp.rect(0, 0, 59, 4, S_[3]); lamp.hline(0, 59, 0, S_[5]); lamp.rect(3, 5, 56, 7, PL[3])
-    for x in range(5, 56, 4):
-        lamp.set(x, 6, WHITE)
-    lamp.stamp_on(c, x0 + 46, y0 + 8)
-    tm = Sprite(8, 10); tm.rect(0, 0, 7, 9, WHITE); tm.ell(3.5, 3.5, 2, 2, S_[4]); tm.set(3, 2, CR[3]); tm.stamp_on(c, x0 + 104, y0 + 10)
-    c.line(x0 + 108, y0 + 20, x0 + 108, fy + 10, OL)
-    R.add(box3d(26, 10, 6, CR[3], CR[2]), 6, 70, 0.3)
-    R.add(box3d(20, 9, 5, D_[3], D_[2]), 10, 60, 0.3)
-    for i, col in enumerate((OL, S_[2])):
-        sh = Sprite(10, 6); sh.rect(0, 1, 9, 4, col if col != OL else S_[1]); sh.rect(5, 0, 9, 2, S_[3]); sh.hline(0, 9, 5, S_[5])
-        R.add(sh, 120 + i * 12, 74 + i, 0.2)
-    R.add(sack(16, 12, SO[3]), 124, 8, 0.4)
-    c.line(x0 + 108, fy + 10, x0 + 140, fy + 30, OL)
-    R.anims.append(["purple", x0 + 49, y0 + 13, 54])
-    return R.finish((76, -20), [L_point(76, 10, 80, 60, 1.05)], pots=(36, 6, 80, 54), dark=True)
+    R.shell(back, lambda c, x, y, w, h: planks_region(c, x, y, w, h, 2, 7, 11))
+    c, x0, y0, fy, w = R.c, R.x0, R.y0, R.fy, R.w
+    # caixa de sapato e uma lata na prateleira
+    c.box(x0 + 6, y0 - 3, x0 + 22, y0 + 3, PA[3]); c.hline(x0 + 7, x0 + 21, y0 - 2, PA[4]); c.rect(x0 + 12, y0, x0 + 16, y0 + 1, CR[2])
+    c.box(x0 + 84, y0 - 2, x0 + 90, y0 + 3, S_[4]); c.hline(x0 + 85, x0 + 89, y0 - 1, S_[5])
+    # varão com suportes
+    ry = y0 + 9
+    c.hline(x0 + 1, x0 + w - 2, ry, S_[4]); c.hline(x0 + 1, x0 + w - 2, ry - 1, S_[5]); c.hline(x0 + 1, x0 + w - 2, ry + 1, OL)
+    for bx in (x0 + 1, x0 + w - 4):
+        c.rect(bx, ry - 2, bx + 2, ry + 2, S_[3])
+
+    def hanger(hx, col, shirt=None):
+        c.set(hx, ry - 2, col); c.set(hx + 1, ry - 3, col); c.set(hx + 2, ry - 2, col); c.vline(hx, ry - 1, ry + 3, col)   # gancho
+        c.line(hx, ry + 3, hx - 6, ry + 9, col); c.line(hx, ry + 3, hx + 6, ry + 9, col); c.hline(hx - 6, hx + 6, ry + 9, col)
+        c.line(hx + 1, ry + 4, hx + 7, ry + 10, OL); c.hline(hx - 5, hx + 7, ry + 10, OL)
+        if shirt:                                         # a única camiseta, velha e desbotada
+            c.poly([(hx - 7, ry + 9), (hx + 7, ry + 9), (hx + 6, ry + 24), (hx - 6, ry + 24)], shirt)
+            c.rect(hx - 9, ry + 9, hx - 7, ry + 14, shirt); c.rect(hx + 7, ry + 9, hx + 9, ry + 14, shirt)
+            c.vline(hx - 6, ry + 10, ry + 24, shift(shirt, 1)); c.vline(hx + 5, ry + 11, ry + 24, shift(shirt, -1))
+            c.hline(hx - 2, hx + 2, ry + 9, shift(shirt, -1)); c.rect(hx - 3, ry + 15, hx, ry + 16, shift(shirt, 1))
+            c.hline(hx - 6, hx + 6, ry + 25, OL); c.vline(hx + 7, ry + 15, ry + 24, OL)
+
+    hanger(x0 + 12, S_[5]); hanger(x0 + 22, PL[3], shirt=D_[2]); hanger(x0 + 30, S_[5])
+    hanger(x0 + 76, W_[4]); hanger(x0 + 86, S_[5]); hanger(x0 + 93, CR[3])
+    # luz roxa pendurada no varão, bem em cima do vaso, e o fio descendo pela lateral
+    lx = x0 + w // 2
+    c.vline(lx - 9, ry, ry + 4, OL); c.vline(lx + 9, ry, ry + 4, OL)
+    lamp = Sprite(28, 7); lamp.rect(0, 0, 27, 3, S_[2]); lamp.hline(0, 27, 0, S_[3]); lamp.rect(2, 4, 25, 6, PL[2])
+    for x in range(3, 25, 3):
+        lamp.set(x, 5, PL[-1]); lamp.set(x + 1, 5, WHITE)
+    lamp.stamp_on(c, lx - 14, ry + 4)
+    c.line(lx + 14, ry + 6, x0 + w - 3, ry + 10, OL); c.vline(x0 + w - 3, ry + 10, fy + 40, OL)
+    R.anims.append(["purple", lx - 11, ry + 10, 22])
+    R.glow = [lx, fy + 6, 40, 30, "rgba(129,96,168,0.16)"]
+    # cadeira com o vaso em cima (o vaso é do jogo; a cadeira fica no cenário)
+    ch = Sprite(24, 28)
+    ch.rect(1, 0, 3, 9, W_[2]); ch.rect(20, 0, 22, 9, W_[2]); ch.rect(1, 1, 22, 4, W_[3]); ch.hline(1, 22, 1, W_[4])
+    ch.rect(0, 9, 23, 20, W_[3]); ch.hline(0, 23, 9, W_[4]); ch.vline(0, 9, 20, W_[4])
+    for yy in (12, 16):
+        ch.hline(1, 22, yy, W_[2])
+    ch.rect(0, 21, 23, 23, W_[1]); ch.rect(1, 24, 2, 27, W_[1]); ch.rect(21, 24, 22, 27, W_[1])
+    R.add(ch, w // 2 - 12, 7, 0.45)
+    # no chão: tênis, borrifador e a extensão
+    for i, col in enumerate((S_[6], S_[6])):
+        sh = Sprite(7, 11); sh.ell(3, 5.5, 3, 5, col); sh.rect(1, 6, 5, 9, CR[3]); sh.ell(3, 2.5, 2, 2, S_[5])
+        R.add(sh, 8 + i * 9, 34 - i * 2, 0.15)
+    sp = Sprite(8, 16); sp.rect(1, 6, 6, 15, D_[4]); sp.hline(1, 6, 6, WHITE); sp.rect(2, 2, 5, 5, L_[3]); sp.rect(4, 0, 7, 2, L_[3])
+    R.add(sp, 84, 30, 0.6)
+    ex = box3d(14, 5, 3, WHITE, S_[5]); ex.set(4, 2, OL); ex.set(9, 2, OL)
+    R.add(ex, 82, 48, 0.2)
+    # portas abertas para fora, presas nas quinas da frente
+    yb = y0 + R.h + 5
+    for side in (-1, 1):
+        hx = x0 - 6 if side < 0 else x0 + w + 5
+        tip = hx + side * 26
+        face = [(hx, yb), (tip, yb + 7), (tip, yb - 31), (hx, yb - 38)]
+        c.poly(face, W_[2])
+        c.poly([(hx + side * 4, yb - 4), (tip - side * 4, yb + 3), (tip - side * 4, yb - 26), (hx + side * 4, yb - 33)], W_[1])
+        if side < 0:                                     # espelho na porta da esquerda
+            c.poly([(hx - 6, yb - 8), (tip + 6, yb - 1), (tip + 6, yb - 24), (hx - 6, yb - 31)], D_[3])
+            c.line(hx - 9, yb - 12, hx - 14, yb - 20, WHITE); c.line(hx - 12, yb - 9, hx - 18, yb - 18, D_[4])
+        c.line(hx, yb, tip, yb + 7, OL); c.line(hx, yb - 38, tip, yb - 31, W_[3]); c.line(tip, yb + 7, tip, yb - 31, OL)
+        c.line(hx, yb - 39, tip, yb - 32, OL)
+        c.rect(tip - side * 3, yb - 14, tip - side * 2, yb - 12, G_[3])
+    return R.finish((52, -40), [L_point(52, 6, 44, 34, 1.15), L_poly([(0, 50), (104, 50), (104, 70), (0, 70)], 0.3)],
+                    pots=(52, 3, 0, 0), dark=True)
 
 
 # ======================================================================= 2 · Garagem
@@ -739,26 +785,21 @@ def r10():
 
     R.shell(sea, sand)
 
-    def palm():
-        sp = Sprite(54, 48)
-        for (dx, dy) in ((-26, 6), (26, 6), (-18, -10), (18, -10), (0, -18), (-10, 16), (12, 16)):
-            pts = [(27, 22), (27 + dx * 0.5, 22 + dy * 0.5 - 4), (27 + dx, 22 + dy), (27 + dx * 0.5, 22 + dy * 0.5 + 2)]
-            sp.poly(pts, L_[3]); sp.line(27, 22, 27 + dx, 22 + dy, L_[2])
-        for k in range(3):
-            sp.ell(24 + k * 3, 23, 2, 2, W_[1])
-        return sp
-    R.add(palm(), -12, 8, 1.3)
-    R.add(palm(), 252, 6, 1.3)
-    hm = Sprite(70, 18)
-    for x in range(70):
-        yy = int(3 + 8 * math.sin(math.pi * x / 69))
-        hm.vline(x, yy, yy + 4, CR[3] if (x // 5) % 2 else G_[3])
-    R.add(hm, 200, 64, 0.3)
+    from palmeira import palm
+    R.add(palm(), -6, -10, 0.9)                       # uma palmeira só, no canto esquerdo
+    ch = Sprite(20, 40)                               # espreguiçadeira listrada
+    ch.rect(0, 0, 19, 13, W_[3]); ch.rect(1, 1, 18, 12, WHITE)
+    for yy in range(14, 36):
+        ch.hline(0, 19, yy, W_[2] if yy in (14, 35) else (D_[3] if (yy // 3) % 2 else WHITE))
+    ch.vline(0, 0, 35, W_[2]); ch.vline(19, 0, 35, W_[2]); ch.rect(0, 36, 1, 39, W_[1]); ch.rect(18, 36, 19, 39, W_[1])
+    R.add(ch, 252, 60, 0.3)
+    tw = Sprite(18, 10); tw.rect(0, 0, 17, 9, CR[3]); tw.hline(0, 17, 3, WHITE); tw.hline(0, 17, 6, WHITE)
+    R.add(tw, 228, 100, 0.05)
     cl = box3d(24, 10, 9, WHITE, D_[3]); cl.rect(8, 12, 15, 15, WHITE)
     R.add(cl, 20, 104, 0.5)
     sb = Sprite(12, 44); sb.ell(5.5, 22, 5, 21, G_[3]); sb.vline(5, 4, 40, CR[3])
     R.add(sb, 8, 50, 0.2)
-    for tx in (36, 260):
+    for tx in (64, 236):
         tk = Sprite(6, 26); tk.rect(2, 6, 3, 25, W_[2]); tk.rect(0, 0, 5, 6, W_[3])
         R.add(tk, tx, 30, 1.0)
         R.anims.append(["torch", R.x0 + tx + 3, R.fy + 29])
@@ -872,7 +913,7 @@ def r12():
     return R.finish((156, 0), lights, pots=(50, 22, 216, 90))
 
 
-ROOMS = [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12]
+ROOMS = [r1, r0, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12]
 
 
 if __name__ == "__main__":

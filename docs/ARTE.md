@@ -209,3 +209,10 @@ Cada cômodo tem três camadas:
 Mais `meta.json` (área dos vasos, luz principal, animações) e `shift.json` (degrau acima e abaixo de
 cada cor da paleta). Assim uma planta perto da lâmpada brilha e a do canto fica na penumbra, mesmo
 crescendo em tempo real. Os cenários de vista lateral (`cenarios.py`) ficam como referência.
+
+**Vasos e calhas.** Nos 5 primeiros esconderijos (gambiarra) as plantas ficam em vasos. Do Container em
+diante ficam em calhas de hidroponia, com um copinho de rede por planta: PVC branco nos lugares
+profissionais, calha escura com LED verde nos high-tech. As calhas são desenhadas pelo jogo e recebem a
+mesma luz e sombra dos vasos. A Ilha tem uma palmeira só (`tools/arte/palmeira.py`), com tronco curvo
+de anéis e folhas serrilhadas que caem.
+

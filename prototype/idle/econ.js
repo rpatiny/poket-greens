@@ -53,8 +53,8 @@
 
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).
   const PLACES = [
-    ["Quartinho dos fundos", 0, 2, 0],
-    ["Armário Grow", 500, 3, 0],
+    ["Armário Grow", 0, 1, 0],
+    ["Quartinho dos fundos", 100, 3, 0],
     ["Garagem do Vizinho", 1500, 4, 0],
     ["Porão Abandonado", 4000, 5, 0],
     ["Terreno Abandonado", 10000, 6, 0],
@@ -124,7 +124,7 @@
       attrs: { bot: 1, lab: 1, fur: 1, seg: 1 },
       xp: { bot: 0, lab: 0, fur: 0, seg: 0 },
       place: 0,
-      pots: [{ g: 0, s: 0, on: true }, { g: 0, s: 0, on: true }],
+      pots: [{ g: 0, s: 0, on: true }],
       seed: 0, // semente escolhida para replantar
       stock: Array(SEEDS.length).fill(0),
       equip: {},
@@ -166,7 +166,7 @@
   const paraOf = (s, lvlIdx) => SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
   const maxPots = (s) => PLACES[s.place].pots;
-  const potCost = (s) => Math.round(20 * Math.pow(2.6, s.pots.length - 2)); // grana suja
+  const potCost = (s) => Math.round(20 * Math.pow(2.6, s.pots.length - 1)); // grana suja
   const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)));
   const saleCooldown = (s) => Math.max(3, 20 - 17 * (topStockSeed(s) / (SEEDS.length - 1))) * Math.max(0.4, 1 - s.attrs.lab * 0.01);
   const stockUnits = (s) => s.stock.reduce((a, b) => a + b, 0);
@@ -403,7 +403,7 @@
     if (s.cheat && s.cheat.noPolice) { s.para = Math.min(s.para, 99); return; }
     if (s.para >= 100) bust(s, "A Paranoia chegou a 100%.");
   }
-  // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Quartinho.
+  // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Armário.
   // Fica só o que é do personagem: atributos, Respeito e Lenda (+ metade da Lenda da rodada).
   function bust(s, why) {
     const gain = Math.floor(legendFor(s.runEarned) / 2);

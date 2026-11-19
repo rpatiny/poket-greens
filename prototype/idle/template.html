@@ -42,6 +42,15 @@ header{background:var(--panel);padding-block:8px 8px;display:flex;flex-direction
 canvas{display:block;width:100%;image-rendering:pixelated}
 .tag{position:absolute;font-size:12px;background:#1a1420d9;padding:3px 8px;border:2px solid #1a1420;pointer-events:none}
 #place{left:8px;top:8px} #busy{right:8px;top:8px;color:var(--leaf-2)}
+#tip{position:absolute;left:8px;right:8px;top:36px;z-index:5;display:flex;gap:8px;align-items:flex-start;background:#fffbef;color:#1a1420;border:2px solid #1a1420;box-shadow:3px 3px 0 #1a1420;padding:8px 10px;font-size:13px;line-height:1.35;cursor:default;animation:pop .25s}
+#tip[hidden]{display:none}
+#tip .who{font-size:26px;line-height:1}
+#tip b{color:#6e2834}
+#tip .acts{display:flex;gap:6px;margin-top:6px}
+#tip button{background:#1a1420;color:#fffbef;padding:3px 8px;font-size:12px}
+#tip button.ghost{background:none;color:#1a1420;text-decoration:underline}
+#tip:after{content:"";position:absolute;left:18px;bottom:-9px;border:8px solid transparent;border-top-color:#1a1420;border-bottom:0}
+@keyframes pop{from{transform:scale(.9);opacity:0}}
 #hint{left:50%;bottom:8px;transform:translateX(-50%);transition:opacity .4s;white-space:nowrap}
 .sell{background:var(--panel);padding-block:8px;display:flex;flex-direction:column;gap:6px}
 .stockline{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);gap:8px}
@@ -113,10 +122,11 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
   </header>
   <div id="scene" role="button" aria-label="Tocar para fazer as plantas crescerem">
     <canvas id="cv" width="320" height="180"></canvas>
-    <div class="tag" id="place">Quartinho</div>
+    <div class="tag" id="place">Armário Grow</div>
     <div class="tag" id="busy" hidden></div>
     <div class="tag" id="hint">toque para regar as plantas</div>
     <div class="tag" id="master" hidden>MASTER</div>
+    <div id="tip" hidden role="status"><div class="who" aria-hidden="true">👵</div><div><div id="tiptext"></div><div class="acts"><button id="tipgo">Ver</button><button class="ghost" id="tipok">Entendi</button></div></div></div>
   </div>
   <div class="sell pad">
     <div class="stockline"><span>Estoque: <b id="units">0</b> un · vale <b id="value">$0</b></span><span id="cdtext"></span></div>
@@ -261,10 +271,47 @@ function drawRoom(tier) {
   if (tier === 0) { g.fillStyle = "#ffffff1c"; g.beginPath(); g.moveTo(228, FLOOR); g.lineTo(296, FLOOR); g.lineTo(334, H); g.lineTo(256, H); g.fill(); }
 }
 // vasos espalhados na área de plantio do cômodo (meta.pots = x, y, largura, altura do topo dos vasos)
-function layout(n) {
+function plantArea() {
   const m = SCENES.roomMeta(S.place);
   const [ax, ay, aw, ah0] = m ? m.pots : [24, FLOOR + 34, W - 48, H - FLOOR - 62];
-  const ah = m ? Math.min(ah0, m.room[1] + m.room[3] - 27 - ay) : ah0;
+  return [ax, ay, aw, m ? Math.min(ah0, m.room[1] + m.room[3] - 27 - ay) : ah0];
+}
+// do Container em diante: calhas de hidroponia. Cabem mais plantas (22 px entre elas, contra 30-44 dos vasos)
+const HYDRO_SP = 22;
+function layoutHydro(n) {
+  const [ax, ay, aw, ah] = plantArea();
+  const maxPer = Math.max(1, Math.floor((aw + 10) / HYDRO_SP));
+  const rows = Math.ceil(n / maxPer), per = Math.ceil(n / rows);
+  const rs = rows > 1 ? Math.min(34, ah / (rows - 1)) : 0;
+  const top = ay + (ah - (rows - 1) * rs) / 2;
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    const count = Math.min(per, n - r * per), gw = count * HYDRO_SP + 8;
+    const gx = Math.round(ax + aw / 2 - gw / 2) + (rows > 2 && r % 2 ? 4 : 0), gy = Math.round(top + r * rs) + 6;
+    out.push({ x: gx, y: gy, w: gw, count, first: r * per });
+  }
+  return out;
+}
+// calha: tampo com os copinhos de rede, frente, pés. tier 1 = PVC branco, tier 2 = high-tech escura com LED verde
+function paintGutter(c, w, count, tier) {
+  const R = (x, y, ww, hh, col) => { c.fillStyle = col; c.fillRect(x, y, ww, hh); };
+  const OL = "#1a1420";
+  const hi = tier === 2;
+  const top = hi ? "#646379" : "#bfbfc8", lip = hi ? "#8f90a2" : "#ebe9e1", front = hi ? "#403d54" : "#ebe9e1", fdark = hi ? "#272436" : "#bfbfc8";
+  R(2, 9, 2, 5, "#646379"); R(w - 4, 9, 2, 5, "#646379"); R(2, 13, 2, 1, OL); R(w - 4, 13, 2, 1, OL);   // pés
+  R(0, 0, w, 10, OL);
+  R(1, 1, w - 2, 5, top); R(1, 1, w - 2, 1, lip);
+  R(1, 6, w - 2, 3, front); R(1, 8, w - 2, 1, fdark);
+  if (hi) R(2, 7, w - 4, 1, "#48a38a");
+  else { R(w - 9, 6, 4, 3, "#bfbfc8"); R(w - 8, 7, 2, 1, "#646379"); }                             // tampa da ponta
+  R(w - 2, 3, 2, 3, hi ? "#2a7470" : "#3a5ea3");                                                   // mangueira de retorno
+  for (let k = 0; k < count; k++) {                                                                 // copinhos de rede
+    const cx = 4 + HYDRO_SP / 2 + k * HYDRO_SP;
+    R(cx - 3, 2, 6, 3, OL); R(cx - 2, 2, 4, 2, "#47292b"); R(cx - 2, 2, 4, 1, "#272436");
+  }
+}
+function layout(n) {
+  const [ax, ay, aw, ah] = plantArea();
   let best = null;
   for (let per = 1; per <= n; per++) {               // colunas: espaço parecido com o de um vaso de verdade
     const rows = Math.ceil(n / per);
@@ -291,25 +338,38 @@ function draw() {
   g.save();
   if (shake > 0) g.translate(Math.round((Math.random() - 0.5) * shake), 0);
   SCENES.background(g, S.place);
-  const L = layout(S.pots.length);
-  // cada vaso + planta é um sprite 32x58 (vaso embaixo, planta saindo da terra); a cena acende e projeta a sombra
-  const items = L.pts.map(([x, y], i) => {
-    const p = S.pots[i], f = p.on ? p.g / E.SEEDS[p.s].time : 0;
-    const pf = tier === 0 ? (i % 3 === 2 ? 2 : i % 2) : 2;
-    const st = p.on ? stageCell(p.s, f) : null;
-    return { i, f, on: p.on, x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-"),
-      paint(c) {
-        if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24);
-        if (st && sprites.estagios) c.drawImage(sprites.estagios, st[0] * 32, st[1] * 40, 32, 40, 0, 0, 32, 40);
-      } };
-  });
+  const hydro = tier >= 1;
+  const plantOf = (i) => { const p = S.pots[i]; return { p, f: p.on ? p.g / E.SEEDS[p.s].time : 0, st: p.on ? stageCell(p.s, p.on ? p.g / E.SEEDS[p.s].time : 0) : null }; };
+  const paintPlant = (st) => (c) => { if (st && sprites.estagios) c.drawImage(sprites.estagios, st[0] * 32, st[1] * 40, 32, 40, 0, 0, 32, 40); };
+  const items = [], marks = [];
+  if (hydro) {
+    // cada calha, e logo depois as plantas dela (a calha da frente cobre o pé das de trás)
+    for (const gt of layoutHydro(S.pots.length)) {
+      items.push({ x: gt.x, y: gt.y, w: gt.w, h: 14, foot: 0, key: "calha:" + gt.count + ":" + tier, paint: (c) => paintGutter(c, gt.w, gt.count, tier) });
+      for (let k = 0; k < gt.count; k++) {
+        const i = gt.first + k, { p, f, st } = plantOf(i), cx = gt.x + 4 + HYDRO_SP / 2 + k * HYDRO_SP;
+        if (st) items.push({ x: cx - 16, y: gt.y + 4 - 40, w: 32, h: 40, foot: -9, key: "p:" + st.join(","), paint: paintPlant(st) });
+        marks.push({ on: p.on, f, x: cx, top: gt.y + 4 - 26, bar: [cx - 4, gt.y + 7, 8] });
+      }
+    }
+  } else {
+    // cada vaso + planta é um sprite 32x58 (vaso embaixo, planta saindo da terra)
+    layout(S.pots.length).pts.forEach(([x, y], i) => {
+      const { p, f, st } = plantOf(i);
+      const pf = i % 3 === 2 ? 2 : i % 2;
+      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-"),
+        paint(c) { if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24); paintPlant(st)(c); } });
+      marks.push({ on: p.on, f, x: x + 16, top: y - 25, bar: [x + 8, y + 22, 16], pot: true });
+    });
+  }
+  // a cena acende cada sprite pelo mapa de luz e projeta a sombra
   if (sprites.vasos && sprites.estagios) SCENES.plants(g, S.place, items);
-  for (const it of items) {
-    const x = it.x, y = it.y + 34;
-    if (!it.on) { g.fillStyle = "#d95463"; g.font = "bold 9px monospace"; g.fillText("$", x + 13, y + 2); }
-    else if (it.f > 0.92 && Math.floor(lastTime * 4) % 2 === 0) { g.fillStyle = "#fff0a6"; g.fillRect(x + 24, y - 25, 1, 3); g.fillRect(x + 23, y - 24, 3, 1); }
-    g.fillStyle = "#1a1420"; g.fillRect(x + 8, y + 22, 16, 3);
-    g.fillStyle = "#7cb342"; g.fillRect(x + 9, y + 23, Math.round(14 * Math.min(1, it.f)), 1);
+  for (const m of marks) {
+    if (!m.on) { g.fillStyle = "#d95463"; g.font = "bold 9px monospace"; g.fillText("$", m.x - 3, m.top + 27); }
+    else if (m.f > 0.92 && Math.floor(lastTime * 4) % 2 === 0) { g.fillStyle = "#fff0a6"; g.fillRect(m.x + 8, m.top, 1, 3); g.fillRect(m.x + 7, m.top + 1, 3, 1); }
+    const [bx, by, bw] = m.bar;
+    g.fillStyle = "#1a1420"; g.fillRect(bx, by, bw, m.pot ? 3 : 2);
+    g.fillStyle = "#7cb342"; g.fillRect(bx + (m.pot ? 1 : 0), by + (m.pot ? 1 : 0), Math.round((bw - (m.pot ? 2 : 0)) * Math.min(1, m.f)), 1);
   }
   SCENES.lighting(g, S.place);
   g.restore();
@@ -586,7 +646,7 @@ function refresh() {
 function bustModal(b) {
   const m = el(`<div class="modal"><div class="card">
     <b style="font-size:18px">🚨 BATIDA POLICIAL</b>
-    <p>${b.why || ""}<br>A polícia levou <b>tudo</b>: grana suja e limpa, estoque, equipamentos e o esconderijo. Você volta para o Quartinho dos fundos.</p>
+    <p>${b.why || ""}<br>A polícia levou <b>tudo</b>: grana suja e limpa, estoque, equipamentos e o esconderijo. Você volta para o Armário, com um vaso só.</p>
     <p>O que é seu ninguém tira: <b>Botânica, Lábia, Furtividade, Segurança</b>, Respeito e Lenda.<br>Na delegacia você ficou famoso: <span class="big">+${b.gain || 0} Lenda</span></p>
     <p style="text-align:left;border-top:2px solid var(--line);padding-top:8px"><b>Saiu só com a roupa do corpo?</b> Seus vasos ainda têm a última muda. Para conseguir grana e recomeçar:</p>
     <div class="help" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -712,12 +772,55 @@ function openMaster() {
 
 // ---------------------------------------------------------------- laço
 let last = performance.now(), acc = 0, saveT = 0;
+// ---------------------------------------------------------------- dicas da Vó (1 minuto sem fazer nada)
+const TIP_IDLE = 60;
+let idleT = 0, tipTab = null, lastTip = "";
+function nextTip() {
+  const units = E.stockUnits(S), place = E.PLACES[S.place], nextPlace = E.PLACES[S.place + 1];
+  const lockedSeed = E.SEEDS.find((sd) => E.seedLocked(S, sd).length);
+  const tips = [];
+  if (S.para >= 60) tips.push(["Paranoia em <b>" + Math.round(S.para) + "%</b>! Para de vender um pouco e deixa esfriar. Acima de 80% a polícia faz ronda. O Spa da cidade acalma.", "cidade"]);
+  if (S.pots.some((p) => !p.on)) tips.push(["Tem vaso vazio! Escolhe uma semente na Estufa para começar a plantar.", "estufa"]);
+  if (units > 0 && S.saleCd <= 0 && S.para < 60) tips.push(["Você tem <b>" + units + " un</b> paradas no estoque. Vende no <b>Discreto (5%)</b>: chama menos atenção da polícia.", null]);
+  if (S.pots.length < E.maxPots(S) && S.dirty >= E.potCost(S)) tips.push(["Dá pra comprar <b>mais um vaso</b> com a grana suja. Mais plantas, mais grana.", "estufa"]);
+  if (S.pots.length >= E.maxPots(S) && nextPlace && S.clean >= nextPlace.cost) tips.push(["O " + place.name + " ficou pequeno. Você já pode se mudar para o <b>" + nextPlace.name + "</b>!", "estufa"]);
+  if (S.dirty > 200 && S.clean < S.dirty / 2 && !S.laundry.length) tips.push(["Grana suja só compra semente e vaso. <b>Lava o dinheiro</b> para comprar equipamento e esconderijo.", "lavagem"]);
+  if (!S.ze && S.clean >= E.R.zeCost) tips.push(["Contrata o <b>Zé</b>: ele vende sozinho, até com o jogo fechado.", "loja"]);
+  if (lockedSeed) tips.push(["Para plantar <b>" + lockedSeed.name + "</b> falta: " + E.seedLocked(S, lockedSeed).join(", ") + ".", "loja"]);
+  if (S.sta < 30) tips.push(["Tá sem energia. Toma um café na Cidade ou passa aqui em casa que eu te dou um prato de comida.", "cidade"]);
+  tips.push(["Toca nas plantas para elas crescerem mais rápido. Cada toque é água e carinho.", null]);
+  return tips.find((t) => t[0] !== lastTip) || tips[0];
+}
+function showTip() {
+  const [text, tabName] = nextTip();
+  lastTip = text; tipTab = tabName;
+  $("tiptext").innerHTML = text;
+  $("tipgo").hidden = !tabName;
+  $("tip").hidden = false;
+}
+function hideTip() { $("tip").hidden = true; idleT = 0; }
+$("tipok").addEventListener("click", (e) => { e.stopPropagation(); hideTip(); });
+$("tipgo").addEventListener("click", (e) => {
+  e.stopPropagation(); hideTip();
+  const b = document.querySelector('[data-tab="' + tipTab + '"]'); if (b) b.click();
+});
+$("tip").addEventListener("pointerdown", (e) => e.stopPropagation());
+// qualquer toque ou tecla conta como ação
+for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, (e) => { if (!e.target.closest || !e.target.closest("#tip")) { idleT = 0; if (!$("tip").hidden) $("tip").hidden = true; } }, true);
+function tickTip(dt) {
+  if (document.querySelector(".modal")) { idleT = 0; return; }
+  if (!$("tip").hidden) return;
+  idleT += dt;
+  if (idleT >= TIP_IDLE) showTip();
+}
+
 function loop(now) {
   const dt = Math.min(0.25, (now - last) / 1000);
   last = now; lastTime = now / 1000;
   const speedUp = (S.cheat && S.cheat.speed) || 1;
   E.tick(S, dt * speedUp);
   checkEvents();
+  tickTip(dt);
   acc += dt; saveT += dt;
   if (acc > 0.15) { refresh(); acc = 0; }
   if (saveT > 3) { save(); saveT = 0; }

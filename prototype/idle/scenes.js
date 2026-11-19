@@ -626,6 +626,8 @@
   let darkCanvas = null;
   function lighting(g, id, t) {
     if (ROOM[id]) {                                   // a luz já está pintada no cômodo; só a lâmpada pisca
+      const gl = ROOM[id].meta.glow;
+      if (gl) { const { ell } = T(g); const [x, y, rx, ry, col] = gl; ell(x, y, rx, ry, col); ell(x, y - 2, Math.round(rx * 0.6), Math.round(ry * 0.6), col); }
       const b = ROOM[id].meta.bulb;
       if (b) { const { R } = T(g); const [bx, by] = b; R(bx - 3, by - 2, 7, 6, "#1a1420"); R(bx - 2, by - 1, 5, 4, Math.sin(t * 23) > 0.93 ? "#d1952e" : "#fff0a6"); R(bx - 1, by, 2, 1, "#fffbef"); }
       return;

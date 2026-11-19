@@ -39,10 +39,10 @@ Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 | 18 sementes | Preço, venda, produção, tempo, Botânica e equipamentos exigidos iguais ao GDD. O replantio é automático e paga a semente com grana suja. |
 | 6 estágios por planta | Semente na terra → broto → muda → jovem → crescida → adulta, com desenho próprio de cada planta. |
 | 18 equipamentos | Preços e bônus do GDD. O 1º nível libera sementes, os seguintes repetem o bônus (custo ×2,4). Alguns têm efeito extra: velocidade, toque, menos Paranoia, proteção contra batida. |
-| 13 imóveis | Do Quartinho (2 vasos) ao Bunker Militar (40 vasos). A Estação Espacial saiu: o passo seguinte vai ser mudar de cidade. O visual muda: gambiarra → profissional → high-tech. |
+| 13 imóveis | Do Armário Grow (1 vaso numa cadeira, dentro do guarda-roupa) ao Bunker Militar (40 plantas). O Quartinho é o 2º ($100, 3 vasos). Do Container em diante as plantas vão para calhas de hidroponia, que cabem mais plantas no mesmo espaço. A Estação Espacial saiu: o passo seguinte vai ser mudar de cidade. O visual muda: gambiarra → profissional → high-tech. |
 | 5 níveis de venda | Por porcentagem do estoque: Discreto 5%, Normal 15%, Ousado 35%, Agressivo 70% e All-in 100% (maior risco). Cada nível tem Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
 | Flagrante | Perde a mercadoria, paga multa de 5–25% da grana suja, −20⚡, +15 Paranoia. |
-| Batida | Perde **tudo**: grana suja e limpa, estoque, equipamentos e o esconderijo (volta ao Quartinho). Mantém atributos (Botânica, Lábia, Furtividade, Segurança), Respeito e Lenda, e ganha metade da Lenda da rodada. Câmeras, bunker e Segurança diminuem a chance de a ronda te achar. |
+| Batida | Perde **tudo**: grana suja e limpa, estoque, equipamentos e o esconderijo (volta ao Armário, com um vaso só). Mantém atributos (Botânica, Lábia, Furtividade, Segurança), Respeito e Lenda, e ganha metade da Lenda da rodada. Câmeras, bunker e Segurança diminuem a chance de a ronda te achar. |
 | Lavagem | Laranjas, NFTs, Crypto e Consultoria, com taxa, tempo, Paranoia e Lábia do GDD. Vários processos ao mesmo tempo. |
 | Cidade | Café, Energético, Bar, Biblioteca, Academia, Beco, Praça, Spa e Fliperama, com tempo real, uma por vez. |
 | Atributos | Botânica, Lábia, Furtividade e Segurança sobem por experiência (colher, vender, arriscar) e com a cidade. Ficam com você ao passar o ponto. |
@@ -50,6 +50,7 @@ Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 | Respeito e Nível | Sobem colhendo e vendendo; cada nível dá +1% no preço. |
 | Lenda (prestígio) | (log10(vendido) − 4)², +10% de preço por ponto. Passar o ponto dá tudo; batida dá metade. |
 | Zé | Vende sozinho no Discreto a cada 20 s, inclusive com o app fechado. |
+| Dicas da Vó | Depois de 1 minuto sem tocar em nada, a Vó aparece num balão com a dica que mais ajuda agora (vender o estoque, comprar vaso, lavar dinheiro, mudar de esconderijo, o que falta para a próxima semente…) e um botão que leva à aba certa. Qualquer toque fecha. |
 | Offline | Até 8 h: plantas, replantio, Zé, lavagem e Paranoia continuam. |
 
 Não entraram (precisam de servidor): ranking, cartéis, chat, visitas e trocas.
