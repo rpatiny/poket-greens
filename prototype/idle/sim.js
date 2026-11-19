@@ -71,6 +71,10 @@ function brain(s, p) {
     if (opts[0][0] <= budget && E.buyEquip(s, opts[0][1].id)) continue;
     break;
   }
+  // encomendas: entrega o que der
+  for (const o of [...(s.orders || [])]) if (s.stock[o.seed] >= o.n) E.deliver(s, o.id);
+  // fim do jogo: muda de cidade
+  if (p.towns && E.canMoveTown(s)) E.moveTown(s);
   // Vó: escolhe uma das duas explicações no chute
   if (s.surprise) E.surpriseAnswer(s, Math.random() < 0.5 ? 0 : 1);
   // fiscal: suborna se der, senão fecha
@@ -93,7 +97,7 @@ function run(name, p) {
   const s = E.newState(p.seed || 7);
   if (p.easy) s.easy = true;
   const ms = [];
-  let lastSeed = bestSeed(s), lastPlace = 0, lastFlag = 0;
+  let lastSeed = bestSeed(s), lastPlace = 0, lastFlag = 0, lastTown = 0;
   const end = p.hours * 3600;
   let t = 0;
   while (t < end) {
@@ -112,6 +116,7 @@ function run(name, p) {
     if (gain >= Math.max(1, s.legend * p.retireAt)) { E.retire(s); ms.push([t, `-- passou o ponto: Lenda ${s.legend}`]); lastSeed = 0; lastPlace = 0; }
     const bs = bestSeed(s);
     if (bs > lastSeed) { ms.push([t, `semente ${bs + 1}: ${E.SEEDS[bs].name} (Bot ${s.attrs.bot})`]); lastSeed = bs; }
+    if ((s.town || 0) > (lastTown || 0)) { ms.push([t, `== CIDADE NOVA: ${E.townName(s.town)} (Lenda ${s.legend})`]); lastTown = s.town; lastSeed = 0; lastPlace = 0; }
     if (s.place > lastPlace) { ms.push([t, `imóvel: ${E.PLACES[s.place].name} (${E.PLACES[s.place].pots} vasos)`]); lastPlace = s.place; }
     if (s.timesArrested > lastFlag) { lastFlag = s.timesArrested; }
     if (s.lastBust) { ms.push([t, `BATIDA: ${s.lastBust.why} +${s.lastBust.gain} Lenda`]); s.lastBust = null; lastSeed = 0; lastPlace = 0; }
@@ -129,6 +134,7 @@ if (process.env.PACE) {
   // ritmo da progressão: sem passar o ponto, mostra quando cada semente e cada imóvel chegam
   run("RITMO normal (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 14, all: true });
   run("RITMO fácil (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 3, easy: true, all: true });
+  run("SEM FIM: muda de cidade (48h, ativo)", { ...base, retireAt: Infinity, hours: 48, towns: true, all: true });
   process.exit(0);
 }
 run("Ativo cauteloso", { ...base, hours: 8 });

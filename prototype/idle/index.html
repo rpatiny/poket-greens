@@ -13,10 +13,11 @@
   --num:"Silkscreen","Courier New",monospace;
   color-scheme:dark;
 }
-html,body{height:100%}
-body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:15px;overflow:hidden;
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:15px;overflow-x:hidden;overflow-y:auto;
   -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
-#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column}
+#app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+header.pad{position:sticky;top:0;z-index:15;background:var(--bg)}
 .pad{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
 header{background:var(--panel);padding-block:8px 8px;display:flex;flex-direction:column;gap:6px;border-bottom:2px solid var(--bg)}
 .money{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
@@ -73,7 +74,7 @@ button:focus-visible{outline:2px solid var(--dirty);outline-offset:2px}
 nav{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--bg);padding-top:4px}
 nav button{padding:8px 0 7px;font-size:13px;color:var(--muted);background:var(--panel);border-top:3px solid transparent}
 nav button[aria-selected="true"]{color:var(--fg);border-top-color:var(--leaf);background:var(--line)}
-main{flex:1;overflow-y:auto;background:var(--line);padding-block:8px 20px;display:flex;flex-direction:column;gap:6px}
+main{flex:1 0 auto;background:var(--line);padding-block:8px 20px;display:flex;flex-direction:column;gap:6px}
 h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 0;font-weight:600}
 .row{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;background:var(--panel);border:2px solid var(--bg);padding:6px 8px;min-width:0}
 .row.sel{border-color:var(--leaf)} .row.locked{opacity:.65}
@@ -325,6 +326,17 @@ body.tut.grow #hint{opacity:1}
     { say: "Senta aí, vó, vou te contar a verdade...", res: "Ela desmaia, acorda e passa a semana te ligando de hora em hora. A Paranoia foi lá em cima.", kind: "para" },
   ];
 
+  // Cidades: depois do Bunker, com as 18 sementes, você se muda e recomeça numa cidade nova.
+  // Cada cidade: produção ×1,5 para sempre (você já sabe o que faz), polícia +10% mais esperta. Não tem fim.
+  const TOWNS = ["Vila Esperança", "Baixada Verde", "Serra Alta", "Porto das Águas", "Capital", "Litoral Sul", "Metrópole"];
+  const townName = (i) => (i < TOWNS.length ? TOWNS[i] : `Metrópole ${i - TOWNS.length + 2}`);
+
+  // Encomendas: clientes pedem N unidades de uma planta, com prazo, e pagam 2-3x o preço normal.
+  const CLIENTS = [
+    ["🍺", "Seu Jorge do bar"], ["🎂", "Tia do bolo"], ["🎓", "Playboy da faculdade"], ["🎧", "DJ da festa"],
+    ["🙏", "Irmã Lurdes"], ["🏋️", "Personal da academia"], ["🎨", "Artista da praça"], ["🛵", "Motoboy do bairro"],
+  ];
+
   const ATTRS = { bot: "Botânica", lab: "Lábia", fur: "Furtividade", seg: "Segurança" };
 
   // ---------------------------------------------------------------- regras
@@ -338,6 +350,7 @@ body.tut.grow #hint{opacity:1}
     raidEvery: 300, raidAt: 80, raidChance: 0.5,
     zeCost: 300, zeEvery: 20, zeMaxPara: 60,
     frontPara: 0.4 / 60, // cada fachada lavando: +0,4 de Paranoia por minuto
+    orderEvery: 180, orderTime: 600, orderMax: 3, // encomendas: uma nova a cada 3 min (até 3), prazo de 10 min
     surpriseEvery: 900, surpriseChance: 0.06, // a cada 15 min, 6% de chance (com o jogo aberto)
     fiscalEvery: 420, fiscalChance: 0.35, fiscalClose: 900, // fiscal da Receita: a cada 7 min, 35%; fechar = 15 min
     billSta: 1, billPara: 0.15, // maquininha: por toque
@@ -364,6 +377,8 @@ body.tut.grow #hint{opacity:1}
       fronts: {}, // id -> nível
       closed: {}, // id -> até quando a fachada fica fechada
       fiscal: null, fiscalT: 0, // fiscal da Receita esperando resposta
+      orders: [], orderT: 150, orderN: 0, // encomendas abertas
+      town: 0, // cidade (0 = a primeira)
       surprise: null, surpT: 0, // visita surpresa da Vó esperando sua explicação
       city: null, // { id, end }
       ze: false, zeT: 0,
@@ -393,7 +408,11 @@ body.tut.grow #hint{opacity:1}
   const level = (s) => Math.max(1, Math.floor(Math.sqrt(s.resp / 5)));
   const legendMult = (s) => 1 + R.legendBonus * s.legend;
   // produção: soma dos bônus dos equipamentos + Botânica × 2% (GDD)
-  const prodMult = (s) => 1 + EQUIP.reduce((a, e) => a + e.prod * lvl(s, e.id), 0) + s.attrs.bot * 0.02;
+  // cidade nova: tudo vale e custa 10x mais (números maiores, mesmo ritmo), produção ×1,25 e Botânica +6 nas sementes
+  const townScale = (s) => Math.pow(10, s.town || 0);
+  const townProd = (s) => Math.pow(1.25, s.town || 0);
+  const seedPrice = (s, i) => SEEDS[i].price * townScale(s);
+  const prodMult = (s) => (1 + EQUIP.reduce((a, e) => a + e.prod * lvl(s, e.id), 0) + s.attrs.bot * 0.02) * townProd(s);
   // crescimento: tempo = base / (1 + Botânica × 5%) (GDD), mais equipamentos de velocidade
   // Modo fácil (para testar com amigos): cresce 3x mais rápido, vende 2x mais caro, tudo custa 30%,
   // atributos sobem 3x mais rápido, Paranoia cai 2x mais rápido e a espera entre vendas cai pela metade.
@@ -401,8 +420,8 @@ body.tut.grow #hint{opacity:1}
   const ez = (s, k) => (s.easy ? EASY[k] : 1);
   const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed")) * ez(s, "speed");
   const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap"));
-  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price");
-  const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004);
+  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price") * townScale(s);
+  const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004) * (1 + 0.1 * (s.town || 0));
   const paraOf = (s, lvlIdx) => SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
   const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
@@ -411,11 +430,11 @@ body.tut.grow #hint{opacity:1}
   // Assim encher o cômodo custa parecido em todo lugar, em vez de explodir no fim do jogo.
   const potCost = (s) => {
     const prev = s.place > 0 ? PLACES[s.place - 1].pots : 0;
-    const base = Math.max(20, PLACES[s.place].cost * 0.06);
+    const base = Math.max(20, PLACES[s.place].cost * 0.06) * townScale(s);
     return Math.round(base * Math.pow(1.25, Math.max(0, s.pots.length - Math.max(1, prev))) * ez(s, "cost"));
   };
-  const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)) * ez(s, "cost"));
-  const placeCost = (s, i = s.place + 1) => (PLACES[i] ? Math.round(PLACES[i].cost * ez(s, "cost")) : Infinity);
+  const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)) * ez(s, "cost") * townScale(s));
+  const placeCost = (s, i = s.place + 1) => (PLACES[i] ? Math.round(PLACES[i].cost * ez(s, "cost") * townScale(s)) : Infinity);
   const saleCooldown = (s) => Math.max(3, 20 - 17 * (topStockSeed(s) / (SEEDS.length - 1))) * Math.max(0.4, 1 - s.attrs.lab * 0.01) * ez(s, "cd");
   const stockUnits = (s) => s.stock.reduce((a, b) => a + b, 0);
   const stockValue = (s) => s.stock.reduce((a, n, i) => a + n * SEEDS[i].sell, 0);
@@ -426,7 +445,8 @@ body.tut.grow #hint{opacity:1}
 
   function seedLocked(s, seed) {
     const why = [];
-    if (s.attrs.bot < seed.bot) why.push(`Botânica ${seed.bot}`);
+    const bot = seed.bot + 6 * (s.town || 0);
+    if (s.attrs.bot < bot) why.push(`Botânica ${bot}`);
     for (const r of seed.req) if (!lvl(s, r)) why.push(EQUIP.find((e) => e.id === r).name);
     return why;
   }
@@ -437,17 +457,20 @@ body.tut.grow #hint{opacity:1}
     let total = 0;
     for (const p of s.pots) {
       const seed = SEEDS[p.s];
-      const per = (seed.prod * prodMult(s) * seed.sell * priceMult(s, 0) - seed.price) / (seed.time / speed(s));
+      const per = (seed.prod * prodMult(s) * seed.sell * priceMult(s, 0) - seedPrice(s, p.s)) / (seed.time / speed(s));
       total += Math.max(0, per);
     }
     return total;
   }
 
   // ---------------------------------------------------------------- plantio
+  // sementes e vasos: paga com grana suja; se faltar, completa com a limpa (limpa compra tudo)
+  const canPay = (s, c) => s.dirty + s.clean >= c;
+  function pay(s, c) { const d = Math.min(s.dirty, c); s.dirty -= d; s.clean -= c - d; }
   function plant(s, pot) {
     const seed = SEEDS[pot.s];
-    if (s.dirty < seed.price || !seedOk(s, pot.s)) { pot.on = false; return false; }
-    s.dirty -= seed.price;
+    if (!canPay(s, seedPrice(s, pot.s)) || !seedOk(s, pot.s)) { pot.on = false; return false; }
+    pay(s, seedPrice(s, pot.s));
     pot.on = true;
     pot.g = 0;
     return true;
@@ -553,10 +576,10 @@ body.tut.grow #hint{opacity:1}
     return id === "crypto" || id === "nft" ? Math.min(0.9, m.fee * marketMult(id, t)) : m.fee;
   };
   // reserva para replantar: fachadas e maquininha não encostam nela
-  const reserve = (s) => Math.max(30, SEEDS[s.seed].price * s.pots.length * 3);
+  const reserve = (s) => Math.max(30, seedPrice(s, s.seed) * s.pots.length * 3);
   const frontLvl = (s, id) => (s.fronts && s.fronts[id]) || 0;
-  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)) * ez(s, "cost"));
-  const frontCap = (f, l) => (l ? f.cap * Math.pow(1.7, l - 1) : 0); // $/min
+  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)) * ez(s, "cost") * townScale(s));
+  const frontCap = (f, l, s) => (l ? f.cap * Math.pow(1.7, l - 1) * (s ? townScale(s) : 1) : 0); // $/min
   function buyFront(s, id) {
     const f = FRONTS.find((x) => x.id === id);
     if (frontLvl(s, id) >= FRONT_MAX) return false;
@@ -572,7 +595,7 @@ body.tut.grow #hint{opacity:1}
     for (const f of FRONTS) {
       const l = frontLvl(s, f.id);
       if (!l || !frontOpen(s, f.id) || avail <= 0) continue;
-      const amt = Math.min(avail, (frontCap(f, l) / 60) * dt);
+      const amt = Math.min(avail, (frontCap(f, l, s) / 60) * dt);
       avail -= amt; s.dirty -= amt;
       s.clean += amt * (1 - f.fee);
       active++;
@@ -592,7 +615,7 @@ body.tut.grow #hint{opacity:1}
     const open = FRONTS.filter((f) => frontLvl(s, f.id) && frontOpen(s, f.id));
     if (!open.length || s.dirty <= reserve(s) || rand(s) > R.fiscalChance) return;
     const f = open[open.length - 1]; // a maior chama mais atenção
-    const bribe = Math.round(frontCap(f, frontLvl(s, f.id)) * 8 * Math.max(0.5, 1 - s.attrs.lab * 0.01));
+    const bribe = Math.round(frontCap(f, frontLvl(s, f.id), s) * 8 * Math.max(0.5, 1 - s.attrs.lab * 0.01));
     s.fiscal = { id: f.id, at: s.time, bribe };
     note(s, "fiscal", `Fiscal da Receita na ${f.name}!`);
   }
@@ -681,8 +704,8 @@ body.tut.grow #hint{opacity:1}
   function buyPot(s) {
     if (s.pots.length >= maxPots(s)) return false;
     const c = potCost(s);
-    if (s.dirty < c) return false;
-    s.dirty -= c;
+    if (!canPay(s, c)) return false;
+    pay(s, c);
     s.pots.push({ g: 0, s: s.seed, on: false });
     return true;
   }
@@ -726,16 +749,16 @@ body.tut.grow #hint{opacity:1}
     if (s.sta < cost) return 0;
     s.sta -= cost;
     const got = 1 + Math.floor(rand(s) * 3);
-    s.dirty += got;
+    s.clean += got; // esmola é dinheiro limpo
     return got;
   }
   function visitAvo(s) {
     if (s.time < s.avoT || !safe(s, 10)) return false;
     s.avoT = s.time + R.avoEvery;
     s.sta = Math.min(100, s.sta + 15);
-    s.dirty += 5;
+    s.clean += 5; // o dinheiro da Vó é limpinho
     s.para += 10;
-    if (rand(s) < 0.3) { s.dirty += SEEDS[s.seed].price * 2; note(s, "avo", "A Vó deu um pacotinho de sementes!"); }
+    if (rand(s) < 0.3) { s.clean += seedPrice(s, s.seed) * 2; note(s, "avo", "A Vó deu um dinheirinho pras sementes!"); }
     checkBust(s);
     return true;
   }
@@ -765,7 +788,7 @@ body.tut.grow #hint{opacity:1}
   // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Armário.
   // Fica só o que é do personagem: atributos, Respeito e Lenda (+ metade da Lenda da rodada).
   function bust(s, why) {
-    const gain = Math.floor(legendFor(s.runEarned) / 2);
+    const gain = Math.floor(legendFor(s.runEarned / townScale(s)) / 2);
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
     const ficha = Math.min(R.fichaMax, (s.ficha || 0) + R.fichaStep);
     const keep = { legend: s.legend + gain, attrs: { ...s.attrs }, timesArrested: s.timesArrested + 1, ficha, fichaLenda: s.legend + gain };
@@ -777,7 +800,7 @@ body.tut.grow #hint{opacity:1}
     s.lastBust = { why, gain, kept: 0 };
   }
   // Advogado: baixa a ficha em 10 na hora. Fica 10x mais caro a cada 10% de ficha.
-  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10) * ez(s, "cost"));
+  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10) * ez(s, "cost") * townScale(s));
   function lawyer(s) {
     if (!s.ficha) return false;
     const c = lawyerCost(s);
@@ -802,15 +825,60 @@ body.tut.grow #hint{opacity:1}
     }
     return o;
   }
+  // ---- encomendas
+  function newOrder(s) {
+    const best = bestSeed(s);
+    const seed = Math.max(0, best - Math.floor(rand(s) * 3));
+    const per = Math.max(1, Math.floor(SEEDS[seed].prod * prodMult(s)));
+    const n = Math.max(3, Math.round(per * s.pots.length * (0.8 + rand(s) * 1.4)));
+    const pay = Math.round(n * SEEDS[seed].sell * priceMult(s, 0) * (2 + rand(s)));
+    const c = CLIENTS[Math.floor(rand(s) * CLIENTS.length)];
+    s.orders.push({ id: ++s.orderN, emoji: c[0], who: c[1], seed, n, pay, until: s.time + R.orderTime });
+    note(s, "order", `${c[1]} quer ${n} un de ${SEEDS[seed].name}.`);
+  }
+  function ordersTick(s, dt) {
+    if (!s.orders) s.orders = [];
+    for (let i = s.orders.length - 1; i >= 0; i--) {
+      if (s.time > s.orders[i].until) { const o = s.orders.splice(i, 1)[0]; s.resp = Math.max(0, s.resp - 1); note(s, "order", `${o.who} cansou de esperar. −1 Respeito.`); }
+    }
+    if (s.away || (s.tut != null && s.tut < 99)) return;
+    s.orderT = (s.orderT || 0) + dt;
+    if (s.orderT >= R.orderEvery && s.orders.length < R.orderMax) { s.orderT = 0; newOrder(s); }
+  }
+  function deliver(s, id) {
+    const i = s.orders.findIndex((o) => o.id === id);
+    if (i < 0) return false;
+    const o = s.orders[i];
+    if (s.stock[o.seed] < o.n) return false;
+    s.stock[o.seed] -= o.n;
+    s.dirty += o.pay; s.runEarned += o.pay;
+    s.resp += 2; s.para += 3;
+    gainXp(s, "lab", Math.sqrt(o.n));
+    s.orders.splice(i, 1);
+    note(s, "order", `Entregou para ${o.who}: +$${Math.round(o.pay)}.`);
+    checkBust(s);
+    return true;
+  }
+  // ---- mudar de cidade (o jogo sem fim)
+  const canMoveTown = (s) => s.place === PLACES.length - 1 && seedOk(s, SEEDS.length - 1);
+  function moveTown(s) {
+    if (!canMoveTown(s)) return 0;
+    const gain = Math.max(1, legendFor(s.runEarned / townScale(s)));
+    const town = (s.town || 0) + 1;
+    note(s, "lenda", `Mudou para ${townName(town)}: produção ×${Math.pow(1.25, town).toFixed(2).replace(".", ",")} e +${gain} Lenda.`);
+    reset(s, { legend: s.legend + gain, attrs: { ...s.attrs }, town });
+    return gain;
+  }
+
   function retire(s) {
-    const gain = legendFor(s.runEarned);
+    const gain = legendFor(s.runEarned / townScale(s));
     if (gain < 1) return 0;
     note(s, "lenda", `Passou o ponto: +${gain} Lenda.`);
     reset(s, { legend: s.legend + gain, attrs: { ...s.attrs } });
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, town: s.town || 0, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -835,6 +903,7 @@ body.tut.grow #hint{opacity:1}
     if (s.city && s.time >= s.city.end) finishCity(s);
     runFronts(s, dt);
     fiscalCheck(s, dt);
+    ordersTick(s, dt);
     if (!s.away && !s.surprise && s.time > 600 && !(s.tut < 99)) {
       s.surpT += dt;
       if (s.surpT >= R.surpriseEvery) {
@@ -886,7 +955,7 @@ body.tut.grow #hint{opacity:1}
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
@@ -1658,7 +1727,9 @@ function fmt(n) {
   let out;
   if (n < 1000) out = Math.floor(n).toString();
   else {
-    const u = ["mil", "mi", "bi", "tri", "qua", "qui", "sex", "sep"];
+    // depois de "dec", sufixos de letras como nos jogos idle: aa, ab, ac... (mudar de cidade multiplica tudo por 10)
+    const u = ["mil", "mi", "bi", "tri", "qua", "qui", "sex", "sep", "oct", "non", "dec"];
+    for (let a = 0; a < 26; a++) for (let b = 0; b < 26; b++) u.push(String.fromCharCode(97 + a) + String.fromCharCode(97 + b));
     let i = -1;
     while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
     out = (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : n.toFixed(0)).replace(".", ",") + " " + u[i];
@@ -2404,8 +2475,8 @@ function draw() {
 // ---------------------------------------------------------------- entrada
 let taps = 0;
 $("scene").addEventListener("pointerdown", (e) => {
-  if (e.target.closest && (e.target.closest("#skip") || e.target.closest("#dlgact"))) return;
-  if (storyTap()) return;
+  if (e.target.closest && (e.target.closest("#skip") || e.target.closest("#dlgact") || e.target.closest("#dlg"))) return;
+  if (story) return;                                   // na conversa, só a caixa de diálogo avança
   if (inTut() && S.tut < 3) return;
   const r = cv.getBoundingClientRect();
   const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
@@ -2447,7 +2518,8 @@ function checkEvents() {
   if (S.surprise && surpriseSeen !== S.surprise.at && !document.querySelector(".modal")) { surpriseSeen = S.surprise.at; surpriseModal(); }
   while (seenLog < S.log.length) {
     const l = S.log[seenLog++];
-    if (l.kind === "attr" || l.kind === "city" || l.kind === "avo") toast(l.text);
+    if (l.kind === "attr" || l.kind === "city" || l.kind === "avo" || l.kind === "order") toast(l.text);
+    if (l.kind === "order" && tab === "estufa") renderPanel();
   }
   if (S.log.length < seenLog) seenLog = S.log.length;
 }
@@ -2457,7 +2529,8 @@ let tab = "estufa";
 document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
   tab = b.dataset.tab;
   document.querySelectorAll("nav button").forEach((x) => x.setAttribute("aria-selected", x === b));
-  renderPanel(); $("panel").scrollTop = 0;
+  renderPanel();
+  const nv = document.querySelector("nav"); if (nv.getBoundingClientRect().top < 0) nv.scrollIntoView();
 });
 const panel = $("panel");
 let binds = [];
@@ -2485,19 +2558,37 @@ function renderPanel() {
 
 function estufa() {
   const cur = E.SEEDS[S.seed];
+  // encomendas dos clientes (pagam 2-3x a venda comum)
+  if (S.orders && S.orders.length) {
+    h3("Encomendas");
+    for (const o of S.orders) {
+      const sd = E.SEEDS[o.seed];
+      const d = row({
+        emoji: o.emoji, title: `${o.who}`,
+        desc: `Quer <b>${o.n} un de ${sd.name}</b> · <span class="gain">paga ${$$(o.pay)}</span> · +2 Respeito<br><span data-h></span> · expira em <span data-t></span>`,
+        btn: "Entregar", btnCls: "dirty", enabled: () => S.stock[o.seed] >= o.n, onClick: () => E.deliver(S, o.id),
+      });
+      bind(() => {
+        d.querySelector("[data-t]").textContent = dur(Math.max(0, o.until - S.time));
+        const have = S.stock[o.seed];
+        d.querySelector("[data-h]").innerHTML = have >= o.n ? `<span class="good">você tem ${fmt(have)} ✓</span>` : `você tem ${fmt(have)} de ${o.n}`;
+      });
+    }
+  }
   h3(`Sementes · plantando ${cur.name}`);
   // lucro por minuto de cada vaso: é o que diz se vale a pena plantar
-  const perMin = (sd) => (Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell - sd.price) / (sd.time / E.speed(S) / 60);
+  const k = E.townScale(S);
+  const perMin = (sd) => (Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell * k - sd.price * k) / (sd.time / E.speed(S) / 60);
   const okSeeds = E.SEEDS.filter((sd, i) => E.seedOk(S, i));
   const best = okSeeds.reduce((a, b) => (perMin(b) > perMin(a) ? b : a), okSeeds[0]);
   E.SEEDS.map((sd, i) => [sd, i]).reverse().forEach(([sd, i]) => {
     const lock = E.seedLocked(S, sd);
-    const profit = Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell - sd.price;
+    const profit = (Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell - sd.price) * k;
     if (lock.length && i > 0 && E.seedLocked(S, E.SEEDS[i - 1]).length) return; // mostra só a próxima trancada
     row({
       ico: seedIcon(i), title: sd.name, cls: (i === S.seed ? "sel" : "") + (lock.length ? " locked" : ""),
       desc: lock.length ? `<span class="req">Precisa: ${lock.join(", ")}</span>`
-        : `Semente ${$$(sd.price)} · ${Math.max(1, Math.floor(sd.prod * E.prodMult(S)))} un × ${$$(sd.sell)} · ${dur(sd.time / E.speed(S))}<br>` +
+        : `Semente ${$$(sd.price * k)} · ${Math.max(1, Math.floor(sd.prod * E.prodMult(S)))} un × ${$$(sd.sell * k)} · ${dur(sd.time / E.speed(S))}<br>` +
           `<span class="gain">+${$$(perMin(sd))}/min por vaso</span> <span class="gain2">(+${$$(profit)} por colheita)</span>${sd === best ? ' <span class="best">★ mais lucro</span>' : ""}`,
       btn: lock.length ? null : i === S.seed ? "Plantando" : "Plantar", enabled: () => i !== S.seed,
       onClick: () => E.chooseSeed(S, i),
@@ -2514,6 +2605,17 @@ function estufa() {
     ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} Pago com grana limpa.<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>`,
     btn: $$(E.placeCost(S)), btnCls: "clean", enabled: () => S.clean >= E.placeCost(S), onClick: () => E.buyPlace(S),
   });
+  // fim do jogo: mudar de cidade (recomeça mais forte, sem fim)
+  if (S.place === E.PLACES.length - 1) {
+    const nt = (S.town || 0) + 1, ok = E.canMoveTown(S);
+    row({
+      emoji: "🚚", title: `Mudar para ${E.townName(nt)}`,
+      desc: `A polícia daqui já te conhece. Recomece do Armário numa cidade nova, levando atributos, Lenda e tudo o que aprendeu: <span class="gain">produção ×${Math.pow(1.25, nt).toFixed(2).replace(".", ",")} para sempre</span> e +${Math.max(1, E.legendFor(S.runEarned / E.townScale(S)))} Lenda. Lá tudo vale e custa 10× mais, as sementes pedem +6 de Botânica e a polícia é ${nt * 10}% mais esperta.` +
+        (ok ? "" : `<br><span class="req">Libere a última semente (${E.SEEDS[E.SEEDS.length - 1].name}) para poder se mudar.</span>`),
+      btn: "Mudar", btnCls: "clean", enabled: () => E.canMoveTown(S),
+      onClick: () => { const g = E.moveTown(S); if (g) { toast(`Bem-vindo a ${E.townName(S.town)}!`); return true; } return false; },
+    });
+  }
   if (!S.ze) row({
     ico: icon("estagios", 64, 40, 32, 40), title: "Contratar o Zé", desc: `Vende sozinho no Discreto a cada ${E.R.zeEvery}s, até com o app fechado.`,
     btn: $$(E.R.zeCost), btnCls: "clean", enabled: () => S.clean >= E.R.zeCost, onClick: () => E.hireZe(S),
@@ -2576,7 +2678,7 @@ function lavagem() {
     const lv = E.frontLvl(S, f.id), cost = E.frontCost(S, f);
     const prev = E.FRONTS[i - 1];
     if (!lv && prev && !E.frontLvl(S, prev.id)) return;                    // mostra só a próxima a abrir
-    const capNow = E.frontCap(f, lv), capNext = E.frontCap(f, lv + 1);
+    const capNow = E.frontCap(f, lv, S), capNext = E.frontCap(f, lv + 1, S);
     const d = row({
       emoji: f.emoji, title: f.name, lv: lv ? `nv ${lv}/${E.FRONT_MAX}` : "fechada",
       desc: (lv ? `Lava <span class="gain">${$$(capNow)}/min</span> · taxa ${pct(f.fee)} · <span data-st></span>` : `Abre lavando <span class="gain">${$$(capNext)}/min</span> · taxa ${pct(f.fee)}`) +
@@ -2770,9 +2872,9 @@ function cidade() {
       btn: $$(E.lawyerCost(S)), btnCls: "clean", enabled: () => S.clean >= E.lawyerCost(S), onClick: () => E.lawyer(S) });
   }
   h3("Na rua");
-  row({ emoji: "🤲", title: "Mendigar", desc: `Gasta 3–8⚡ (dobro com Paranoia alta) e rende $1–3 de grana suja.`, btn: "Pedir", btnCls: "dirty",
+  row({ emoji: "🤲", title: "Mendigar", desc: `Gasta 3–8⚡ (dobro com Paranoia alta) e rende $1–3 de grana limpa.`, btn: "Pedir", btnCls: "clean",
     enabled: () => S.sta >= 16, onClick: () => { const got = E.beg(S); if (got) float("+$" + got, 140, 40, "#f0c94f"); return got > 0; } });
-  row({ emoji: "👵", title: "Casa da Vó Dita", desc: `+15⚡, +$5 e às vezes um pacotinho de sementes. A vizinhança comenta: +10 Paranoia.`,
+  row({ emoji: "👵", title: "Casa da Vó Dita", desc: `+15⚡, +$5 limpos e às vezes um dinheirinho pras sementes. A vizinhança comenta: +10 Paranoia.`,
     btn: "Visitar", enabled: () => S.time >= S.avoT && E.safe(S, 10), onClick: () => E.visitAvo(S) });
   const avoBtn = panel.lastElementChild.querySelector("button");
   bind(() => { avoBtn.textContent = S.time >= S.avoT ? "Visitar" : dur(S.avoT - S.time); });
@@ -2862,7 +2964,7 @@ function refresh() {
   if (p > E.R.raidAt) { st.className = "status danger"; st.textContent = `🚨 Polícia rondando! Próxima ronda em ${dur(nextRaid)} (50% de chance de batida)`; }
   else if (p >= 60) { st.className = "status warn"; st.textContent = "Paranoia alta: tudo na cidade custa o dobro de Estamina. Acima de 80% a polícia faz rondas."; }
   else if (S.debt > 0) { st.className = "status warn"; st.textContent = `Dívida com o agiota: ${$$(S.debt)} (+3 Paranoia/min)`; }
-  else if (S.pots.some((x) => !x.on)) { st.className = "status warn"; st.textContent = `Sem grana para replantar (${$$(E.SEEDS[S.seed].price)} por vaso). Venda o estoque, mendigue, visite a Vó ou encare o agiota (aba Cidade).`; }
+  else if (S.pots.some((x) => !x.on)) { st.className = "status warn"; st.textContent = `Sem grana para replantar (${$$(E.seedPrice(S, S.seed))} por vaso). Venda o estoque, mendigue, visite a Vó ou encare o agiota (aba Cidade).`; }
   else { st.className = "status"; st.textContent = `Renda estimada ${$$(E.incomePerSec(S))}/s · Lenda ${S.legend}`; }
   $("units").textContent = fmt(E.stockUnits(S));
   $("value").textContent = $$(E.stockValue(S) * E.priceMult(S, 0));
@@ -2876,7 +2978,7 @@ function refresh() {
   });
   $("cd").style.width = S.saleCd > 0 ? pct(1 - S.saleCd / E.saleCooldown(S)) : "100%";
   $("cdtext").textContent = S.saleCd > 0 ? `próxima venda em ${Math.ceil(S.saleCd)}s` : E.stockUnits(S) > 0 ? "pronto para vender" : "";
-  $("place").textContent = S.tut === 0 ? "Seu quarto" : E.PLACES[S.place].name + (S.ze ? " · Zé vendendo" : "");
+  $("place").textContent = S.tut === 0 ? "Seu quarto" : E.PLACES[S.place].name + (S.town ? " · " + E.townName(S.town) : "") + (S.ze ? " · Zé vendendo" : "");
   const busy = $("busy");
   if (S.city) { busy.hidden = false; busy.textContent = `${E.CITY.find((x) => x.id === S.city.id).name} ${dur(S.city.end - S.time)}`; }
   else if (S.laundry.length) { busy.hidden = false; busy.textContent = `Lavando ${S.laundry.length}`; }
@@ -2906,9 +3008,9 @@ function bustModal(b) {
   const opts = [
     ["🦈", "Pedir pro agiota", () => `Se tiver coragem: ${$$(E.R.loan)} agora, ele cobra ${$$(E.R.loanBack)} e a Paranoia sobe.`,
       () => S.debt <= 0 && E.safe(S, 30), () => E.borrow(S) && `O agiota te passou ${$$(E.R.loan)}. Não esquece de pagar...`],
-    ["🤲", "Mendigar na calçada", () => "Gasta Estamina e rende $1–3. Pode tocar várias vezes.",
+    ["🤲", "Mendigar na calçada", () => "Gasta Estamina e rende $1–3 limpos. Pode tocar várias vezes.",
       () => S.sta >= 16, () => { const g = E.beg(S); return g > 0 && `Alguém teve pena: +$${g}. Total: ${$$(S.dirty)}`; }],
-    ["👵", "Ir na casa da vozinha", () => "A Vó Dita te dá $5, um prato de comida (+⚡) e às vezes um pacotinho de sementes.",
+    ["👵", "Ir na casa da vozinha", () => "A Vó Dita te dá $5 limpos, um prato de comida (+⚡) e às vezes um dinheirinho pras sementes.",
       () => S.time >= S.avoT && E.safe(S, 10), () => E.visitAvo(S) && `A Vó te deu um abraço e um troco. Total: ${$$(S.dirty)}`],
   ];
   const btns = [];
@@ -3094,6 +3196,7 @@ Promise.all(Object.keys(IMG).map(loadImg)).then(() => {
   renderPanel(); refresh();
   if (location.hash === "#master") openMaster();
   $("skip").addEventListener("pointerdown", (e) => { e.stopPropagation(); skipTut(); });
+  $("dlg").addEventListener("pointerdown", (e) => { if (e.target.closest("#dlgact")) return; e.stopPropagation(); e.preventDefault(); storyTap(); });
   resumeTut();
   requestAnimationFrame(loop);
 });

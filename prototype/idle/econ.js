@@ -143,6 +143,17 @@
     { say: "Senta aí, vó, vou te contar a verdade...", res: "Ela desmaia, acorda e passa a semana te ligando de hora em hora. A Paranoia foi lá em cima.", kind: "para" },
   ];
 
+  // Cidades: depois do Bunker, com as 18 sementes, você se muda e recomeça numa cidade nova.
+  // Cada cidade: produção ×1,5 para sempre (você já sabe o que faz), polícia +10% mais esperta. Não tem fim.
+  const TOWNS = ["Vila Esperança", "Baixada Verde", "Serra Alta", "Porto das Águas", "Capital", "Litoral Sul", "Metrópole"];
+  const townName = (i) => (i < TOWNS.length ? TOWNS[i] : `Metrópole ${i - TOWNS.length + 2}`);
+
+  // Encomendas: clientes pedem N unidades de uma planta, com prazo, e pagam 2-3x o preço normal.
+  const CLIENTS = [
+    ["🍺", "Seu Jorge do bar"], ["🎂", "Tia do bolo"], ["🎓", "Playboy da faculdade"], ["🎧", "DJ da festa"],
+    ["🙏", "Irmã Lurdes"], ["🏋️", "Personal da academia"], ["🎨", "Artista da praça"], ["🛵", "Motoboy do bairro"],
+  ];
+
   const ATTRS = { bot: "Botânica", lab: "Lábia", fur: "Furtividade", seg: "Segurança" };
 
   // ---------------------------------------------------------------- regras
@@ -156,6 +167,7 @@
     raidEvery: 300, raidAt: 80, raidChance: 0.5,
     zeCost: 300, zeEvery: 20, zeMaxPara: 60,
     frontPara: 0.4 / 60, // cada fachada lavando: +0,4 de Paranoia por minuto
+    orderEvery: 180, orderTime: 600, orderMax: 3, // encomendas: uma nova a cada 3 min (até 3), prazo de 10 min
     surpriseEvery: 900, surpriseChance: 0.06, // a cada 15 min, 6% de chance (com o jogo aberto)
     fiscalEvery: 420, fiscalChance: 0.35, fiscalClose: 900, // fiscal da Receita: a cada 7 min, 35%; fechar = 15 min
     billSta: 1, billPara: 0.15, // maquininha: por toque
@@ -182,6 +194,8 @@
       fronts: {}, // id -> nível
       closed: {}, // id -> até quando a fachada fica fechada
       fiscal: null, fiscalT: 0, // fiscal da Receita esperando resposta
+      orders: [], orderT: 150, orderN: 0, // encomendas abertas
+      town: 0, // cidade (0 = a primeira)
       surprise: null, surpT: 0, // visita surpresa da Vó esperando sua explicação
       city: null, // { id, end }
       ze: false, zeT: 0,
@@ -211,7 +225,11 @@
   const level = (s) => Math.max(1, Math.floor(Math.sqrt(s.resp / 5)));
   const legendMult = (s) => 1 + R.legendBonus * s.legend;
   // produção: soma dos bônus dos equipamentos + Botânica × 2% (GDD)
-  const prodMult = (s) => 1 + EQUIP.reduce((a, e) => a + e.prod * lvl(s, e.id), 0) + s.attrs.bot * 0.02;
+  // cidade nova: tudo vale e custa 10x mais (números maiores, mesmo ritmo), produção ×1,25 e Botânica +6 nas sementes
+  const townScale = (s) => Math.pow(10, s.town || 0);
+  const townProd = (s) => Math.pow(1.25, s.town || 0);
+  const seedPrice = (s, i) => SEEDS[i].price * townScale(s);
+  const prodMult = (s) => (1 + EQUIP.reduce((a, e) => a + e.prod * lvl(s, e.id), 0) + s.attrs.bot * 0.02) * townProd(s);
   // crescimento: tempo = base / (1 + Botânica × 5%) (GDD), mais equipamentos de velocidade
   // Modo fácil (para testar com amigos): cresce 3x mais rápido, vende 2x mais caro, tudo custa 30%,
   // atributos sobem 3x mais rápido, Paranoia cai 2x mais rápido e a espera entre vendas cai pela metade.
@@ -219,8 +237,8 @@
   const ez = (s, k) => (s.easy ? EASY[k] : 1);
   const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed")) * ez(s, "speed");
   const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap"));
-  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price");
-  const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004);
+  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price") * townScale(s);
+  const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004) * (1 + 0.1 * (s.town || 0));
   const paraOf = (s, lvlIdx) => SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
   const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
@@ -229,11 +247,11 @@
   // Assim encher o cômodo custa parecido em todo lugar, em vez de explodir no fim do jogo.
   const potCost = (s) => {
     const prev = s.place > 0 ? PLACES[s.place - 1].pots : 0;
-    const base = Math.max(20, PLACES[s.place].cost * 0.06);
+    const base = Math.max(20, PLACES[s.place].cost * 0.06) * townScale(s);
     return Math.round(base * Math.pow(1.25, Math.max(0, s.pots.length - Math.max(1, prev))) * ez(s, "cost"));
   };
-  const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)) * ez(s, "cost"));
-  const placeCost = (s, i = s.place + 1) => (PLACES[i] ? Math.round(PLACES[i].cost * ez(s, "cost")) : Infinity);
+  const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)) * ez(s, "cost") * townScale(s));
+  const placeCost = (s, i = s.place + 1) => (PLACES[i] ? Math.round(PLACES[i].cost * ez(s, "cost") * townScale(s)) : Infinity);
   const saleCooldown = (s) => Math.max(3, 20 - 17 * (topStockSeed(s) / (SEEDS.length - 1))) * Math.max(0.4, 1 - s.attrs.lab * 0.01) * ez(s, "cd");
   const stockUnits = (s) => s.stock.reduce((a, b) => a + b, 0);
   const stockValue = (s) => s.stock.reduce((a, n, i) => a + n * SEEDS[i].sell, 0);
@@ -244,7 +262,8 @@
 
   function seedLocked(s, seed) {
     const why = [];
-    if (s.attrs.bot < seed.bot) why.push(`Botânica ${seed.bot}`);
+    const bot = seed.bot + 6 * (s.town || 0);
+    if (s.attrs.bot < bot) why.push(`Botânica ${bot}`);
     for (const r of seed.req) if (!lvl(s, r)) why.push(EQUIP.find((e) => e.id === r).name);
     return why;
   }
@@ -255,17 +274,20 @@
     let total = 0;
     for (const p of s.pots) {
       const seed = SEEDS[p.s];
-      const per = (seed.prod * prodMult(s) * seed.sell * priceMult(s, 0) - seed.price) / (seed.time / speed(s));
+      const per = (seed.prod * prodMult(s) * seed.sell * priceMult(s, 0) - seedPrice(s, p.s)) / (seed.time / speed(s));
       total += Math.max(0, per);
     }
     return total;
   }
 
   // ---------------------------------------------------------------- plantio
+  // sementes e vasos: paga com grana suja; se faltar, completa com a limpa (limpa compra tudo)
+  const canPay = (s, c) => s.dirty + s.clean >= c;
+  function pay(s, c) { const d = Math.min(s.dirty, c); s.dirty -= d; s.clean -= c - d; }
   function plant(s, pot) {
     const seed = SEEDS[pot.s];
-    if (s.dirty < seed.price || !seedOk(s, pot.s)) { pot.on = false; return false; }
-    s.dirty -= seed.price;
+    if (!canPay(s, seedPrice(s, pot.s)) || !seedOk(s, pot.s)) { pot.on = false; return false; }
+    pay(s, seedPrice(s, pot.s));
     pot.on = true;
     pot.g = 0;
     return true;
@@ -371,10 +393,10 @@
     return id === "crypto" || id === "nft" ? Math.min(0.9, m.fee * marketMult(id, t)) : m.fee;
   };
   // reserva para replantar: fachadas e maquininha não encostam nela
-  const reserve = (s) => Math.max(30, SEEDS[s.seed].price * s.pots.length * 3);
+  const reserve = (s) => Math.max(30, seedPrice(s, s.seed) * s.pots.length * 3);
   const frontLvl = (s, id) => (s.fronts && s.fronts[id]) || 0;
-  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)) * ez(s, "cost"));
-  const frontCap = (f, l) => (l ? f.cap * Math.pow(1.7, l - 1) : 0); // $/min
+  const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)) * ez(s, "cost") * townScale(s));
+  const frontCap = (f, l, s) => (l ? f.cap * Math.pow(1.7, l - 1) * (s ? townScale(s) : 1) : 0); // $/min
   function buyFront(s, id) {
     const f = FRONTS.find((x) => x.id === id);
     if (frontLvl(s, id) >= FRONT_MAX) return false;
@@ -390,7 +412,7 @@
     for (const f of FRONTS) {
       const l = frontLvl(s, f.id);
       if (!l || !frontOpen(s, f.id) || avail <= 0) continue;
-      const amt = Math.min(avail, (frontCap(f, l) / 60) * dt);
+      const amt = Math.min(avail, (frontCap(f, l, s) / 60) * dt);
       avail -= amt; s.dirty -= amt;
       s.clean += amt * (1 - f.fee);
       active++;
@@ -410,7 +432,7 @@
     const open = FRONTS.filter((f) => frontLvl(s, f.id) && frontOpen(s, f.id));
     if (!open.length || s.dirty <= reserve(s) || rand(s) > R.fiscalChance) return;
     const f = open[open.length - 1]; // a maior chama mais atenção
-    const bribe = Math.round(frontCap(f, frontLvl(s, f.id)) * 8 * Math.max(0.5, 1 - s.attrs.lab * 0.01));
+    const bribe = Math.round(frontCap(f, frontLvl(s, f.id), s) * 8 * Math.max(0.5, 1 - s.attrs.lab * 0.01));
     s.fiscal = { id: f.id, at: s.time, bribe };
     note(s, "fiscal", `Fiscal da Receita na ${f.name}!`);
   }
@@ -499,8 +521,8 @@
   function buyPot(s) {
     if (s.pots.length >= maxPots(s)) return false;
     const c = potCost(s);
-    if (s.dirty < c) return false;
-    s.dirty -= c;
+    if (!canPay(s, c)) return false;
+    pay(s, c);
     s.pots.push({ g: 0, s: s.seed, on: false });
     return true;
   }
@@ -544,16 +566,16 @@
     if (s.sta < cost) return 0;
     s.sta -= cost;
     const got = 1 + Math.floor(rand(s) * 3);
-    s.dirty += got;
+    s.clean += got; // esmola é dinheiro limpo
     return got;
   }
   function visitAvo(s) {
     if (s.time < s.avoT || !safe(s, 10)) return false;
     s.avoT = s.time + R.avoEvery;
     s.sta = Math.min(100, s.sta + 15);
-    s.dirty += 5;
+    s.clean += 5; // o dinheiro da Vó é limpinho
     s.para += 10;
-    if (rand(s) < 0.3) { s.dirty += SEEDS[s.seed].price * 2; note(s, "avo", "A Vó deu um pacotinho de sementes!"); }
+    if (rand(s) < 0.3) { s.clean += seedPrice(s, s.seed) * 2; note(s, "avo", "A Vó deu um dinheirinho pras sementes!"); }
     checkBust(s);
     return true;
   }
@@ -583,7 +605,7 @@
   // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Armário.
   // Fica só o que é do personagem: atributos, Respeito e Lenda (+ metade da Lenda da rodada).
   function bust(s, why) {
-    const gain = Math.floor(legendFor(s.runEarned) / 2);
+    const gain = Math.floor(legendFor(s.runEarned / townScale(s)) / 2);
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
     const ficha = Math.min(R.fichaMax, (s.ficha || 0) + R.fichaStep);
     const keep = { legend: s.legend + gain, attrs: { ...s.attrs }, timesArrested: s.timesArrested + 1, ficha, fichaLenda: s.legend + gain };
@@ -595,7 +617,7 @@
     s.lastBust = { why, gain, kept: 0 };
   }
   // Advogado: baixa a ficha em 10 na hora. Fica 10x mais caro a cada 10% de ficha.
-  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10) * ez(s, "cost"));
+  const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10) * ez(s, "cost") * townScale(s));
   function lawyer(s) {
     if (!s.ficha) return false;
     const c = lawyerCost(s);
@@ -620,15 +642,60 @@
     }
     return o;
   }
+  // ---- encomendas
+  function newOrder(s) {
+    const best = bestSeed(s);
+    const seed = Math.max(0, best - Math.floor(rand(s) * 3));
+    const per = Math.max(1, Math.floor(SEEDS[seed].prod * prodMult(s)));
+    const n = Math.max(3, Math.round(per * s.pots.length * (0.8 + rand(s) * 1.4)));
+    const pay = Math.round(n * SEEDS[seed].sell * priceMult(s, 0) * (2 + rand(s)));
+    const c = CLIENTS[Math.floor(rand(s) * CLIENTS.length)];
+    s.orders.push({ id: ++s.orderN, emoji: c[0], who: c[1], seed, n, pay, until: s.time + R.orderTime });
+    note(s, "order", `${c[1]} quer ${n} un de ${SEEDS[seed].name}.`);
+  }
+  function ordersTick(s, dt) {
+    if (!s.orders) s.orders = [];
+    for (let i = s.orders.length - 1; i >= 0; i--) {
+      if (s.time > s.orders[i].until) { const o = s.orders.splice(i, 1)[0]; s.resp = Math.max(0, s.resp - 1); note(s, "order", `${o.who} cansou de esperar. −1 Respeito.`); }
+    }
+    if (s.away || (s.tut != null && s.tut < 99)) return;
+    s.orderT = (s.orderT || 0) + dt;
+    if (s.orderT >= R.orderEvery && s.orders.length < R.orderMax) { s.orderT = 0; newOrder(s); }
+  }
+  function deliver(s, id) {
+    const i = s.orders.findIndex((o) => o.id === id);
+    if (i < 0) return false;
+    const o = s.orders[i];
+    if (s.stock[o.seed] < o.n) return false;
+    s.stock[o.seed] -= o.n;
+    s.dirty += o.pay; s.runEarned += o.pay;
+    s.resp += 2; s.para += 3;
+    gainXp(s, "lab", Math.sqrt(o.n));
+    s.orders.splice(i, 1);
+    note(s, "order", `Entregou para ${o.who}: +$${Math.round(o.pay)}.`);
+    checkBust(s);
+    return true;
+  }
+  // ---- mudar de cidade (o jogo sem fim)
+  const canMoveTown = (s) => s.place === PLACES.length - 1 && seedOk(s, SEEDS.length - 1);
+  function moveTown(s) {
+    if (!canMoveTown(s)) return 0;
+    const gain = Math.max(1, legendFor(s.runEarned / townScale(s)));
+    const town = (s.town || 0) + 1;
+    note(s, "lenda", `Mudou para ${townName(town)}: produção ×${Math.pow(1.25, town).toFixed(2).replace(".", ",")} e +${gain} Lenda.`);
+    reset(s, { legend: s.legend + gain, attrs: { ...s.attrs }, town });
+    return gain;
+  }
+
   function retire(s) {
-    const gain = legendFor(s.runEarned);
+    const gain = legendFor(s.runEarned / townScale(s));
     if (gain < 1) return 0;
     note(s, "lenda", `Passou o ponto: +${gain} Lenda.`);
     reset(s, { legend: s.legend + gain, attrs: { ...s.attrs } });
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, town: s.town || 0, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -653,6 +720,7 @@
     if (s.city && s.time >= s.city.end) finishCity(s);
     runFronts(s, dt);
     fiscalCheck(s, dt);
+    ordersTick(s, dt);
     if (!s.away && !s.surprise && s.time > 600 && !(s.tut < 99)) {
       s.surpT += dt;
       if (s.surpT >= R.surpriseEvery) {
@@ -704,7 +772,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
