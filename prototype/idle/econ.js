@@ -15,16 +15,16 @@
     ["Cogumelo Saltitante", 300, 500, 5, 6, ["termometro", "ventilador"], 75],
     ["Lavanda Hipnótica", 800, 1200, 4, 7, ["fertilizante", "ventilador"], 90],
     ["Cacto Cabeludo", 2000, 3500, 2, 8, ["ph", "termometro"], 100],
-    ["Lótus Azul", 5000, 8000, 3, 9, ["lampada", "ph", "fertilizante"], 120],
-    ["Cipó Enrolado", 12000, 25000, 2, 10, ["estufa", "ph", "fertilizante"], 150],
-    ["Orquídea Fantasma", 30000, 60000, 2, 12, ["lampada", "estufa", "filtro"], 180],
+    ["Lótus Azul", 5000, 8000, 3, 9, ["ventilador", "ph", "fertilizante"], 120],
+    ["Cipó Enrolado", 12000, 25000, 2, 10, ["filtro", "ph"], 150],
+    ["Orquídea Fantasma", 30000, 60000, 2, 12, ["filtro", "led"], 180],
     ["Trufa Negra", 80000, 150000, 2, 14, ["led", "filtro", "ph"], 210],
     ["Mandrágora", 200000, 450000, 1, 16, ["led", "hidro", "filtro"], 240],
     ["Bonsai Milenar", 500000, 1.2e6, 1, 18, ["hidro", "co2", "led"], 300],
-    ["Rafflesia Gigante", 1.5e6, 4e6, 1, 20, ["co2", "osmose", "led", "filtro"], 360],
-    ["Aurora Boreal", 5e6, 1.5e7, 1, 23, ["ia", "co2", "osmose", "led"], 420],
-    ["Fruto do Éden", 2e7, 6.5e7, 1, 26, ["ia", "bunker", "lab"], 600],
-    ["Broto de Yggdrasil", 1e8, 3.5e8, 1, 30, ["lab", "bunker", "ia", "osmose"], 900],
+    ["Rafflesia Gigante", 1.5e6, 4e6, 1, 20, ["co2", "led", "filtro"], 360],
+    ["Aurora Boreal", 5e6, 1.5e7, 1, 23, ["ia", "co2", "led"], 420],
+    ["Fruto do Éden", 2e7, 6.5e7, 1, 26, ["ia", "lab"], 600],
+    ["Broto de Yggdrasil", 1e8, 3.5e8, 1, 30, ["lab", "ia", "cameras", "drone"], 900],
   ].map(([name, price, sell, prod, bot, req, time], id) => ({ id, name, price, sell, prod, bot, req, time, frame: id }));
 
   // Equipamentos (GDD): preço em grana limpa e bônus de produção. Cada um tem níveis
@@ -33,13 +33,15 @@
   // (os outros ficam para trás e são comprados de novo no lugar novo). place: lugar mínimo onde cabe.
   const EQUIP_RULES = {
     regador: { max: 5, place: 0 }, tesoura: { max: 5, place: 1 }, ventilador: { max: 5, place: 1 },
-    termometro: { max: 5, place: 1 }, fertilizante: { max: 5, place: 1 }, lampada: { max: 5, place: 1 },
-    ph: { max: 5, place: 1 }, estufa: { max: 5, place: 2 }, drone: { max: 1, keep: true, place: 3 },
+    termometro: { max: 5, place: 1 }, fertilizante: { max: 5, place: 2 }, lampada: { max: 5, place: 1 },
+    ph: { max: 5, place: 2 }, estufa: { max: 5, place: 2 }, drone: { max: 1, keep: true, place: 3 },
     filtro: { max: 5, place: 3 }, led: { max: 5, place: 3 }, hidro: { max: 1, keep: true, place: 6 },
     co2: { max: 5, place: 6 }, cameras: { max: 5, place: 4 }, osmose: { max: 5, place: 7 },
     ia: { max: 1, keep: true, place: 7 }, bunker: { max: 1, keep: true, place: 12, only: true },
     lab: { max: 1, keep: true, place: 12, only: true },
   };
+  // saíram do jogo: lâmpada com alumínio, mini estufa, osmose reversa e kit bunker
+  const REMOVED_EQUIP = ["lampada", "estufa", "osmose", "bunker"];
   const EQUIP = [
     ["regador", "Regador de garrafa PET", 100, 0.02, { speed: 0.05 }, "Cresce 5% mais rápido"],
     ["tesoura", "Tesoura enferrujada", 150, 0.02, { tap: 0.5 }, "Toque 50% mais forte"],
@@ -59,7 +61,8 @@
     ["ia", "Controlador IA", 1e7, 0.15, { tap: 1 }, "Toque 100% mais forte"],
     ["bunker", "Kit bunker", 3.5e7, 0.12, { guard: 0.25 }, "Rondas têm 25% menos chance de te achar"],
     ["lab", "Lab. de genética", 1.5e8, 0.2, { speed: 0.25 }, "Cresce 25% mais rápido"],
-  ].map(([id, name, price, prod, fx, fxText], i) => ({ id, name, price, prod, fx, fxText, frame: i, ...EQUIP_RULES[id] }));
+  ].map(([id, name, price, prod, fx, fxText], i) => ({ id, name, price, prod, fx, fxText, frame: i, ...EQUIP_RULES[id] }))
+    .filter((e) => !REMOVED_EQUIP.includes(e.id));
   const EQUIP_LEVEL_MULT = 3; // cada nível extra custa 3x o anterior (nível 5 = 81x o preço inicial)
 
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).

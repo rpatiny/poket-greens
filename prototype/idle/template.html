@@ -1099,7 +1099,7 @@ function loja() {
     const dInc = Math.max(0, E.incomePerSec(s2) - inc0);
     const worth = !block ? (dInc > 0 ? `<br><span class="gain">+${$$(dInc * 60)}/min de renda</span> <span class="gain2">· se paga em ${dur(c / dInc)}</span>` : "") : "";
     row({
-      ico: equipIcon(i), title: e.name, lv: e.max === 1 ? (lv ? "instalado" : "compra única") : `nv ${lv}/${e.max}`, cls: room ? "locked" : "",
+      ico: equipIcon(e.frame), title: e.name, lv: e.max === 1 ? (lv ? "instalado" : "compra única") : `nv ${lv}/${e.max}`, cls: room ? "locked" : "",
       desc: `+${pct(e.prod)} de produção${e.max > 1 ? " por nível" : ""}${e.fxText ? " · " + e.fxText : ""}${e.keep && !e.only ? " · vai com você" : ""}` +
         (room ? `<br><span class="req">${block}</span>` : needed ? `<br><span class="best">🔓 libera ${nextLocked.name}</span>` : "") + worth,
       btn: block ? (room ? null : block === "Já instalado" ? "Instalado" : "Máximo") : $$(c), btnCls: "clean",
