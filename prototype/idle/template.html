@@ -1,0 +1,420 @@
+<title>Greenhood Idle</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Silkscreen&display=swap">
+<style>
+/* Layout: app de uma tela no celular — HUD, cena da estufa (toque), barra de venda, abas de loja. */
+:root{
+  --bg:#1a1420; --panel:#272436; --panel-2:#352450; --line:#403d54;
+  --fg:#ebe9e1; --muted:#8f90a2; --leaf:#7cb342; --leaf-2:#bcd95e;
+  --gold:#f0c94f; --heat:#d95463; --teal:#48a38a; --plum:#8160a8;
+  --display:"Pixelify Sans", "Trebuchet MS", system-ui, sans-serif;
+  --num:"Silkscreen", "Courier New", monospace;
+  color-scheme: dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:15px;
+  padding-left:max(0px, env(safe-area-inset-left,0px));padding-right:max(0px, env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;overflow:hidden}
+#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column}
+.pad{padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+header{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding-block:10px 8px;background:var(--panel);border-bottom:2px solid var(--bg)}
+.cash{font-family:var(--num);font-size:22px;color:var(--gold);font-variant-numeric:tabular-nums;line-height:1.1}
+.sub{color:var(--muted);font-size:13px}
+.sub b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.legend{text-align:right;font-size:13px;color:var(--plum)}
+.legend b{display:block;font-family:var(--num);font-size:16px;color:#c7a6ff}
+.heat{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.bar{flex:1;height:10px;background:var(--bg);border:2px solid var(--line);position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--teal),var(--gold) 55%,var(--heat));width:0%}
+.bar.hot{animation:pulse .5s steps(2) infinite}
+@keyframes pulse{50%{border-color:var(--heat)}}
+#scene{position:relative;flex:0 0 auto;touch-action:manipulation;cursor:pointer;background:#000}
+canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.hint{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:13px;color:#fffbef;text-shadow:0 2px 0 #1a1420;pointer-events:none;transition:opacity .4s}
+.place{position:absolute;left:10px;top:8px;font-size:12px;background:#1a1420cc;padding:3px 8px;border:2px solid #1a1420;pointer-events:none}
+.sell{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-block:8px;background:var(--panel)}
+.sell .stock{grid-column:1/-1;display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.sell .stock b{color:var(--leaf-2);font-family:var(--num);font-size:14px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.sbtn{background:var(--panel-2);border:2px solid var(--bg);box-shadow:inset 0 -3px 0 #0006;padding:6px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+.sbtn span{font-size:14px;font-weight:600}
+.sbtn small{font-size:11px;color:var(--muted);white-space:nowrap}
+.sbtn[data-l="2"] span{color:var(--gold)} .sbtn[data-l="3"] span{color:var(--heat)}
+.sbtn:active{transform:translateY(2px);box-shadow:none}
+.sbtn:disabled{opacity:.45}
+nav{display:flex;background:var(--bg);gap:2px;padding-top:6px}
+nav button{flex:1;padding:8px 0;font-size:14px;color:var(--muted);background:var(--panel);border-top:3px solid transparent}
+nav button[aria-selected="true"]{color:var(--fg);border-top-color:var(--leaf);background:var(--line)}
+main{flex:1;overflow-y:auto;background:var(--line);padding-block:8px 16px;display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:10px;background:var(--panel);border:2px solid var(--bg);padding:6px 8px;min-width:0}
+.row .ico{width:48px;height:48px;image-rendering:pixelated;background:#1a142088}
+.row .t{min-width:0}
+.row .t b{display:block;font-size:15px}
+.row .t small{display:block;font-size:12px;color:var(--muted);line-height:1.3}
+.buy{background:var(--leaf);color:#14292b;font-weight:700;padding:8px 10px;min-width:92px;border:2px solid #1a1420;box-shadow:inset 0 -3px 0 #0003;font-family:var(--num);font-size:13px}
+.buy:disabled{background:#403d54;color:var(--muted)}
+.lvl{font-family:var(--num);font-size:11px;color:var(--gold);margin-left:6px}
+.card{background:var(--panel);border:2px solid var(--bg);padding:12px;display:flex;flex-direction:column;gap:8px}
+.card p{font-size:14px;line-height:1.45;color:#d2d0c8}
+.card .big{font-family:var(--num);font-size:22px;color:#c7a6ff}
+.danger{background:var(--plum);color:#fffbef;font-weight:700;padding:10px;border:2px solid #1a1420;font-size:15px}
+.danger:disabled{background:#403d54;color:var(--muted)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);background:#fffbef;color:#1a1420;padding:10px 14px;border:3px solid #1a1420;font-size:14px;max-width:90vw;z-index:20;box-shadow:0 4px 0 #0006}
+.modal{position:fixed;inset:0;background:#1a1420cc;display:grid;place-items:center;z-index:30;padding:16px}
+.modal .card{max-width:360px;text-align:center}
+.flash{animation:flash .6s steps(3)}
+@keyframes flash{0%,60%{background:#d95463}}
+@media (prefers-reduced-motion:reduce){.bar.hot,.flash{animation:none}}
+</style>
+
+<div id="app">
+  <header class="pad">
+    <div>
+      <div class="cash" id="cash">$0</div>
+      <div class="sub">renda automática <b id="ips">0</b>/s · toque <b id="tap">+1</b></div>
+    </div>
+    <div class="legend">Lenda<b id="legend">0</b></div>
+    <div class="heat">Calor <div class="bar" id="heatbar"><i id="heat"></i></div><span id="heatn">0%</span></div>
+  </header>
+  <div id="scene" role="button" aria-label="Tocar para regar as plantas">
+    <canvas id="cv" width="320" height="180"></canvas>
+    <div class="place" id="place">Garagem do Vizinho</div>
+    <div class="hint" id="hint">toque para fazer as plantas crescerem</div>
+  </div>
+  <div class="sell pad">
+    <div class="stock"><span>Estoque para vender</span><b id="stock">$0</b></div>
+  </div>
+  <nav class="pad" role="tablist">
+    <button role="tab" data-tab="up" aria-selected="true">Equipamentos</button>
+    <button role="tab" data-tab="grow" aria-selected="false">Plantas</button>
+    <button role="tab" data-tab="legend" aria-selected="false">Lenda</button>
+  </nav>
+  <main class="pad" id="panel"></main>
+</div>
+
+<script>
+/*ECON*/
+</script>
+<script>
+"use strict";
+const IMG = { plantas: "__PLANTAS__", equip: "__EQUIP__", vasos: "__VASOS__" };
+const E = window.ECON;
+const SAVE_KEY = "greenhood-idle-v1";
+const $ = (id) => document.getElementById(id);
+
+// ---------- números ----------
+function fmt(n) {
+  if (!isFinite(n)) return "∞";
+  if (n < 1000) return Math.floor(n).toString();
+  const u = ["mil", "mi", "bi", "tri", "qua", "qui", "sex", "sep"];
+  let i = -1;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : n.toFixed(0)).replace(".", ",") + " " + u[i];
+}
+const money = (n) => "$" + fmt(n);
+
+// ---------- estado ----------
+let S;
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      S = Object.assign(E.newState(), d.s);
+      const away = (Date.now() - d.at) / 1000;
+      if (away > 30) {
+        const got = E.offline(S, away);
+        if (got > 0) modal(`Você ficou fora ${duration(away)}`, `${S.ze ? "O Zé vendeu tudo e" : "As plantas cresceram e"} rendeu <b class="big">${money(got)}</b>${S.ze ? "" : " em estoque (contrate o Zé para vender sozinho)"}.`);
+      }
+      return;
+    }
+  } catch (e) {}
+  S = E.newState();
+}
+function save() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ at: Date.now(), s: S })); } catch (e) {}
+}
+function duration(t) {
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60);
+  return h ? `${h}h ${m}min` : `${Math.max(1, m)} min`;
+}
+
+// ---------- sprites ----------
+const sprites = {};
+function loadImg(k) {
+  return new Promise((r) => { const i = new Image(); i.onload = () => { sprites[k] = i; r(); }; i.src = IMG[k]; });
+}
+function icon(sheet, frame, cw, ch, cols) {
+  const c = document.createElement("canvas");
+  c.width = cw; c.height = ch; c.className = "ico";
+  const x = c.getContext("2d");
+  x.imageSmoothingEnabled = false;
+  if (sprites[sheet]) x.drawImage(sprites[sheet], (frame % cols) * cw, Math.floor(frame / cols) * ch, cw, ch, 0, 0, cw, ch);
+  return c;
+}
+
+// ---------- cena ----------
+const cv = $("cv"), g = cv.getContext("2d");
+const W = 320, H = 180, FLOOR = 70;
+// desenha em escala inteira (pixels nítidos) e deixa o navegador só reduzir um pouco
+let K = 1;
+function fitCanvas() {
+  const css = cv.getBoundingClientRect().width || W;
+  K = Math.max(1, Math.ceil((css * (window.devicePixelRatio || 1)) / W));
+  cv.width = W * K; cv.height = H * K;
+  g.setTransform(K, 0, 0, K, 0, 0);
+  g.imageSmoothingEnabled = false;
+}
+window.addEventListener("resize", fitCanvas);
+const fx = []; // textos flutuantes
+const THEMES = [
+  { wall: "#a3423a", mortar: "#6e2834", hi: "#cc6748", floor: "#8f6040", floor2: "#6b4234", base: "#403d54" },   // garagem / porão
+  { wall: "#646379", mortar: "#403d54", hi: "#8f90a2", floor: "#8f90a2", floor2: "#646379", base: "#272436" },   // galpão
+  { wall: "#272436", mortar: "#1b4a55", hi: "#2a7470", floor: "#403d54", floor2: "#352450", base: "#48a38a" },   // bunker
+];
+function drawRoom(tier) {
+  const t = THEMES[tier];
+  g.fillStyle = t.wall; g.fillRect(0, 0, W, FLOOR);
+  g.fillStyle = t.mortar;
+  if (tier === 0) {
+    for (let y = 0; y < FLOOR; y += 8) {
+      g.fillRect(0, y + 7, W, 1);
+      for (let x = (y / 8) % 2 ? 8 : 0; x < W; x += 16) g.fillRect(x + 15, y, 1, 7);
+    }
+    g.fillStyle = t.hi;
+    for (let y = 0; y < FLOOR; y += 8) for (let x = (y / 8) % 2 ? 8 : 0; x < W; x += 32) g.fillRect(x, y, 14, 1);
+  } else if (tier === 1) {
+    for (let x = 0; x < W; x += 6) g.fillRect(x, 0, 2, FLOOR);
+  } else {
+    for (let x = 0; x < W; x += 16) g.fillRect(x, 0, 1, FLOOR);
+    for (let y = 0; y < FLOOR; y += 16) g.fillRect(0, y, W, 1);
+    g.fillStyle = t.base; g.fillRect(0, FLOOR - 6, W, 2);
+  }
+  g.fillStyle = "#1a1420"; g.fillRect(0, FLOOR - 3, W, 3);
+  g.fillStyle = t.floor; g.fillRect(0, FLOOR, W, H - FLOOR);
+  g.fillStyle = t.floor2;
+  for (let y = FLOOR + 14; y < H; y += 24) g.fillRect(0, y, W, 1);
+  // janela com luz (garagem) / luzes (galpão e bunker)
+  if (tier === 0) {
+    g.fillStyle = "#1a1420"; g.fillRect(226, 10, 64, 40);
+    g.fillStyle = "#a6cbeb"; g.fillRect(229, 13, 58, 34);
+    g.fillStyle = "#6590cc"; g.fillRect(229, 30, 58, 17);
+    g.fillStyle = "#8a4a33"; g.fillRect(257, 13, 2, 34); g.fillRect(229, 29, 58, 2);
+    g.fillStyle = "#ffffff22";
+    g.beginPath(); g.moveTo(222, FLOOR); g.lineTo(296, FLOOR); g.lineTo(330, H); g.lineTo(250, H); g.fill();
+  } else {
+    g.fillStyle = tier === 1 ? "#f0c94f" : "#8fd4a8";
+    for (let x = 30; x < W; x += 90) g.fillRect(x, 4, 40, 3);
+  }
+}
+function potLayout(n) {
+  // até 3 vasos: uma fileira em tamanho 2x; depois, fileiras de 6 em tamanho normal
+  if (n <= 3) return Array.from({ length: n }, (_, i) => ({ x: Math.round(W / 2 - ((n - 1) * 96) / 2 + i * 96 - 32), y: FLOOR + 44, z: 2 }));
+  const perRow = 6;
+  const rows = Math.ceil(n / perRow);
+  const out = [];
+  const rowH = rows > 2 ? 26 : 40;
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / perRow), c = i % perRow;
+    const inRow = Math.min(perRow, n - r * perRow);
+    const span = perRow === 3 ? 72 : 44;
+    const x0 = W / 2 - ((inRow - 1) * span) / 2;
+    out.push({ x: Math.round(x0 + c * span - 16), y: Math.round(FLOOR + 30 + r * rowH + (rows > 2 ? 0 : 20) - (rows > 1 ? 12 : 0)), z: 1 });
+  }
+  return out;
+}
+let shake = 0;
+function draw() {
+  const place = E.PLACES[S.place];
+  g.save();
+  if (shake > 0) g.translate(Math.round((Math.random() - 0.5) * shake), 0);
+  drawRoom(place.tier);
+  const seed = E.SEEDS[S.seed];
+  const L = potLayout(S.pots.length);
+  const potFrame = place.tier === 0 ? null : 2;
+  L.forEach((p, i) => {
+    const pf = potFrame ?? (i % 3 === 2 ? 2 : i % 2); // lata, vaso rachado ou vaso de barro
+    const z = p.z;
+    g.fillStyle = "#1a142055"; g.fillRect(p.x + 6 * z, p.y + 20 * z, 22 * z, 3 * z);
+    if (sprites.vasos) g.drawImage(sprites.vasos, pf * 32, 0, 32, 24, p.x, p.y, 32 * z, 24 * z);
+    const f = S.pots[i] / seed.grow;
+    const frame = f < 0.34 ? 0 : f < 0.67 ? 1 : seed.frame;
+    if (sprites.plantas) g.drawImage(sprites.plantas, (frame % 10) * 32, Math.floor(frame / 10) * 40, 32, 40, p.x, p.y - 34 * z, 32 * z, 40 * z);
+    // barrinha de crescimento
+    g.fillStyle = "#1a1420"; g.fillRect(p.x + 6 * z, p.y + 25 * z, 20 * z, 3 * z);
+    g.fillStyle = "#7cb342"; g.fillRect(p.x + 7 * z, p.y + 26 * z, Math.round(18 * z * Math.min(1, f)), z);
+  });
+  g.restore();
+  // textos flutuantes
+  for (let i = fx.length - 1; i >= 0; i--) {
+    const p = fx[i];
+    p.t += 1 / 60; p.y -= 0.5;
+    const a = Math.max(0, 1 - p.t / 1.1);
+    g.globalAlpha = a;
+    g.font = "bold 10px 'Silkscreen', monospace";
+    g.fillStyle = "#1a1420"; g.fillText(p.s, p.x + 1, p.y + 1);
+    g.fillStyle = p.c; g.fillText(p.s, p.x, p.y);
+    g.globalAlpha = 1;
+    if (p.t > 1.1) fx.splice(i, 1);
+  }
+  shake = Math.max(0, shake - 0.6);
+}
+function float(s, x, y, c = "#fffbef") { fx.push({ s, x, y, c, t: 0 }); if (fx.length > 40) fx.shift(); }
+
+// ---------- entrada ----------
+let taps = 0;
+$("scene").addEventListener("pointerdown", (e) => {
+  const r = cv.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
+  const stockBefore = S.stock;
+  const n = E.tap(S);
+  float("+" + fmt(E.tapPower(S)), x - 8, y);
+  if (n) { float("+" + money(S.stock - stockBefore), x - 10, y - 14, "#bcd95e"); }
+  if (++taps === 8) $("hint").style.opacity = 0;
+});
+
+// ---------- venda ----------
+const sellBox = document.querySelector(".sell");
+E.SALES.forEach((L, i) => {
+  const b = document.createElement("button");
+  b.className = "sbtn"; b.dataset.l = i;
+  b.innerHTML = `<span>${L.name}</span><small>×${String(L.price).replace(".", ",")} · ${Math.round(L.pct * 100)}%</small>`;
+  b.onclick = () => {
+    const got = E.sell(S, i);
+    if (got > 0) {
+      float("+" + money(got), 130, 40, "#f0c94f");
+      if (S.legend > lastLegend || S.busts > lastBusts) busted();
+    }
+    refresh();
+  };
+  sellBox.appendChild(b);
+});
+let lastLegend = 0, lastBusts = 0;
+function busted() {
+  if (S.busts > lastBusts) {
+    shake = 8;
+    const ev = S.log[S.log.length - 1];
+    modal("BATIDA POLICIAL!", `A polícia levou tudo. Na delegacia você ganhou fama: <b class="big">+${ev.gain} Lenda</b>.<br>Dica: espere o calor baixar antes de vender no Ousado ou no All-in.`);
+  }
+  lastLegend = S.legend; lastBusts = S.busts;
+  renderPanel();
+}
+
+// ---------- painéis ----------
+let tab = "up";
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll("nav button").forEach((x) => x.setAttribute("aria-selected", x === b));
+  renderPanel();
+});
+const panel = $("panel");
+const buyButtons = [];
+function row(iconEl, title, desc, cost, onBuy, level) {
+  const d = document.createElement("div");
+  d.className = "row";
+  d.appendChild(iconEl);
+  const t = document.createElement("div");
+  t.className = "t";
+  t.innerHTML = `<b>${title}${level != null ? `<span class="lvl">nv ${level}</span>` : ""}</b><small>${desc}</small>`;
+  d.appendChild(t);
+  const b = document.createElement("button");
+  b.className = "buy";
+  b.textContent = cost == null ? "—" : money(cost);
+  b.onclick = () => { if (onBuy()) { renderPanel(); refresh(); } };
+  buyButtons.push([b, () => cost != null && S.cash >= cost]);
+  d.appendChild(b);
+  panel.appendChild(d);
+}
+function renderPanel() {
+  panel.innerHTML = "";
+  buyButtons.length = 0;
+  if (tab === "up") {
+    if (!S.ze) row(icon("plantas", 1, 32, 40, 10), "Contratar o Zé", "Vende sozinho no modo Discreto a cada 8 s, até com o app fechado.", E.ZE_COST, () => E.hireZe(S));
+    E.UPGRADES.forEach((u) => {
+      const c = E.upgradeCost(S, u);
+      row(icon("equip", u.frame, 32, 32, 9), u.name, u.desc, c, () => E.buyUpgrade(S, u.id), S.levels[u.id]);
+    });
+  } else if (tab === "grow") {
+    const next = E.SEEDS[S.unlocked];
+    if (next) row(icon("plantas", next.frame, 32, 40, 10), next.name, `Vale ${money(next.value)} por planta (a atual vale ${money(E.SEEDS[S.seed].value)}). Os vasos são replantados.`, next.unlock, () => E.buySeed(S));
+    if (S.pots.length < E.maxPots(S)) row(icon("vasos", 1, 32, 24, 3), "Mais um vaso", `${S.pots.length} de ${E.maxPots(S)} vasos neste esconderijo.`, E.potCost(S), () => E.buyPot(S));
+    const np = E.PLACES[S.place + 1];
+    if (np) row(icon("vasos", 2, 32, 24, 3), np.name, `Cabem ${np.pots} vasos. ${np.tier > E.PLACES[S.place].tier ? "Visual novo!" : ""}`, np.cost, () => E.buyPlace(S));
+    const info = document.createElement("div");
+    info.className = "card";
+    info.innerHTML = `<p>Plantando agora: <b>${E.SEEDS[S.seed].name}</b> (${S.unlocked} de ${E.SEEDS.length} sementes).</p>`;
+    panel.appendChild(info);
+  } else {
+    const gain = E.legendFor(S.runEarned);
+    const c = document.createElement("div");
+    c.className = "card";
+    c.innerHTML = `
+      <p>Lenda é a sua fama no crime das plantas. Cada ponto aumenta o valor de tudo o que você planta, para sempre.</p>
+      <p>Ao <b>passar o ponto</b> você recomeça do zero (dinheiro, sementes, equipamentos) e leva a Lenda junto. Se a polícia te pegar, você também recomeça, mas ganha só <b>metade</b>.</p>
+      <p>Lenda atual: <b class="big">${S.legend}</b> (bônus ×${(1 + E.LEGEND_BONUS * Math.pow(S.legend, 0.6)).toFixed(2).replace(".", ",")})</p>
+      <p>Ganho nesta rodada: ${money(S.runEarned)} · próxima Lenda vale <b class="big">+${gain}</b></p>`;
+    const b = document.createElement("button");
+    b.className = "danger";
+    b.textContent = gain > 0 ? `Passar o ponto (+${gain} Lenda)` : "Ganhe $10 mi nesta rodada para passar o ponto";
+    b.disabled = gain < 1;
+    b.onclick = () => {
+      E.retire(S); lastLegend = S.legend;
+      modal("Você passou o ponto", `Recomeçou do zero com <b class="big">${S.legend}</b> de Lenda. Tudo rende mais agora.`);
+      renderPanel(); refresh();
+    };
+    c.appendChild(b);
+    panel.appendChild(c);
+  }
+}
+
+// ---------- HUD ----------
+function refresh() {
+  $("cash").textContent = money(S.cash);
+  $("ips").textContent = money(E.incomePerSec(S));
+  $("tap").textContent = "+" + fmt(E.tapPower(S));
+  $("legend").textContent = S.legend;
+  $("stock").textContent = money(S.stock);
+  const h = Math.min(100, S.heat);
+  $("heat").style.width = h + "%";
+  $("heatn").textContent = Math.round(h) + "%";
+  $("heatbar").classList.toggle("hot", h > 70);
+  $("place").textContent = E.PLACES[S.place].name + (S.ze ? " · Zé vendendo" : "");
+  document.querySelectorAll(".sbtn").forEach((b) => b.disabled = S.saleCd > 0 || S.stock <= 0);
+  for (const [b, ok] of buyButtons) b.disabled = !ok();
+}
+
+// ---------- avisos ----------
+function modal(title, html) {
+  const m = document.createElement("div");
+  m.className = "modal";
+  m.innerHTML = `<div class="card"><b style="font-size:18px">${title}</b><p>${html}</p><button class="buy" style="align-self:center">OK</button></div>`;
+  m.querySelector("button").onclick = () => m.remove();
+  document.body.appendChild(m);
+}
+
+// ---------- laço ----------
+let last = performance.now(), acc = 0, saveT = 0;
+function loop(now) {
+  const dt = Math.min(0.25, (now - last) / 1000);
+  last = now;
+  const bustsBefore = S.busts;
+  E.tick(S, dt);
+  if (S.busts > bustsBefore) busted();
+  acc += dt; saveT += dt;
+  if (acc > 0.1) { refresh(); acc = 0; }
+  if (saveT > 3) { save(); saveT = 0; }
+  draw();
+  requestAnimationFrame(loop);
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) save(); });
+
+Promise.all(["plantas", "equip", "vasos"].map(loadImg)).then(() => {
+  fitCanvas();
+  load();
+  lastLegend = S.legend; lastBusts = S.busts;
+  renderPanel(); refresh();
+  requestAnimationFrame(loop);
+});
+</script>

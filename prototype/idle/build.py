@@ -1,0 +1,22 @@
+"""Monta o protótipo em um único HTML (index.html) com a economia e os sprites embutidos.
+
+    python3 prototype/idle/build.py
+"""
+import base64
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+SPR = HERE.parent.parent / "assets" / "sprites" / "v2"
+
+
+def data_uri(name):
+    return "data:image/png;base64," + base64.b64encode((SPR / name).read_bytes()).decode()
+
+
+html = (HERE / "template.html").read_text()
+html = html.replace("/*ECON*/", (HERE / "econ.js").read_text())
+html = html.replace("__PLANTAS__", data_uri("plantas.png"))
+html = html.replace("__EQUIP__", data_uri("equipamentos.png"))
+html = html.replace("__VASOS__", data_uri("vasos.png"))
+(HERE / "index.html").write_text(html)
+print("index.html:", len(html) // 1024, "KB")
