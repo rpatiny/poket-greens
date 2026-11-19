@@ -131,7 +131,7 @@ body.tut.grow #hint{opacity:1}
 #easy{right:8px;bottom:8px;color:#bcd95e;border-color:#4a8f40;pointer-events:none}
 #master{left:8px;bottom:8px;color:#fff0a6;border-color:#d1952e;pointer-events:none}
 .sheet{position:fixed;inset:0;background:#1a1420d0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
-.sheet .in{background:var(--panel);border-top:3px solid var(--dirty);width:100%;max-width:520px;max-height:86%;overflow-y:auto;
+.sheet .in{background:var(--panel);border-top:3px solid var(--dirty);width:100%;max-width:520px;max-height:86%;overflow-y:auto;overscroll-behavior:contain;
   padding-block:12px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
 .sheet .top{display:flex;justify-content:space-between;align-items:center}
 .sheet .top b{font-size:18px;color:var(--dirty)}
@@ -332,6 +332,7 @@ body.tut.grow #hint{opacity:1}
   const townName = (i) => (i < TOWNS.length ? TOWNS[i] : `Metrópole ${i - TOWNS.length + 2}`);
 
   // Encomendas: clientes pedem N unidades de uma planta, com prazo, e pagam 2-3x o preço normal.
+  const ORDERS_FROM = 4; // as encomendas só começam no Sobrado na Favela (lá tem freguesia)
   const CLIENTS = [
     ["🍺", "Seu Jorge do bar"], ["🎂", "Tia do bolo"], ["🎓", "Playboy da faculdade"], ["🎧", "DJ da festa"],
     ["🙏", "Irmã Lurdes"], ["🏋️", "Personal da academia"], ["🎨", "Artista da praça"], ["🛵", "Motoboy do bairro"],
@@ -841,7 +842,7 @@ body.tut.grow #hint{opacity:1}
     for (let i = s.orders.length - 1; i >= 0; i--) {
       if (s.time > s.orders[i].until) { const o = s.orders.splice(i, 1)[0]; s.resp = Math.max(0, s.resp - 1); note(s, "order", `${o.who} cansou de esperar. −1 Respeito.`); }
     }
-    if (s.away || (s.tut != null && s.tut < 99)) return;
+    if (s.away || (s.tut != null && s.tut < 99) || s.place < ORDERS_FROM) return;
     s.orderT = (s.orderT || 0) + dt;
     if (s.orderT >= R.orderEvery && s.orders.length < R.orderMax) { s.orderT = 0; newOrder(s); }
   }
@@ -860,7 +861,8 @@ body.tut.grow #hint{opacity:1}
     return true;
   }
   // ---- mudar de cidade (o jogo sem fim)
-  const canMoveTown = (s) => s.place === PLACES.length - 1 && seedOk(s, SEEDS.length - 1);
+  const TOWNS_ON = false; // mudar de cidade: desligado até esta versão ficar redonda
+  const canMoveTown = (s) => TOWNS_ON && s.place === PLACES.length - 1 && seedOk(s, SEEDS.length - 1);
   function moveTown(s) {
     if (!canMoveTown(s)) return 0;
     const gain = Math.max(1, legendFor(s.runEarned / townScale(s)));
@@ -955,7 +957,7 @@ body.tut.grow #hint{opacity:1}
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, TOWNS_ON, ORDERS_FROM, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
@@ -2606,7 +2608,7 @@ function estufa() {
     btn: $$(E.placeCost(S)), btnCls: "clean", enabled: () => S.clean >= E.placeCost(S), onClick: () => E.buyPlace(S),
   });
   // fim do jogo: mudar de cidade (recomeça mais forte, sem fim)
-  if (S.place === E.PLACES.length - 1) {
+  if (E.TOWNS_ON && S.place === E.PLACES.length - 1) {
     const nt = (S.town || 0) + 1, ok = E.canMoveTown(S);
     row({
       emoji: "🚚", title: `Mudar para ${E.townName(nt)}`,
@@ -3052,10 +3054,28 @@ function openMaster() {
     const r = E.offline(S, t);
     toast(`Pulou ${dur(t)}: +${$$(r.dirty)} suja, +${$$(r.clean)} limpa, +${fmt(r.units)} un${r.busted ? " · BATIDA!" : ""}`);
   }
+  const MAXG = 1e15;
+  // monta um esconderijo no máximo: todos os vasos, tudo o que cabe ali no nível máximo, plantas em estágios variados
+  function maxPlace(i) {
+    S.tut = 99; document.body.classList.remove("tut"); story = null; $("dlg").hidden = true; $("skip").hidden = true;
+    S.place = i;
+    S.attrs = { bot: Math.max(S.attrs.bot, 60), lab: Math.max(S.attrs.lab, 40), fur: Math.max(S.attrs.fur, 40), seg: Math.max(S.attrs.seg, 40) };
+    S.equip = {};
+    for (const e of E.EQUIP) if (i >= e.place) S.equip[e.id] = e.max;
+    S.seed = best();
+    S.pots = [];
+    for (let k = 0; k < E.PLACES[i].pots; k++) S.pots.push({ s: S.seed, on: true, g: E.SEEDS[S.seed].time * ((k * 0.17 + 0.05) % 1) });
+    S.dirty = Math.max(S.dirty, MAXG); S.clean = Math.max(S.clean, MAXG);
+    S.sta = 100;
+  }
   const groups = [
+    ["Tudo liberado", [
+      ["⭐ Tudo liberado (Bunker no máximo)", () => maxPlace(E.PLACES.length - 1), null, "big"],
+    ]],
+    ["Cenários no máximo (todos os vasos e equipamentos)", E.PLACES.map((pl, i) => [pl.name, () => maxPlace(i), () => S.place === i])],
     ["Dinheiro", [
-      ["+$1 mil suja", () => (S.dirty += 1e3)], ["+$1 mi suja", () => (S.dirty += 1e6)], ["+$1 bi suja", () => (S.dirty += 1e9)],
-      ["+$1 mil limpa", () => (S.clean += 1e3)], ["+$1 mi limpa", () => (S.clean += 1e6)], ["+$1 bi limpa", () => (S.clean += 1e9)],
+      ["Grana suja máxima", () => (S.dirty = MAXG)],
+      ["Grana limpa máxima", () => (S.clean = MAXG)],
     ]],
     ["Polícia", [
       ["Paranoia 0%", () => (S.para = 0)], ["Paranoia 85% (ronda)", () => (S.para = 85)],
@@ -3065,30 +3085,24 @@ function openMaster() {
       ["Quitar agiota", () => (S.debt = 0)],
     ]],
     ["Personagem", [
-      ["Estamina 100", () => (S.sta = 100)],
-      ["Atributos +5", () => { for (const k in S.attrs) S.attrs[k] += 5; }],
-      ["Botânica 30", () => (S.attrs.bot = Math.max(30, S.attrs.bot))],
-      ["Lábia 10", () => (S.attrs.lab = Math.max(10, S.attrs.lab))],
-      ["+10 Lenda", () => (S.legend += 10)],
-      ["+1000 Respeito", () => (S.resp += 1000)],
+      [() => (S.cheat.maxed ? "Tudo no máximo: LIGADO" : "Tudo no máximo"), () => {
+        if (!S.cheat.maxed) {                                // guarda como estava para poder desligar
+          S.cheat.maxed = { attrs: { ...S.attrs }, sta: S.sta };
+          S.attrs = { bot: 60, lab: 40, fur: 40, seg: 40 }; S.sta = 100;
+        } else {
+          S.attrs = S.cheat.maxed.attrs; S.sta = S.cheat.maxed.sta; S.cheat.maxed = null;
+        }
+      }, () => !!S.cheat.maxed],
     ]],
     ["Progresso", [
       ["Visita surpresa da Vó agora", () => { const a = Math.floor(Math.random() * 10); let b = Math.floor(Math.random() * 9); if (b >= a) b++; S.surprise = { opts: [a, b], at: S.time }; }],
-      ["Todos os equipamentos que cabem aqui", () => E.EQUIP.forEach((e) => { if (S.place >= e.place) S.equip[e.id] = Math.max(1, E.lvl(S, e.id)); })],
-      ["Próximo imóvel", () => { if (E.PLACES[S.place + 1]) S.place++; }],
-      ["Último imóvel", () => (S.place = E.PLACES.length - 1)],
-      ["Encher de vasos", () => { while (S.pots.length < E.maxPots(S)) S.pots.push({ g: 0, s: S.seed, on: false }); }],
-      ["Melhor semente", () => E.chooseSeed(S, best())],
-      ["Tudo pronto p/ colher", () => S.pots.forEach((p) => { p.on = true; p.g = E.SEEDS[p.s].time * 0.999; })],
-      ["+100 un no estoque", () => (S.stock[best()] += 100)],
-      ["Venda sem espera", () => (S.saleCd = 0)],
-      ["Concluir lavagem e cidade", () => { S.laundry.forEach((l) => (l.done = S.time)); if (S.city) S.city.end = S.time; S.avoT = S.time; }],
+      ["Todos os equipamentos (nível máximo)", () => E.EQUIP.forEach((e) => { if (S.place >= e.place) S.equip[e.id] = e.max; })],
     ]],
     ["Tempo", [
       ["Velocidade ×1", () => (S.cheat.speed = 1), () => S.cheat.speed === 1],
-      ["Velocidade ×10", () => (S.cheat.speed = 10), () => S.cheat.speed === 10],
-      ["Velocidade ×60", () => (S.cheat.speed = 60), () => S.cheat.speed === 60],
-      ["Pular 10 min", () => skip(600)], ["Pular 1 hora", () => skip(3600)], ["Pular 8 horas", () => skip(8 * 3600)],
+      ["Velocidade ×50", () => (S.cheat.speed = 50), () => S.cheat.speed === 50],
+      ["Velocidade ×100", () => (S.cheat.speed = 100), () => S.cheat.speed === 100],
+      ["Pular 1 hora", () => skip(3600)],
     ]],
   ];
   const paints = [];
@@ -3096,7 +3110,7 @@ function openMaster() {
     box.appendChild(el(`<h3>${title}</h3>`));
     const grid = el(`<div class="grid"></div>`);
     for (const [label, fn, isOn, cls] of items) {
-      const b = el(`<button${cls ? ` class="${cls}"` : ""}></button>`);
+      const b = el(`<button${cls ? ` class="${cls}"` : ""}${cls === "big" ? ' style="grid-column:1/-1;background:#4a8f40;color:#fffbef;font-size:15px;padding:12px"' : ""}></button>`);
       const paint = () => { b.textContent = typeof label === "function" ? label() : label; if (isOn) b.classList.toggle("on", !!isOn()); };
       b.onclick = () => { fn(); paints.forEach((f) => f()); renderPanel(); refresh(); checkEvents(); save(); };
       paint(); paints.push(paint); grid.appendChild(b);

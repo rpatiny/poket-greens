@@ -149,6 +149,7 @@
   const townName = (i) => (i < TOWNS.length ? TOWNS[i] : `Metrópole ${i - TOWNS.length + 2}`);
 
   // Encomendas: clientes pedem N unidades de uma planta, com prazo, e pagam 2-3x o preço normal.
+  const ORDERS_FROM = 4; // as encomendas só começam no Sobrado na Favela (lá tem freguesia)
   const CLIENTS = [
     ["🍺", "Seu Jorge do bar"], ["🎂", "Tia do bolo"], ["🎓", "Playboy da faculdade"], ["🎧", "DJ da festa"],
     ["🙏", "Irmã Lurdes"], ["🏋️", "Personal da academia"], ["🎨", "Artista da praça"], ["🛵", "Motoboy do bairro"],
@@ -658,7 +659,7 @@
     for (let i = s.orders.length - 1; i >= 0; i--) {
       if (s.time > s.orders[i].until) { const o = s.orders.splice(i, 1)[0]; s.resp = Math.max(0, s.resp - 1); note(s, "order", `${o.who} cansou de esperar. −1 Respeito.`); }
     }
-    if (s.away || (s.tut != null && s.tut < 99)) return;
+    if (s.away || (s.tut != null && s.tut < 99) || s.place < ORDERS_FROM) return;
     s.orderT = (s.orderT || 0) + dt;
     if (s.orderT >= R.orderEvery && s.orders.length < R.orderMax) { s.orderT = 0; newOrder(s); }
   }
@@ -677,7 +678,8 @@
     return true;
   }
   // ---- mudar de cidade (o jogo sem fim)
-  const canMoveTown = (s) => s.place === PLACES.length - 1 && seedOk(s, SEEDS.length - 1);
+  const TOWNS_ON = false; // mudar de cidade: desligado até esta versão ficar redonda
+  const canMoveTown = (s) => TOWNS_ON && s.place === PLACES.length - 1 && seedOk(s, SEEDS.length - 1);
   function moveTown(s) {
     if (!canMoveTown(s)) return 0;
     const gain = Math.max(1, legendFor(s.runEarned / townScale(s)));
@@ -772,7 +774,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, TOWNS_ON, ORDERS_FROM, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),

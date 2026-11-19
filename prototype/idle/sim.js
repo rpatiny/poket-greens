@@ -134,7 +134,6 @@ if (process.env.PACE) {
   // ritmo da progressão: sem passar o ponto, mostra quando cada semente e cada imóvel chegam
   run("RITMO normal (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 14, all: true });
   run("RITMO fácil (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 3, easy: true, all: true });
-  run("SEM FIM: muda de cidade (48h, ativo)", { ...base, retireAt: Infinity, hours: 48, towns: true, all: true });
   process.exit(0);
 }
 run("Ativo cauteloso", { ...base, hours: 8 });
