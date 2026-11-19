@@ -263,9 +263,9 @@ const STORY = {
     { who: "vo", t: "Netinho! Olha o que a vovó trouxe pra você!" },
     { who: "vo", t: "Uma sementinha! Peguei no quintal da Dona Cleide, aquela fofoqueira da casa ao lado." },
     { who: "vo", t: "Ela nem viu, bem feito! Planta pra mim e depois me dá umas mudinhas, tá bom?" },
-    { who: "neto", t: "Pode deixar, vó!" },
-    { who: "neto", think: true, t: "(Essa planta... a Dona Cleide esconde esse canteiro atrás do muro. Será que é proibida?)" },
-    { who: "neto", think: true, t: "(Melhor plantar escondido. No armário! Ninguém mexe lá.)" },
+    { who: "neto", think: true, t: "(Dona Cleide? Acho que o filho dela já foi preso...)" },
+    { who: "neto", think: true, t: "(Será que não é melhor eu plantar escondido antes?)" },
+    { who: "neto", t: "Valeu, vó! Quando eu tiver as plantas, te dou uma mudinha." },
   ],
   armario: [
     { who: "neto", t: "Pronto, o armário tá vazio. Mas onde eu vou plantar isso?", act: ["🔍 Procurar um vaso", () => { S.pots = [{ g: 0, s: 0, on: false }]; S.tut = 2; }] },
@@ -928,7 +928,6 @@ function draw() {
     g.fillStyle = "#7cb342"; g.fillRect(bx + (m.pot ? 1 : 0), by + (m.pot ? 1 : 0), Math.round((bw - (m.pot ? 2 : 0)) * Math.min(1, m.f)), 1);
   }
   }
-  if (inTut()) drawPeople(roomId);
   SCENES.lighting(g, roomId);
   g.restore();
   for (let i = fx.length - 1; i >= 0; i--) {

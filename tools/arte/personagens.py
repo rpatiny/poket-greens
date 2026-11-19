@@ -15,7 +15,7 @@ from estilo_topdown import ROOT
 from PIL import Image
 
 SK = RAMPS["skin"]; HR = RAMPS["hair"]; ST = RAMPS["stone"]; PL = RAMPS["plum"]; CR = RAMPS["crimson"]
-LF = RAMPS["leaf"]; DN = RAMPS["denim"]; PA = RAMPS["paper"]; GD = RAMPS["gold"]; WD = RAMPS["wood"]
+LF = RAMPS["leaf"]; DN = RAMPS["denim"]; PA = RAMPS["paper"]; GD = RAMPS["gold"]; WD = RAMPS["wood"]; TE = RAMPS["teal"]
 WHITE = "#fffbef"
 BW, BH = 32, 48      # corpo
 PW, PH = 48, 48      # retrato
@@ -195,65 +195,55 @@ def vo_body(talk=False):
 
 
 # ======================================================================= corpo: neto
+def curls(p, mask, seed=3):
+    """Cabelo crespo: base escura com cachinhos acesos em cima e sombra embaixo de cada um."""
+    p.fill(mask, HR, 1, "hair")
+    for (x, y) in sorted(mask):
+        if (x * 3 + y * 5 + seed) % 7 == 0 and (x, y + 1) in mask and (x + 1, y) in mask:
+            p.set(x, y, HR[3]); p.set(x + 1, y, HR[2]); p.set(x, y + 1, HR[2]); p.set(x + 1, y + 1, HR[0])
+    edge = [(x, y) for (x, y) in mask if (x, y - 1) not in mask or (x - 1, y) not in mask]
+    for (x, y) in edge:
+        if (x + y) % 2 == 0:
+            p.set(x, y, HR[2])
+
+
 def neto_body(think=False):
     p = Pix(BW, BH)
     cx = 16
-    # tênis e jeans
-    for sx in (cx - 7, cx + 1):
+    for sx in (cx - 7, cx + 1):                                            # tênis
         p.fill(p.m_rect(sx, 43, sx + 6, 46), ST, 6, "shoe")
-        p.set(sx + 1, 46, CR[3]); p.set(sx + 2, 46, CR[3]); p.set(sx + 3, 44, ST[4]); p.set(sx + 4, 44, ST[4])
+        p.set(sx + 1, 46, TE[3]); p.set(sx + 2, 46, TE[3]); p.set(sx + 3, 44, ST[4])
     jeans = p.m_rect(cx - 6, 33, cx - 1, 42) | p.m_rect(cx + 1, 33, cx + 6, 42) | p.m_rect(cx - 6, 32, cx + 6, 34)
-    p.fill(jeans, DN, 2, "jeans")
-    for (x, y) in ((cx - 4, 37), (cx - 3, 38), (cx + 3, 36), (cx + 4, 37), (cx - 5, 41), (cx + 5, 40)): p.set(x, y, DN[1])
-    p.set(cx, 34, DN[0]); p.set(cx, 35, DN[0])
-    # moletom verde com capuz, cordões e bolso canguru
-    hood = p.m_poly([(cx - 9, 21), (cx + 9, 21), (cx + 9, 33), (cx - 9, 33)])
-    p.fill(hood, LF, 3, "hoodie")
-    p.fill(p.m_ell(cx, 21, 6, 2), LF, 2, "hood")
-    for y in range(22, 27): p.set(cx - 2, y, ST[6]); p.set(cx + 2, y, ST[6])
-    p.set(cx - 2, 27, ST[4]); p.set(cx + 2, 27, ST[4])
-    p.fill(p.m_poly([(cx - 5, 28), (cx + 5, 28), (cx + 6, 32), (cx - 6, 32)]), LF, 2, "pocket")
-    for x in range(cx - 9, cx + 10): p.set(x, 33, LF[1] if x % 2 else LF[2])           # barra canelada
-    p.set(cx + 5, 24, LF[5]); p.set(cx + 6, 23, LF[5]); p.set(cx + 6, 24, LF[4])         # folhinha estampada
-    # braços
-    p.fill(p.m_poly([(cx - 9, 22), (cx - 7, 22), (cx - 8, 32), (cx - 12, 32)]), LF, 3, "armL")
-    p.fill(p.m_rect(cx - 12, 33, cx - 9, 35), SK, 3, "handL")
+    p.fill(jeans, DN, 1, "jeans")
+    for (x, y) in ((cx - 4, 37), (cx + 3, 36), (cx - 5, 41), (cx + 5, 40)): p.set(x, y, DN[0])
+    tee = p.m_poly([(cx - 8, 21), (cx + 8, 21), (cx + 8, 33), (cx - 8, 33)])
+    p.fill(tee, GD, 3, "tee")
+    p.set(cx + 4, 25, LF[4]); p.set(cx + 5, 24, LF[5]); p.set(cx + 5, 25, LF[3])
+    for x in range(cx - 3, cx + 4): p.set(x, 21, GD[2])
+    p.fill(p.m_poly([(cx - 8, 21), (cx - 6, 21), (cx - 8, 25), (cx - 11, 25)]), GD, 3, "slL")
+    p.fill(p.m_rect(cx - 11, 26, cx - 9, 33), SK, 2, "armL")
     if think:
-        p.fill(p.m_poly([(cx + 7, 22), (cx + 10, 22), (cx + 8, 27), (cx + 4, 21), (cx + 6, 20)]), LF, 3, "armR")
-        p.fill(p.m_ell(cx + 4, 19, 2, 2), SK, 3, "handR")
+        p.fill(p.m_poly([(cx + 6, 21), (cx + 9, 21), (cx + 10, 25), (cx + 7, 25)]), GD, 3, "slR")
+        p.fill(p.m_poly([(cx + 8, 25), (cx + 10, 25), (cx + 6, 19), (cx + 4, 20)]), SK, 2, "armR")
     else:
-        p.fill(p.m_poly([(cx + 7, 22), (cx + 9, 22), (cx + 12, 32), (cx + 8, 32)]), LF, 3, "armR")
-        p.fill(p.m_rect(cx + 9, 33, cx + 12, 35), SK, 3, "handR")
-    # pescoço, cabeça
-    p.fill(p.m_rect(cx - 2, 19, cx + 2, 21), SK, 2, "neck")
-    p.fill(p.m_ell(cx, 13, 7, 7), SK, 3, "face", spec=True)
-    # cabelo castanho bagunçado saindo do boné
-    hair = (p.m_ell(cx, 9, 8, 3) | p.m_rect(cx - 8, 9, cx - 7, 15) | p.m_rect(cx + 7, 9, cx + 8, 14)) - p.m_ell(cx, 15, 6, 4)
-    p.fill(hair, HR, 2, "hair")
-    for x in range(cx - 6, cx + 6, 2): p.set(x, 11, HR[1]); p.set(x + 1, 10, HR[3])            # franja em mechas
-    # boné verde virado para trás: copa, regulador na testa, aba atrás aparecendo em cima
-    p.fill(p.m_rect(cx - 9, 3, cx + 9, 5) & p.m_ell(cx, 4, 9, 3), LF, 2, "brim")
-    p.fill(p.m_ell(cx, 7, 8, 4), LF, 3, "cap", spec=True)
-    p.set(cx, 4, LF[5]); p.set(cx - 1, 5, LF[5]); p.set(cx + 1, 5, LF[5])
-    for x in range(cx - 2, cx + 3): p.set(x, 10, LF[1])
-    p.set(cx - 1, 9, ST[6]); p.set(cx + 1, 9, ST[6])
-    # olhos, sobrancelhas, nariz, boca
+        p.fill(p.m_poly([(cx + 6, 21), (cx + 8, 21), (cx + 11, 25), (cx + 8, 25)]), GD, 3, "slR")
+        p.fill(p.m_rect(cx + 9, 26, cx + 11, 33), SK, 2, "armR")
+    p.fill(p.m_rect(cx - 2, 18, cx + 2, 21), SK, 1, "neck")
+    p.fill(p.m_ell(cx, 12, 7, 7), SK, 2, "face", spec=True)
+    curls(p, (p.m_ell(cx, 7, 9, 5) | p.m_rect(cx - 8, 7, cx - 7, 12) | p.m_rect(cx + 7, 7, cx + 8, 11)) - p.m_ell(cx, 14, 6, 5))
     for ex in (cx - 3, cx + 3):
-        for (x, y) in ((ex - 1, 13), (ex, 13), (ex - 1, 14), (ex, 14), (ex - 1, 15), (ex, 15)): p.set(x, y, HR[0])
-        p.set(ex - 1, 13, WHITE); p.set(ex, 15, DN[1])
-        if think:
-            p.set(ex - 2, 11 if ex < cx else 10, HR[1]); p.set(ex - 1, 11 if ex < cx else 10, HR[1]); p.set(ex, 11, HR[1])
-        else:
-            p.set(ex - 1, 11, HR[1]); p.set(ex, 11, HR[1])
-    p.set(cx, 16, SK[2]); p.set(cx - 5, 16, CR[4]); p.set(cx + 5, 16, CR[4])
+        for (x, y) in ((ex - 1, 12), (ex, 12), (ex - 1, 13), (ex, 13)): p.set(x, y, HR[0])
+        p.set(ex - 1, 12, WHITE)
+        p.set(ex - 1, 10, HR[0]); p.set(ex, 10, HR[0]); p.set(ex + (1 if ex > cx else -2), 10, HR[0])
+    p.set(cx, 15, SK[1])
     if think:
-        p.set(cx - 1, 18, SK[1]); p.set(cx, 18, SK[1]); p.set(cx + 1, 17, SK[1])
+        p.set(cx - 1, 17, SK[0]); p.set(cx, 17, SK[0]); p.set(cx + 1, 16, SK[0])
     else:
-        p.set(cx - 2, 17, SK[1]); p.set(cx - 1, 18, CR[2]); p.set(cx, 18, CR[2]); p.set(cx + 1, 18, CR[2]); p.set(cx + 2, 17, SK[1])
-    p.seam("hoodie", LF[1]); p.seam("pocket", LF[1]); p.seam("jeans", DN[1]); p.seam("neck", SK[1]); p.seam("armL", LF[1]); p.seam("armR", LF[1])
-    p.seam("face", SK[2])
+        p.set(cx - 2, 16, SK[0]); p.set(cx - 1, 17, WHITE); p.set(cx, 17, WHITE); p.set(cx + 1, 17, WHITE); p.set(cx + 2, 16, SK[0])
+    p.seam("tee", GD[1]); p.seam("jeans", DN[0]); p.seam("neck", SK[0])
     p.outline()
     return p
+
 
 
 # ======================================================================= retratos (caixa de diálogo)
@@ -312,46 +302,36 @@ def vo_portrait(talk=False):
 def neto_portrait(think=False):
     p = Pix(PW, PH)
     cx = 24
-    # ombros: moletom, capuz, cordões
-    p.fill(p.m_poly([(3, 47), (8, 38), (40, 38), (45, 47)]), LF, 3, "hoodie")
-    p.fill(p.m_ell(cx, 38, 12, 3), LF, 2, "hood")
-    for y in range(40, 47): p.set(cx - 4, y, ST[6]); p.set(cx + 4, y, ST[6])
-    p.set(cx - 4, 47, ST[4]); p.set(cx + 4, 47, ST[4])
-    p.set(36, 42, LF[5]); p.set(37, 41, LF[5]); p.set(37, 42, LF[4]); p.set(36, 43, LF[4])
-    p.fill(p.m_rect(20, 33, 28, 37), SK, 2, "neck")
-    p.fill(p.m_ell(cx, 23, 13, 13), SK, 3, "face", spec=True)
-    # cabelo castanho saindo do boné
-    hair = p.m_ell(cx, 17, 15, 7) | p.m_rect(cx - 15, 17, cx - 12, 28) | p.m_rect(cx + 12, 17, cx + 15, 26)
-    hair -= p.m_ell(cx, 26, 11, 9)
-    p.fill(hair, HR, 2, "hair")
-    for x in range(cx - 13, cx + 13, 3):
-        p.line(x, 17, x + 1, 21, HR[3]); p.set(x + 2, 21, HR[1])
-    # boné virado para trás
-    p.fill(p.m_ell(cx, 5, 15, 3), LF, 2, "brim")
-    p.fill(p.m_ell(cx, 12, 14, 7) - p.m_rect(0, 17, 47, 47), LF, 3, "cap", spec=True)
-    for (x, y) in ((cx, 7), (cx - 1, 8), (cx + 1, 8), (cx, 9)): p.set(x, y, LF[5])
-    p.line(cx - 4, 16, cx + 4, 16, LF[1])
-    p.set(cx - 2, 15, ST[6]); p.set(cx + 2, 15, ST[6]); p.set(cx, 15, ST[5])
-    # olhos grandes com brilho, sobrancelhas
-    for ex in (cx - 6, cx + 6):
-        eye = p.m_ell(ex, 25, 2, 3)
+    # camiseta mostarda com folhinha, fone de ouvido no pescoço
+    p.fill(p.m_poly([(3, 47), (9, 38), (39, 38), (45, 47)]), GD, 3, "tee")
+    for x in range(17, 32): p.set(x, 38, GD[2]); p.set(x, 39, GD[1] if x in (17, 31) else GD[3])
+    for (x, y, c) in ((36, 42, LF[5]), (37, 41, LF[5]), (37, 42, LF[4]), (36, 43, LF[3]), (38, 41, LF[4])): p.set(x, y, c)
+    p.fill(p.m_rect(19, 32, 29, 39), SK, 1, "neck")
+    # rosto
+    p.fill(p.m_ell(cx, 23, 12, 13), SK, 2, "face", spec=True)
+    p.fill(p.m_ell(cx - 12, 25, 2, 3), SK, 2, "earL"); p.fill(p.m_ell(cx + 12, 25, 2, 3), SK, 1, "earR")
+    # cabelo crespo volumoso
+    hair = (p.m_ell(cx, 11, 16, 10) | p.m_ell(cx - 12, 16, 5, 6) | p.m_ell(cx + 12, 15, 5, 6)) - p.m_ell(cx, 26, 11, 11)
+    curls(p, hair, seed=1)
+    # sobrancelhas grossas e olhos grandes com brilho
+    for ex in (cx - 5, cx + 5):
+        lift = -2 if (think and ex > cx) else 0                       # pensando: uma sobrancelha sobe
+        for (dx, dy) in ((-3, 1), (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 1)):
+            p.set(ex + dx, 18 + dy + lift, HR[0])
+        p.set(ex - 1, 17 + lift, HR[1]); p.set(ex, 17 + lift, HR[1])
+        eye = p.m_ell(ex, 24, 2, 3)
         for (x, y) in eye: p.set(x, y, HR[0])
-        p.set(ex - 1, 24, WHITE); p.set(ex, 24, WHITE); p.set(ex + 1, 27, DN[2]); p.set(ex, 27, DN[1])
-        if think:
-            p.line(ex - 3, 20 if ex < cx else 19, ex + 3, 20 if ex < cx else 21, HR[1])
-        else:
-            p.line(ex - 3, 21, ex + 2, 20, HR[1])
-    # nariz, bochechas, boca
-    p.set(cx, 28, SK[2]); p.set(cx + 1, 29, SK[2])
-    for bx in (cx - 9, cx + 9):
-        for (x, y) in ((bx - 1, 30), (bx, 30), (bx + 1, 30)): p.set(x, y, CR[4])
+        p.set(ex - 1, 23, WHITE); p.set(ex, 23, WHITE); p.set(ex - 1, 22, WHITE); p.set(ex + 1, 26, HR[2])
+        p.set(ex - 3, 24, SK[1]); p.set(ex + 3, 24, SK[1])
+    # nariz, boca
+    p.set(cx, 27, SK[1]); p.set(cx + 1, 28, SK[1]); p.set(cx - 1, 29, SK[1]); p.set(cx + 2, 29, SK[0])
     if think:
-        p.line(cx - 2, 32, cx + 2, 32, SK[1]); p.set(cx + 3, 31, SK[1])
-        p.fill(p.m_ell(cx + 11, 34, 3, 3), SK, 3, "hand"); p.line(cx + 9, 32, cx + 13, 32, SK[2])       # mão no queixo
+        p.line(cx - 2, 32, cx + 2, 32, SK[0]); p.set(cx + 3, 31, SK[0])
+        p.fill(p.m_ell(cx + 10, 34, 3, 3), SK, 2, "hand"); p.line(cx + 8, 32, cx + 12, 32, SK[1])
     else:
-        p.line(cx - 3, 31, cx - 2, 32, SK[1]); p.line(cx - 1, 33, cx + 1, 33, CR[2]); p.line(cx + 2, 32, cx + 3, 31, SK[1])
-        p.set(cx - 1, 32, CR[2]); p.set(cx, 32, CR[2]); p.set(cx + 1, 32, CR[2])
-    p.seam("hoodie", LF[1]); p.seam("neck", SK[1])
+        p.line(cx - 4, 31, cx - 3, 32, SK[0]); p.line(cx + 3, 32, cx + 4, 31, SK[0])
+        p.line(cx - 2, 32, cx + 2, 32, WHITE); p.line(cx - 2, 33, cx + 2, 33, CR[1]); p.set(cx - 3, 32, SK[0]); p.set(cx + 3, 32, SK[0])
+    p.seam("tee", GD[1]); p.seam("neck", SK[0])
     p.outline()
     return p
 
