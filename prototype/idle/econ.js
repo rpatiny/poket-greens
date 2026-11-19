@@ -430,12 +430,13 @@
     checkBust(s);
     return false;
   }
-  // Maquininha de contar notas: lava sem taxa, mas cansa. combo de 1 a 3.
+  // Maquininha de contar notas: lava sem taxa, mas cansa. Combo de 1 a 50 (cada toque rápido soma +1).
+  const BILL_MAX = 50;
   const billValue = (s) => Math.max(10, incomePerSec(s) * 1.5);
   function countBills(s, combo) {
     const cost = staCost(s, R.billSta);
     if (s.sta < cost) return 0;
-    const amt = Math.min(Math.max(0, s.dirty - reserve(s)), billValue(s) * Math.max(1, Math.min(3, combo)));
+    const amt = Math.min(Math.max(0, s.dirty - reserve(s)), billValue(s) * Math.max(1, Math.min(BILL_MAX, combo)));
     if (amt < 1) return 0;
     if (!safe(s, R.billPara)) return 0;
     s.sta -= cost;
@@ -694,7 +695,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
