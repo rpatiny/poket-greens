@@ -217,12 +217,14 @@ mesma luz e sombra dos vasos. A Praia tem uma palmeira só (`tools/arte/palmeira
 de anéis e folhas serrilhadas que caem.
 
 
-**Equipamentos na cena.** Cada equipamento comprado aparece no esconderijo, com luz, sombra e animação
-própria. A garrafa PET fica pendurada sobre a primeira planta e pinga na terra; a lâmpada e o painel
-LED ficam pendurados sobre as plantas, com um cone de luz quente ou um brilho rosa que pulsa; o drone
-voa em oito pelo cômodo, com sombra no chão; a câmera fica no canto da parede, com LED piscando. O resto
-vai para o chão, nos lugares livres mais perto das plantas: o ventilador gira e sopra vento para as
-plantas, o termômetro sobe e desce, o CO2 solta fumaça, a hidroponia, a osmose e o laboratório fazem
-bolhas, a IA tem LEDs correndo, e assim por diante. Os lugares livres são calculados no jogo a partir dos
-móveis do cômodo (`busy` no `meta.json`) e das plantas que você tem. Cabem até 3 + o número do
-esconderijo no chão; quando falta lugar, aparecem os mais avançados. As calhas ficam em cavaletes com pés.
+**Equipamentos na cena.** Cada um tem o seu jeito de aparecer, em vez de ficarem lado a lado no chão:
+garrafa PET e medidor de pH enfiados no vaso (inclinados); tesoura podando a planta mais crescida, com
+pedacinhos verdes caindo; ventilador no chão virado para as plantas, mexendo a cabeça e soprando vento;
+termômetro pequeno na parede; sacos de adubo empilhados (um por nível); filtro de carbono com duto até uma
+grade na parede (ou só a saída de ar quando a parede é vidro ou mar); CO2 ao lado do filtro, ligado por
+uma mangueira e soltando gás; painel LED como barra roxa pendurada com brilho sobre as plantas; câmera no
+canto varrendo a sala; drone voando; controlador IA com rosto na tela que pisca, olha para as plantas e
+sorri quando tem planta pronta ou na colheita; laboratório de genética ao lado da IA, com bolhas no tubo.
+Lâmpada com alumínio, mini estufa, osmose e kit bunker não aparecem (só dão o bônus). O gerador dos
+cômodos compara a parede antes e depois dos enfeites (`wallBusy` no `meta.json`), para nada ser
+pendurado em cima de janela, pôster ou prateleira.

@@ -118,13 +118,19 @@ function run(name, p) {
     t += 1;
   }
   console.log(`\n=== ${name} (${p.hours}h) ===`);
-  const show = ms.length > 60 ? ms.slice(0, 40).concat([[0, "..."]], ms.slice(-15)) : ms;
+  const show = !p.all && ms.length > 60 ? ms.slice(0, 40).concat([[0, "..."]], ms.slice(-15)) : ms;
   for (const [tt, m] of show) console.log(`  ${hms(tt).padStart(7)}  ${m}`);
   console.log(`  fim: Lenda ${s.legend} · suja ${fmt(s.dirty)} · limpa ${fmt(s.clean)} · semente ${bestSeed(s) + 1}/18 · ${E.PLACES[s.place].name} · ` +
     `Bot ${s.attrs.bot} Láb ${s.attrs.lab} Fur ${s.attrs.fur} Seg ${s.attrs.seg} · nível ${E.level(s)} · flagrantes ${s.timesArrested} · batidas ${s.busts}`);
 }
 
 const base = { taps: 5, risk: 0.05, paraLimit: 70, retireAt: 1, bills: true };
+if (process.env.PACE) {
+  // ritmo da progressão: sem passar o ponto, mostra quando cada semente e cada imóvel chegam
+  run("RITMO normal (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 14, all: true });
+  run("RITMO fácil (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 3, easy: true, all: true });
+  process.exit(0);
+}
 run("Ativo cauteloso", { ...base, hours: 8 });
 run("Ativo arriscado", { ...base, risk: 0.3, paraLimit: 95, hours: 8 });
 run("Casual: 15 min a cada 4h", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, hours: 24 * 5 });

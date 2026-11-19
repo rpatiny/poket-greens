@@ -71,6 +71,7 @@ class Room:
         s.anims = []
         s.bulb = None
         s.extra_busy = []
+        s.wall_extra = []   # enfeites pintados junto com a parede (janelas, letreiro, vista)
 
     @property
     def room(s):
@@ -89,6 +90,7 @@ class Room:
         c.rect(x0 - T - 1, y0 - T - 1, x0 - T - 1, y0 + h + T, OL); c.rect(x0 + w + T, y0 - T - 1, x0 + w + T, y0 + h + T, OL)
         wall_fn(c, x0, y0, w, s.wh)
         floor_fn(c, x0, s.fy, w, h - s.wh)
+        s.plain = [row[:] for row in c.px]   # parede e chão sem enfeites: para achar o que foi pintado por cima
         c.rect(x0 - 1, y0 - 1, x0 + w, y0 - 1, OL); c.rect(x0 - 1, y0 + h, x0 + w, y0 + h, OL)
         c.rect(x0 - 1, y0 - 1, x0 - 1, y0 + h, OL); c.rect(x0 + w, y0 - 1, x0 + w, y0 + h, OL)
         if s.door:
@@ -98,6 +100,22 @@ class Room:
 
     def add(s, sp, x, y, height=0.5):
         s.objs.append((sp, s.x0 + x, s.fy + y, height))
+
+    def decor_rects(s, cell=4):
+        """Retângulos da parede onde há enfeite (janela, pôster, prateleira...): o jogo não põe nada em cima."""
+        c, x0, y0, w, fy = s.c, s.x0, s.y0, s.w, s.fy
+        rows = []
+        for cy in range(y0, fy + 2, cell):
+            run = None
+            for cx in range(x0, x0 + w, cell):
+                hit = any(c.px[y][x] != s.plain[y][x] for y in range(cy, min(cy + cell, fy + 2)) for x in range(cx, min(cx + cell, x0 + w)))
+                if hit and run is None:
+                    run = cx
+                if not hit and run is not None:
+                    rows.append([run - 1, cy - 1, cx + 1, cy + cell + 1]); run = None
+            if run is not None:
+                rows.append([run - 1, cy - 1, x0 + w + 1, cy + cell + 1])
+        return rows + s.wall_extra
 
     def slots(s, pots, n=12):
         """Lugares livres no chão para os equipamentos comprados (sprite 32x32, canto de cima à esquerda)."""
@@ -132,6 +150,7 @@ class Room:
     def finish(s, main_light, lights, pots, dark=False, wall_lights=None):
         """Sombras dos objetos pela luz principal, luz sobre tudo, oclusão; salva as 3 camadas."""
         c = s.c
+        s.wall_busy = s.decor_rects()
         lx, ly = main_light
         L = (s.x0 + lx, s.fy + ly)
         s.objs.sort(key=lambda o: o[2] + o[0].h)
@@ -161,6 +180,7 @@ class Room:
         return {
             "w": FW, "h": FH, "room": [x0, y0, w, h], "floor": fy,
             "pots": [x0 + px, fy + py, pw, ph], "light": list(L), "busy": [[xx - 1, yy - 1, xx + sp.w + 1, yy + sp.h + 1] for sp, xx, yy, hh in s.objs] + s.extra_busy,
+            "wallBusy": s.wall_busy,
             "anims": s.anims, **({"bulb": s.bulb} if s.bulb else {}), **({"glow": s.glow} if getattr(s, "glow", None) else {}),
         }
 
@@ -550,6 +570,7 @@ def r4():
                 c.vline(gx + k, gy - r.randrange(1, 4), gy, r.choice([L_[3], L_[4], L_[2]]))
 
     R.shell(fence, dirt)
+    R.wall_extra += [[R.x0 - 1, R.y0 - 1, R.x0 + R.w + 1, R.y0 + 16], [R.x0 + 80, R.y0 + 15, R.x0 + 142, R.y0 + 31]]   # céu e grafite
     c, x0, fy = R.c, R.x0, R.fy
     tr = Sprite(44, 40)
     for (bx, by, rr) in ((14, 16, 13), (28, 14, 13), (22, 24, 14), (10, 26, 10), (34, 26, 10)):
@@ -594,6 +615,7 @@ def r5():
         c.hline(x0, x0 + w - 1, y0 + h - 4, B_[1]); c.rect(x0, y0 + h - 3, x0 + w - 1, y0 + h - 1, B_[1])
 
     R.shell(wall, lambda c, x, y, w, h: planks_region(c, x, y, w, h, 3, 12, 62))
+    R.wall_extra += [[R.x0 + 78, R.y0 + 4, R.x0 + 154, R.y0 + 22], [R.x0 + 194, R.y0 - 1, R.x0 + 220, R.fy]]   # letreiro e trilhos da porta
     c, x0, fy = R.c, R.x0, R.fy
     pal = box3d(40, 16, 6, S_[5], W_[3]); pal.rect(2, 2, 37, 13, S_[5]); pal.hline(2, 37, 2, WHITE)
     for xx in range(6, 36, 8):
@@ -681,6 +703,7 @@ def r7():
             c.vline(x, y0 + 4, y0 + 5, G_[3] if ((x - x0) // 6) % 2 else OL)
 
     R.shell(wall, floor)
+    R.wall_extra += [[R.x0 + x - 3, R.y0 + 2, R.x0 + x + 43, R.y0 + 20] for x in (24, 110, 196)]   # janelas altas
     for i in range(3):
         pl = box3d(36, 14, 5, W_[4], W_[3], lines=6)
         R.add(pl, 6, 90 - i * 22, 0.25)
@@ -779,6 +802,7 @@ def r9():
                 c.set(r.uniform(x0, x0 + w), r.uniform(y + 2, y + 10), r.choice([SO[2], W_[3]]))
 
     R.shell(glass, soil)
+    R.wall_extra.append([R.x0 - 1, R.y0 - 1, R.x0 + R.w + 1, R.fy - 6])   # parede toda é vista (nada pendurado)
     wb = Sprite(30, 18); wb.poly([(0, 2), (22, 2), (19, 11), (3, 11)], L_[3]); wb.rect(3, 0, 19, 3, SO[3]); wb.line(22, 5, 29, 3, W_[2]); wb.ell(10, 14, 3, 3, OL); wb.ell(10, 14, 1, 1, S_[3])
     R.add(wb, 8, 96, 0.4)
     for i in range(3):
@@ -820,6 +844,7 @@ def r10():
             c.ell(x0 + sx, y0 + sy, 2, 1, CR[4])
 
     R.shell(sea, sand)
+    R.wall_extra.append([R.x0 - 1, R.y0 - 1, R.x0 + R.w + 1, R.fy - 6])   # parede toda é vista (nada pendurado)
 
     from palmeira import palm
     R.add(palm(), -6, -10, 0.9)                       # uma palmeira só, no canto esquerdo

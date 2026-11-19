@@ -7,23 +7,23 @@
   // Sementes (números do GDD): preço (grana suja, pago a cada plantio), venda por unidade,
   // unidades por colheita, Botânica mínima, equipamentos exigidos e tempo de crescimento (s).
   const SEEDS = [
-    ["Alface Mística", 5, 8, 3, 0, [], 30],
-    ["Hortelã Selvagem", 10, 15, 3, 0, [], 35],
-    ["Manjericão do Olimpo", 20, 30, 4, 1, [], 45],
-    ["Tomate Atômico", 50, 80, 4, 2, ["regador"], 55],
-    ["Pimenta do Capeta", 120, 200, 3, 3, ["regador", "termometro"], 60],
-    ["Cogumelo Saltitante", 300, 500, 5, 4, ["termometro", "ventilador"], 75],
-    ["Lavanda Hipnótica", 800, 1200, 4, 5, ["fertilizante", "ventilador"], 90],
-    ["Cacto Cabeludo", 2000, 3500, 2, 6, ["ph", "termometro"], 100],
-    ["Lótus Azul", 5000, 8000, 3, 7, ["lampada", "ph", "fertilizante"], 120],
-    ["Cipó Enrolado", 12000, 25000, 2, 8, ["estufa", "ph", "fertilizante"], 150],
-    ["Orquídea Fantasma", 30000, 60000, 2, 10, ["lampada", "estufa", "filtro"], 180],
-    ["Trufa Negra", 80000, 150000, 2, 12, ["led", "filtro", "ph"], 210],
-    ["Mandrágora", 200000, 450000, 1, 14, ["led", "hidro", "filtro"], 240],
-    ["Bonsai Milenar", 500000, 1.2e6, 1, 16, ["hidro", "co2", "led"], 300],
-    ["Rafflesia Gigante", 1.5e6, 4e6, 1, 18, ["co2", "osmose", "led", "filtro"], 360],
-    ["Aurora Boreal", 5e6, 1.5e7, 1, 20, ["ia", "co2", "osmose", "led"], 420],
-    ["Fruto do Éden", 2e7, 6.5e7, 1, 25, ["ia", "bunker", "lab"], 600],
+    ["Alface Mística", 5, 8, 3, 1, [], 30],
+    ["Hortelã Selvagem", 10, 15, 3, 2, [], 35],
+    ["Manjericão do Olimpo", 20, 30, 4, 3, [], 45],
+    ["Tomate Atômico", 50, 80, 4, 4, ["regador"], 55],
+    ["Pimenta do Capeta", 120, 200, 3, 5, ["regador", "termometro"], 60],
+    ["Cogumelo Saltitante", 300, 500, 5, 6, ["termometro", "ventilador"], 75],
+    ["Lavanda Hipnótica", 800, 1200, 4, 7, ["fertilizante", "ventilador"], 90],
+    ["Cacto Cabeludo", 2000, 3500, 2, 8, ["ph", "termometro"], 100],
+    ["Lótus Azul", 5000, 8000, 3, 9, ["lampada", "ph", "fertilizante"], 120],
+    ["Cipó Enrolado", 12000, 25000, 2, 10, ["estufa", "ph", "fertilizante"], 150],
+    ["Orquídea Fantasma", 30000, 60000, 2, 12, ["lampada", "estufa", "filtro"], 180],
+    ["Trufa Negra", 80000, 150000, 2, 14, ["led", "filtro", "ph"], 210],
+    ["Mandrágora", 200000, 450000, 1, 16, ["led", "hidro", "filtro"], 240],
+    ["Bonsai Milenar", 500000, 1.2e6, 1, 18, ["hidro", "co2", "led"], 300],
+    ["Rafflesia Gigante", 1.5e6, 4e6, 1, 20, ["co2", "osmose", "led", "filtro"], 360],
+    ["Aurora Boreal", 5e6, 1.5e7, 1, 23, ["ia", "co2", "osmose", "led"], 420],
+    ["Fruto do Éden", 2e7, 6.5e7, 1, 26, ["ia", "bunker", "lab"], 600],
     ["Broto de Yggdrasil", 1e8, 3.5e8, 1, 30, ["lab", "bunker", "ia", "osmose"], 900],
   ].map(([name, price, sell, prod, bot, req, time], id) => ({ id, name, price, sell, prod, bot, req, time, frame: id }));
 
@@ -65,18 +65,18 @@
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).
   const PLACES = [
     ["Armário Grow", 0, 1, 0],
-    ["Quartinho dos fundos", 100, 3, 0],
-    ["Garagem do Vizinho", 1500, 4, 0],
-    ["Porão Abandonado", 4000, 5, 0],
-    ["Sobrado na Favela", 10000, 6, 0],
-    ["Terreno Abandonado", 25000, 8, 1],
-    ["Container Marítimo", 75000, 10, 1],
-    ["Galpão Industrial", 200000, 12, 1],
-    ["Sítio na Serra", 500000, 14, 1],
-    ["Fazenda Paraíso Verde", 1.5e6, 18, 1],
-    ["Mina de Ouro Desativada", 5e6, 24, 2],
-    ["Praia Particular", 2e7, 30, 2],
-    ["Bunker Desativado", 8e7, 40, 2],
+    ["Quartinho dos fundos", 150, 3, 0],
+    ["Garagem do Vizinho", 900, 4, 0],
+    ["Porão Abandonado", 5000, 5, 0],
+    ["Sobrado na Favela", 25000, 6, 0],
+    ["Terreno Abandonado", 120000, 8, 1],
+    ["Container Marítimo", 600000, 10, 1],
+    ["Galpão Industrial", 3000000, 12, 1],
+    ["Sítio na Serra", 15000000, 14, 1],
+    ["Fazenda Paraíso Verde", 70000000, 18, 1],
+    ["Mina de Ouro Desativada", 350000000, 24, 2],
+    ["Praia Particular", 1500000000, 30, 2],
+    ["Bunker Desativado", 7000000000, 40, 2],
   ].map(([name, cost, pots, tier], id) => ({ id, name, cost, pots, tier }));
 
   // Venda (GDD): quantidade máxima, Paranoia, chance de flagrante e bônus de preço.
@@ -222,7 +222,13 @@
   const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
   const maxPots = (s) => PLACES[s.place].pots;
-  const potCost = (s) => Math.round(20 * Math.pow(2.6, s.pots.length - 1) * ez(s, "cost")); // grana suja
+  // vaso novo: segue o preço do lugar onde você está (6% dele), subindo 25% a cada vaso comprado ali.
+  // Assim encher o cômodo custa parecido em todo lugar, em vez de explodir no fim do jogo.
+  const potCost = (s) => {
+    const prev = s.place > 0 ? PLACES[s.place - 1].pots : 0;
+    const base = Math.max(20, PLACES[s.place].cost * 0.06);
+    return Math.round(base * Math.pow(1.25, Math.max(0, s.pots.length - Math.max(1, prev))) * ez(s, "cost"));
+  };
   const equipCost = (s, e) => Math.round(e.price * Math.pow(EQUIP_LEVEL_MULT, lvl(s, e.id)) * ez(s, "cost"));
   const placeCost = (s, i = s.place + 1) => (PLACES[i] ? Math.round(PLACES[i].cost * ez(s, "cost")) : Infinity);
   const saleCooldown = (s) => Math.max(3, 20 - 17 * (topStockSeed(s) / (SEEDS.length - 1))) * Math.max(0.4, 1 - s.attrs.lab * 0.01) * ez(s, "cd");

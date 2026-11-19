@@ -357,9 +357,13 @@ function paintGutter(c, w, count, tier) {
 }
 
 // ---------------------------------------------------------------- equipamentos na cena
-// onde cada um fica: pendurado em cima das plantas, voando, na parede ou no chão (lugar livre)
-const EQ_HANG = { lampada: 1, led: 1 };   // a garrafa PET vai em cada vaso (drawPet)
-const EQ_BOTTOM = [32, 31, 32, 30, 31, 29, 32, 32, 22, 31, 23, 31, 32, 18, 31, 32, 32, 32];   // última linha pintada de cada sprite
+// Cada equipamento tem o seu jeito de aparecer (não ficam todos lado a lado no chão):
+//   garrafa PET e medidor de pH: enfiados no vaso · tesoura: podando uma planta · ventilador: no chão, virado
+//   para as plantas, mexendo a cabeça · termômetro: pequeno, na parede · adubo: sacos empilhados (1 por nível)
+//   filtro de carbono: com duto entrando na parede · CO2: ao lado do filtro, ligado por uma mangueira, soltando gás
+//   painel LED: barra roxa pendurada sobre as plantas · câmera: no canto, varrendo a sala · drone: voando
+//   controlador IA: tela com rosto que reage às plantas · laboratório: perto da IA, com bolhas no vidro
+// Lâmpada com alumínio, mini estufa, osmose e kit bunker não aparecem na cena (só dão o bônus).
 const hitR = (a, b) => !(a[2] <= b[0] || a[0] >= b[2] || a[3] <= b[1] || a[1] >= b[3]);
 let slotCache = { sig: "", slots: [] };
 function findSlots(m, busy) {
@@ -367,120 +371,293 @@ function findSlots(m, busy) {
   if (slotCache.sig === sig) return slotCache.slots;
   const [x0, y0, w, h] = m.room, fy = m.floor, [ax, ay, aw, ah] = m.pots, cx = ax + aw / 2, cy = ay + ah / 2;
   const cands = [];
-  for (let y = fy - 18; y <= y0 + h - 33; y += 2) for (let x = x0 + 1; x <= x0 + w - 33; x += 2) {
-    const body = [x + 5, y + 6, x + 27, y + 31];
+  for (let y = fy - 14; y <= y0 + h - 28; y += 2) for (let x = x0 + 2; x <= x0 + w - 26; x += 2) {
+    const body = [x + 2, y + 4, x + 22, y + 26];
     if (busy.some((b) => hitR(body, b))) continue;
-    const d = Math.max(Math.abs(x + 16 - cx) - aw / 2, 0) + Math.max(Math.abs(y + 28 - cy) - ah / 2, 0) * 1.4;
+    const d = Math.max(Math.abs(x + 12 - cx) - aw / 2, 0) + Math.max(Math.abs(y + 22 - cy) - ah / 2, 0) * 1.4;
     cands.push([d, x, y]);
   }
   cands.sort((a, b) => a[0] - b[0]);
   const out = [];
   for (const [, x, y] of cands) {
-    if (out.every(([a, b]) => !hitR([x + 3, y + 3, x + 29, y + 31], [a + 3, b + 3, a + 29, b + 31]))) out.push([x, y]);
-    if (out.length >= 16) break;
+    if (out.every(([a, b]) => !hitR([x, y + 2, x + 24, y + 26], [a, b + 2, a + 24, b + 26]))) out.push([x, y]);
+    if (out.length >= 12) break;
   }
   slotCache = { sig, slots: out };
   return out;
 }
-const eqPaint = (e) => (c) => { if (sprites.equip) c.drawImage(sprites.equip, (e.frame % 9) * 32, Math.floor(e.frame / 9) * 32, 32, 32, 0, 0, 32, 32); };
-// coloca os equipamentos comprados; devolve itens (luz e sombra da cena) e as animações
-function placeEquip(m, plantItems, firstPlant) {
-  const owned = E.EQUIP.filter((e) => E.lvl(S, e.id) > 0);
-  const floor = [], hang = [], anim = [];
-  if (!m || !owned.length) return { floor, hang, anim };
-  const [x0, y0, w] = m.room;
-  const busy = m.busy.map((r) => r.slice()).concat(plantItems.map((it) => [it.x + 2, it.y + 6, it.x + it.w - 2, it.y + it.h + 2]));
-  const slots = findSlots(m, busy);
-  const top = plantItems.length ? Math.min(...plantItems.map((it) => it.y)) : m.pots[1] - 40;
-  const pcx = m.pots[0] + m.pots[2] / 2;
-  const onFloor = owned.filter((e) => !EQ_HANG[e.id] && !["drone", "cameras", "regador", "hidro"].includes(e.id)).reverse();   // os mais avançados primeiro
-  onFloor.slice(0, Math.min(slots.length, 3 + S.place)).forEach((e, k) => {
-    const [x, y] = slots[k];
-    floor.push({ x, y, w: 32, h: 32, foot: 32 - EQ_BOTTOM[e.frame], key: "eq:" + e.id, paint: eqPaint(e) });
-    anim.push([e.id, x, y]);
-  });
-  const hangs = owned.filter((e) => EQ_HANG[e.id]);
-  const lamps = hangs;
-  lamps.forEach((e, k) => {
-    const x = Math.round(pcx - 16 + (lamps.length > 1 ? (k ? 26 : -26) : 0)), y = Math.max(y0 - 2, top - 26);
-    hang.push({ x, y, w: 32, h: 32, key: "eq:" + e.id, paint: eqPaint(e), noShadow: true, cord: [x + 16, y0 - 2, y + 1] });
-    anim.push([e.id, x, y]);
-  });
-  if (owned.some((e) => e.id === "cameras")) {
-    const x = x0 + w - 32, y = y0 - 2;
-    hang.push({ x, y, w: 32, h: 32, key: "eq:cameras", paint: eqPaint(E.EQUIP[13]), noShadow: true });
-    anim.push(["cameras", x, y]);
+// pinta um mapa de caracteres (pixel art) num contexto
+function pmap(c, rows, pal, x, y, flip = false) {
+  for (let r = 0; r < rows.length; r++) for (let k = 0; k < rows[r].length; k++) {
+    const ch = rows[r][flip ? rows[r].length - 1 - k : k];
+    if (ch === "." || !pal[ch]) continue;
+    c.fillStyle = pal[ch]; c.fillRect(x + k, y + r, 1, 1);
   }
-  if (owned.some((e) => e.id === "drone")) anim.push(["drone"]);
-  return { floor, hang, anim };
 }
-// animações de cada equipamento (desenhadas por cima, em pixels inteiros)
-function eqAnim(a, t, m) {
-  const [id, x, y, extra] = a;
-  const P = (px, py, pw, ph, col) => { g.fillStyle = col; g.fillRect(Math.round(px), Math.round(py), pw, ph); };
-  const blink = (hz, off = 0) => Math.floor(t * hz + off) % 2 === 0;
-  switch (id) {
-    case "regador": {                                  // gotas caindo da garrafa até a terra
-      for (let k = 0; k < 2; k++) {
-        const f = (t * 0.9 + k * 0.5) % 1, yy = y + 27 + f * (extra - y - 27);
-        if (f < 0.92) P(x + 15, yy, 1, 2, "#a6cbeb"); else P(x + 13, extra, 4, 1, "#6590cc");
-      }
-      break;
-    }
-    case "tesoura": if (Math.floor(t * 0.7) % 4 === 0) { P(x + 11, y + 10, 1, 1, "#fffbef"); P(x + 10, y + 11, 3, 1, "#fffbef"); } break;
-    case "ventilador": {                               // hélice girando e ventinho indo para as plantas
-      const cx = x + 14, cy = y + 12;
-      for (let dy = -7; dy <= 7; dy++) { const hw = Math.floor(Math.sqrt(49 - dy * dy)); P(cx - hw, cy + dy, hw * 2 + 1, 1, "#403d54"); }
-      const a0 = t * 14;
-      for (let k = 0; k < 3; k++) {
-        const an = a0 + (k * Math.PI * 2) / 3;
-        for (let r = 2; r <= 6; r++) P(cx + Math.cos(an) * r, cy + Math.sin(an) * r, 2, 2, "#bfbfc8");
-      }
-      P(cx - 1, cy - 1, 3, 3, "#8f90a2"); P(cx, cy, 1, 1, "#fffbef");
-      const dir = m && m.pots[0] + m.pots[2] / 2 > x ? 1 : -1;
-      for (let k = 0; k < 3; k++) { const f = (t * 0.8 + k / 3) % 1; P(cx + dir * (12 + f * 30), cy - 4 + k * 4 + Math.sin(t * 3 + k) * 2, 4, 1, "rgba(255,251,239," + (0.55 * (1 - f)) + ")"); }
-      break;
-    }
-    case "termometro": { const lv = Math.round(2 + Math.sin(t * 0.8) * 2); P(x + 15, y + 9, 2, 7 + lv, "#ebe9e1"); P(x + 15, y + 16 + lv, 2, 9 - lv, "#d95463"); break; }
-    case "lampada": {                                  // cone de luz quente que treme um pouco
-      const al = 0.1 + (Math.sin(t * 9) > 0.92 ? 0.05 : 0);
-      g.fillStyle = "rgba(255,240,166," + al + ")";
-      g.beginPath(); g.moveTo(x + 8, y + 18); g.lineTo(x + 24, y + 18); g.lineTo(x + 40, y + 70); g.lineTo(x - 8, y + 70); g.fill();
-      if (blink(1.5)) P(x + 15, y + 20, 2, 1, "#fffbef");
-      break;
-    }
-    case "ph": P(x + 14, y + 15, 5, 1, blink(2) ? "#f2918a" : "#d95463"); P(x + 14, y + 19, 5, 1, blink(2, 1) ? "#bcd95e" : "#4a8f40"); break;
-    case "estufa": { const f = (t * 0.25) % 1; P(x + 6, y + 8 + f * 16, 1, 2, "rgba(255,251,239,0.8)"); P(x + 24, y + 12 + ((f + 0.5) % 1) * 12, 1, 2, "rgba(255,251,239,0.6)"); break; }
-    case "drone": {                                    // voa em oito pelo cômodo, com sombra no chão
-      const [rx, ry, rw, rh] = m.room, cx = rx + rw / 2 + Math.sin(t * 0.35) * rw * 0.32, cy = ry + rh * 0.42 + Math.sin(t * 0.7) * rh * 0.16;
-      g.fillStyle = "rgba(26,20,32,0.28)"; g.beginPath(); g.ellipse(Math.round(cx), Math.round(cy + 30), 10, 3, 0, 0, 7); g.fill();
-      const bob = Math.round(Math.sin(t * 5) * 1.5), dx = Math.round(cx - 16), dy = Math.round(cy - 14 + bob);
-      if (sprites.equip) g.drawImage(sprites.equip, 8 * 32, 0, 32, 32, dx, dy, 32, 32);
-      const sp = Math.floor(t * 20) % 2;
-      P(dx + 1, dy + 8, 11, 1, sp ? "#bfbfc8" : "#646379"); P(dx + 21, dy + 8, 11, 1, sp ? "#646379" : "#bfbfc8");
-      if (blink(2)) P(dx + 13, dy + 15, 2, 1, "#ff6b6b");
-      break;
-    }
-    case "filtro": for (let k = 0; k < 3; k++) { const f = (t * 0.6 + k / 3) % 1; P(x + 12 + k * 3 + Math.sin(t * 2 + k) * 1.5, y - f * 10, 2, 1, "rgba(191,191,200," + (0.7 * (1 - f)) + ")"); } break;
-    case "led": {                                      // brilho rosa e roxo que pulsa nas plantas
-      const al = 0.07 + 0.04 * Math.sin(t * 2);
-      g.fillStyle = "rgba(201,110,190," + al + ")";
-      g.beginPath(); g.moveTo(x + 2, y + 16); g.lineTo(x + 30, y + 16); g.lineTo(x + 48, y + 72); g.lineTo(x - 16, y + 72); g.fill();
-      for (let k = 0; k < 9; k++) if ((k + Math.floor(t * 4)) % 5 === 0) P(x + 4 + k * 3, y + 7 + (k % 3) * 3, 1, 1, "#fffbef");
-      break;
-    }
-    case "hidro": for (let k = 0; k < 4; k++) { const f = (t * 0.7 + k / 4) % 1; P(x + 6 + k * 5, y + 15 - f * 3, 1, 1, "#fffbef"); } if (blink(1)) P(x + 21, y + 18, 3, 2, "#8fd4a8"); break;
-    case "co2": for (let k = 0; k < 3; k++) { const f = (t * 0.5 + k / 3) % 1; P(x + 15 + Math.sin(t + k * 2) * 3, y + 1 - f * 12, 2 + Math.round(f * 2), 2, "rgba(235,233,225," + (0.6 * (1 - f)) + ")"); } break;
-    case "cameras": P(x + 14, y + 11, 1, 1, blink(1.5) ? "#ff6b6b" : "#6e1b3d"); break;
-    case "osmose": for (let k = 0; k < 4; k++) { const f = (t * 0.5 + k / 4) % 1; P(x + (k % 2 ? 16 : 7), y + 28 - f * 19, 1, 1, "rgba(255,251,239,0.85)"); } break;
-    case "ia": {
-      for (let k = 0; k < 5; k++) P(x + 9 + k * 3, y + 22, 1, 1, Math.floor(t * 5) % 5 === k ? "#bcd95e" : "#2c6a40");
-      const sy = y + 3 + (Math.floor(t * 8) % 10); P(x + 8, sy, 17, 1, "rgba(143,212,168,0.25)");
-      break;
-    }
-    case "bunker": for (let k = 0; k < 7; k++) P(x + 3 + k * 4, y + 29, 2, 2, (k + Math.floor(t * 4)) % 3 === 0 ? "#fff0a6" : "#d1952e"); break;
-    case "lab": for (let k = 0; k < 3; k++) { const f = (t * 0.4 + k / 3) % 1; P(x + 13 + k * 3, y + 22 - f * 18, 1, 1, "#fffbef"); } if (blink(1)) P(x + 6, y + 26, 1, 1, "#ff6b6b"); break;
+const OLC = "#1a1420";
+// medidor de pH: espetado e inclinado (como a garrafa PET), visor verde
+const PH = [".OOO.", "OGGGO", "OGDGO", "OGGGO", "OSSSO", "OSRSO", "OSSSO", ".OSO.", ".OMO.", ".OMO.", "..O.."];
+const PH_PAL = { O: OLC, G: "#7cdc5a", D: "#2c6a40", S: "#bfbfc8", R: "#d95463", M: "#8f90a2" };
+function drawPh(c, cx, soil, flip) {
+  const n = PH.length;
+  for (let r = 0; r < n; r++) {
+    const sh = Math.round((n - 1 - r) * 0.3) * (flip ? -1 : 1);
+    pmap(c, [PH[r]], PH_PAL, cx - 2 + sh, soil - n + 1 + r, flip);
   }
+}
+// sacos de adubo empilhados: um por nível
+const SACK = ["...OOOO...", "..OSHHSO..", "...OSSO...", "..OHBBBSO.", ".OHBBBBBSO", "OHBBBBBBSO", "OHBWWWWBSO", "OHBWLLWBSO", "OHBWWWWBSO", "OHBBBBBBSO", "OBBBBBBBSO", ".OOOOOOOO."];
+const SACK_PAL = { O: OLC, H: "#f0c487", B: "#d99a5b", S: "#b5703f", L: "#4a8f40", W: "#fffbef" };
+function paintSacks(c, n) {
+  const pos = [[0, 12], [9, 12], [18, 12], [4, 3], [13, 3]].slice(0, n);
+  for (const [x, y] of pos) pmap(c, SACK, SACK_PAL, x, y);
+}
+// filtro de carbono (cilindro com tela) e cilindro de CO2
+const FILTER = ["..OOOOOO..", ".OTTTTTTO.", "OTTTTTTTTO", "OBBBBBBBBO", "OMmMmMmMmO", "OmMmMmMmMO", "OMmMmMmMmO", "OmMmMmMmMO", "OMmMmMmMmO", "OmMmMmMmMO", "OMmMmMmMmO", "OmMmMmMmMO", "OMmMmMmMmO", "OBBBBBBBBO", "OMMMMMMMMO", ".OOOOOOOO."];
+const FILTER_PAL = { O: OLC, T: "#bfbfc8", B: "#272436", M: "#8f90a2", m: "#646379" };
+const CO2 = ["..OGO..", "..OgO..", ".OOOOO.", "OHCCCDO", "OHCCCDO", "OWWWWWO", "OWRWRWO", "OWWWWWO", "OHCCCDO", "OHCCCDO", "OHCCCDO", "OHCCCDO", "OHCCCDO", "OHCCCDO", "OHCCCDO", ".OOOOO."];
+const CO2_PAL = { O: OLC, G: "#f0c94f", g: "#d1952e", H: "#7cb342", C: "#4a8f40", D: "#2c6a40", W: "#fffbef", R: "#d95463" };
+// laboratório de genética: tubo de vidro com líquido verde sobre uma base
+const LAB = ["..OOOOOOOO..", "..OSSSSSSO..", "..OAeeeeAO..", "..OAeeeeAO..", "..OAeLeeAO..", "..OAeeLeAO..", "..OAeeeLAO..", "..OAeeLeAO..", "..OAeLeeAO..", "..OALeeeAO..", "..OAeLeeAO..", "..OAeeLeAO..", "..OAeeeLAO..", "..OAeeeeAO..", "..OSSSSSSO..", "OOOOOOOOOOOO", "OTTTTTTTTTTO", "OMMRMMGMMMMO", "OMMMMMMMMMMO", "OOOOOOOOOOOO"];
+const LAB_PAL = { O: OLC, S: "#8f90a2", A: "#a6cbeb", e: "#48a38a", L: "#bcd95e", T: "#ebe9e1", M: "#bfbfc8", R: "#d95463", G: "#7cdc5a" };
+// ventilador: pé e haste (a cabeça é animada)
+const FAN_BASE = [".......OO.......", ".......OO.......", ".......OO.......", ".......OO.......", ".......OO.......", ".......OO.......", ".......OO.......", ".......OO.......", "....OOOOOOOO....", "...OSSSSSSSSO...", "....OOOOOOOO...."];
+const FAN_PAL = { O: OLC, S: "#646379" };
+
+const IA_FRAME = 15;
+const eqPaint = (frame) => (c) => { if (sprites.equip) c.drawImage(sprites.equip, (frame % 9) * 32, Math.floor(frame / 9) * 32, 32, 32, 0, 0, 32, 32); };
+let leafBits = [], lastStockUnits = 0, iaHappyUntil = 0, snipPhase = 0;
+
+// decide onde fica cada equipamento; devolve itens do chão (com luz e sombra) e o que desenhar antes/depois das plantas
+function placeEquip(m, plantItems, marks, hydro) {
+  const has = (id) => E.lvl(S, id) > 0;
+  const floor = [], back = [], front = [];
+  if (!m) return { floor, back, front };
+  const [x0, y0, w, h] = m.room, fy = m.floor;
+  const plantsTop = plantItems.length ? Math.min(...plantItems.map((it) => it.y)) : m.pots[1] - 30;
+  const pl = plantItems.length ? Math.min(...plantItems.map((it) => it.x)) : m.pots[0];
+  const pr = plantItems.length ? Math.max(...plantItems.map((it) => it.x + it.w)) : m.pots[0] + m.pots[2];
+  const pcx = (pl + pr) / 2, pcy = m.pots[1] + m.pots[3] / 2;
+  const wallBusy = (m.wallBusy || []).map((r) => r.slice());
+  const busy = m.busy.map((r) => r.slice()).concat(wallBusy, plantItems.map((it) => [it.x + 3, it.y + 8, it.x + it.w - 3, it.y + it.h + 2]));
+  // lugar livre na parede (perto de x0), para coisas pequenas penduradas
+  const wallSpot = (w0, h0, nearX, yTop, yBot) => {
+    let best = null;
+    for (let y = yBot - h0; y >= yTop; y -= 2) for (let x = x0 + 2; x <= x0 + w - w0 - 2; x += 2) {
+      const r = [x - 1, y - 1, x + w0 + 1, y + h0 + 1];
+      if (wallBusy.some((b) => hitR(r, b))) continue;
+      const d = Math.abs(x + w0 / 2 - nearX) + (yBot - h0 - y) * 0.5;
+      if (!best || d < best[0]) best = [d, x, y];
+    }
+    return best ? [best[1], best[2]] : null;
+  };
+  let slots = findSlots(m, busy).slice();
+  const take = (score) => { if (!slots.length) return null; let bi = 0; slots.forEach((s, i) => { if (score(s) < score(slots[bi])) bi = i; }); return slots.splice(bi, 1)[0]; };
+
+  // IA e laboratório: encostados na parede do fundo
+  let ia = null;
+  if (has("ia")) {
+    const s = take(([x, y]) => y * 3 + Math.abs(x - (x0 + w * 0.78)) * 0.3);
+    if (s) {
+      ia = { x: s[0] - 4, y: s[1] - 6 };
+      floor.push({ x: ia.x, y: ia.y, w: 32, h: 32, foot: 0, key: "eq:ia", paint: eqPaint(IA_FRAME) });
+      front.push((t) => drawIaFace(ia.x, ia.y, t, marks));
+    }
+  }
+  if (has("lab")) {
+    const tx = ia ? ia.x + 34 : x0 + w * 0.78;
+    const s = take(([x, y]) => y * 2 + Math.abs(x - tx));
+    if (s) {
+      const lx = s[0] + 6, ly = s[1] + 6;
+      floor.push({ x: lx, y: ly, w: 12, h: 20, foot: 0, key: "eq:lab", paint: (c) => pmap(c, LAB, LAB_PAL, 0, 0) });
+      front.push((t) => { for (let k = 0; k < 3; k++) { const f = (t * 0.45 + k / 3) % 1; dot(lx + 4 + ((k * 3) % 4), ly + 13 - f * 11, "#fffbef"); } });
+    }
+  }
+  // filtro de carbono (duto entrando na parede) e CO2 ligado nele
+  let filt = null;
+  if (has("filtro")) {
+    const wallY = Math.max(y0 + 4, fy - 16);
+    const ventFree = ([x]) => !wallBusy.some((b) => hitR([x + 6, wallY - 2, x + 18, wallY + 8], b));
+    const s = take(([x, y]) => (ventFree([x]) ? 0 : 1e6) + y * 3 + Math.abs(x - (x0 + w * 0.2)) * 0.3);
+    if (s) {
+      filt = { x: s[0] + 7, y: s[1] + 10 };
+      const fx0 = filt.x, fy0 = filt.y;
+      // parede livre: duto até a grade. Parede que é vista (vidro, mar): só a saída de ar em cima do filtro
+      if (!ventFree(s)) front.push((t) => {
+        R(fx0 + 2, fy0 - 3, 6, 4, OLC); R(fx0 + 3, fy0 - 2, 4, 2, "#8f90a2");
+        for (let k = 0; k < 3; k++) { const f = (t * 0.7 + k / 3) % 1; g.fillStyle = `rgba(235,233,225,${0.45 * (1 - f)})`; g.fillRect(Math.round(fx0 + 4 + Math.sin(t * 2 + k) * 2), Math.round(fy0 - 4 - f * 10), 2, 1); }
+      });
+      else back.push(() => {                                  // duto sanfonado subindo até a parede, e a grade
+        for (let y = wallY + 4; y <= fy0 + 2; y++) { R(fx0 + 3, y, 4, 1, (y % 3) ? "#8f90a2" : "#646379"); R(fx0 + 2, y, 1, 1, OLC); R(fx0 + 7, y, 1, 1, OLC); }
+        R(fx0, wallY - 1, 10, 7, OLC); R(fx0 + 1, wallY, 8, 5, "#646379");
+        for (let k = 0; k < 3; k++) R(fx0 + 2, wallY + 1 + k * 2, 6, 1, "#272436");
+      });
+      floor.push({ x: fx0, y: fy0, w: 10, h: 16, foot: 0, key: "eq:filtro", paint: (c) => pmap(c, FILTER, FILTER_PAL, 0, 0) });
+    }
+  }
+  if (has("co2")) {
+    const s = filt ? take(([x, y]) => Math.hypot(x + 9 - filt.x, y + 10 - filt.y)) : take(([x, y]) => y);
+    if (s) {
+      const cx0 = s[0] + 9, cy0 = s[1] + 10;
+      if (filt) back.push(() => hose(cx0 + 3, cy0 + 2, filt.x + 5, filt.y + 9));
+      floor.push({ x: cx0, y: cy0, w: 7, h: 16, foot: 0, key: "eq:co2", paint: (c) => pmap(c, CO2, CO2_PAL, 0, 0) });
+      front.push((t) => {
+        for (let k = 0; k < 4; k++) {
+          const f = (t * 0.5 + k / 4) % 1, a = 0.6 * (1 - f);
+          g.fillStyle = `rgba(235,233,225,${a})`;
+          const sz = 1 + Math.round(f * 3);
+          g.fillRect(Math.round(cx0 + 3 + Math.sin(t * 1.3 + k * 2) * 3 - sz / 2), Math.round(cy0 - 1 - f * 16), sz, sz);
+        }
+      });
+    }
+  }
+  // ventilador: perto das plantas, virado para elas
+  if (has("ventilador")) {
+    const s = take(([x, y]) => Math.abs(x + 12 - (x + 12 < pcx ? pl : pr)) + Math.abs(y + 20 - pcy) * 0.8);
+    if (s) {
+      const bx = s[0] + 4, by = s[1] + 14, dir = bx + 8 < pcx ? 1 : -1;
+      floor.push({ x: bx, y: by, w: 16, h: 11, foot: 0, key: "eq:fan", paint: (c) => pmap(c, FAN_BASE, FAN_PAL, 0, 0) });
+      front.push((t) => drawFanHead(bx + 8, by - 1, dir, t));
+    }
+  }
+  // adubo: sacos empilhados
+  const ad = E.lvl(S, "fertilizante");
+  if (ad) {
+    const s = take(([x, y]) => -Math.abs(x + 12 - pcx) * 0.2 + y * 0.1);
+    if (s) floor.push({ x: s[0], y: s[1] + 3, w: 28, h: 24, foot: 0, key: "eq:adubo" + ad, paint: (c) => paintSacks(c, ad) });
+  }
+  // termômetro: pequeno, na parede, perto das plantas
+  if (has("termometro")) {
+    const spot = wallSpot(6, 15, pr + 6, Math.max(y0 + 2, fy - 34), fy - 3);
+    if (spot) wallBusy.push([spot[0] - 2, spot[1] - 2, spot[0] + 8, spot[1] + 17]);
+    const [tx, ty] = spot || [-99, -99];
+    if (spot) back.push((t) => {
+      R(tx, ty, 6, 15, OLC); R(tx + 1, ty + 1, 4, 13, "#b5703f"); R(tx + 1, ty + 1, 4, 1, "#d99a5b");
+      R(tx + 2, ty + 2, 2, 10, "#ebe9e1");
+      const lv = Math.round(3 + Math.sin(t * 0.7) * 2);
+      R(tx + 2, ty + 12 - lv, 2, lv, "#d95463"); R(tx + 2, ty + 12, 2, 2, "#d95463");
+    });
+  }
+  // painel LED: barra roxa pendurada sobre as plantas (como a luz do Armário)
+  if (has("led")) {
+    const bw = Math.min(110, Math.max(34, pr - pl - 10)), bx = Math.round(pcx - bw / 2), by = Math.max(y0 + 6, plantsTop - 10);
+    front.push((t) => {
+      const al = 0.12 + 0.03 * Math.sin(t * 2);
+      g.fillStyle = `rgba(129,96,168,${al})`;
+      g.beginPath(); g.ellipse(Math.round(pcx), Math.round((by + pcy + 20) / 2), Math.round(bw * 0.7), Math.round((pcy + 20 - by) / 2 + 6), 0, 0, 7); g.fill();
+      R(bx + 6, y0 - 2, 1, by - y0 + 2, OLC); R(bx + bw - 7, y0 - 2, 1, by - y0 + 2, OLC);
+      R(bx - 1, by - 1, bw + 2, 7, OLC); R(bx, by, bw, 3, "#403d54"); R(bx, by, bw, 1, "#646379"); R(bx + 1, by + 3, bw - 2, 2, "#56397a");
+      for (let x = bx + 2; x < bx + bw - 2; x += 3) { R(x, by + 4, 1, 1, "#8160a8"); R(x + 1, by + 4, 1, 1, (Math.floor(t * 2) % 9) ? "#fffbef" : "#c79ef0"); }
+    });
+  }
+  // câmera no canto, varrendo a sala
+  if (has("cameras")) front.push((t) => drawCamera(x0 + w - 2, y0 + 1, t));
+  // drone voando
+  if (has("drone")) front.push((t) => drawDrone(m, t));
+  // tesoura podando uma planta crescida
+  if (has("tesoura")) front.push((t) => drawScissors(marks, t));
+  // pH nas calhas (nos vasos ele vai junto do sprite do vaso)
+  if (has("ph") && hydro && plantItems.length) {
+    const gt = plantItems[0];
+    front.push(() => drawPh(g, gt.x + gt.w - 4, gt.y + 4, true));
+  }
+  return { floor, back, front };
+}
+const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), w, h); };
+const dot = (x, y, col) => R(x, y, 1, 1, col);
+function hose(x1, y1, x2, y2) {                          // mangueira caindo em curva até o chão
+  const mx = (x1 + x2) / 2, my = Math.max(y1, y2) + 6;
+  for (let i = 0; i <= 30; i++) {
+    const t = i / 30, x = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * mx + t * t * x2, y = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * my + t * t * y2;
+    R(x, y, 1, 2, OLC); R(x, y, 1, 1, "#403d54");
+  }
+}
+function drawFanHead(cx, cy, dir, t) {
+  // a cabeça vira de um lado para o outro: fica mais estreita quando está de perfil
+  const a = Math.sin(t * 0.8) * 0.9, sx = Math.max(0.25, Math.cos(a)), rx = Math.round(6 * sx), ry = 6;
+  const hx = Math.round(cx + Math.sin(a) * 3 * dir), hy = cy - 6;
+  R(hx - Math.sign(Math.sin(a) * dir || 1) * (rx + 2) - 1, hy - 2, 3, 4, "#403d54");   // motor atrás
+  for (let dy = -ry; dy <= ry; dy++) { const hw = Math.round(rx * Math.sqrt(1 - (dy / ry) ** 2)); R(hx - hw - 1, hy + dy, hw * 2 + 3, 1, OLC); }
+  for (let dy = -ry + 1; dy <= ry - 1; dy++) { const hw = Math.round((rx - 1) * Math.sqrt(1 - (dy / (ry - 1)) ** 2)); R(hx - hw, hy + dy, hw * 2 + 1, 1, "#646379"); }
+  for (let k = 0; k < 3; k++) {
+    const an = t * 16 + (k * Math.PI * 2) / 3;
+    for (let r = 1; r <= 4; r++) R(hx + Math.cos(an) * r * sx, hy + Math.sin(an) * r, 1, 1, "#bfbfc8");
+  }
+  R(hx, hy, 1, 1, "#fffbef");
+  for (let k = 0; k < 4; k++) {                        // vento indo para onde a cabeça aponta
+    const f = (t * 0.9 + k / 4) % 1, ang = a * 0.5;
+    const wx = hx + dir * (8 + f * 34) * Math.cos(ang), wy = hy - 3 + k * 2 + Math.sin(ang) * f * 20 * dir + Math.sin(t * 3 + k) * 1.5;
+    g.fillStyle = `rgba(255,251,239,${0.5 * (1 - f)})`; g.fillRect(Math.round(wx), Math.round(wy), 4, 1);
+  }
+}
+const CAM = ["OOOOOOO..", "OWWWWWOOO", "OWWWWWOLO", "OWWRWWOOO", "OOOOOOO.."];
+const CAM_PAL = { O: OLC, W: "#ebe9e1", L: "#56397a", R: "#d95463" };
+function drawCamera(mx, my, t) {
+  // suporte no canto e o corpo girando de um lado para o outro, sempre virado para dentro da sala
+  R(mx - 4, my - 1, 5, 4, OLC); R(mx - 3, my, 3, 2, "#646379");
+  const ang = Math.PI * 0.78 + Math.sin(t * 0.5) * 0.35, ca = Math.cos(ang), sa = Math.sin(ang);
+  const led = Math.floor(t * 1.5) % 2 === 0;
+  for (let dy = -10; dy <= 10; dy++) for (let dx = -10; dx <= 10; dx++) {
+    const u = Math.round(dx * ca + dy * sa), v = Math.round(-dx * sa + dy * ca) + 2;   // volta para o mapa
+    if (u < 0 || u >= 9 || v < 0 || v >= 5) continue;
+    let ch = CAM[v][u]; if (ch === ".") continue;
+    if (ch === "R" && !led) ch = "W";
+    R(mx - 2 + dx, my + 2 + dy, 1, 1, CAM_PAL[ch]);
+  }
+}
+function drawDrone(m, t) {
+  const [rx, ry, rw, rh] = m.room, cx = rx + rw / 2 + Math.sin(t * 0.35) * rw * 0.32, cy = ry + rh * 0.42 + Math.sin(t * 0.7) * rh * 0.16;
+  g.fillStyle = "rgba(26,20,32,0.28)"; g.beginPath(); g.ellipse(Math.round(cx), Math.round(cy + 30), 10, 3, 0, 0, 7); g.fill();
+  const bob = Math.round(Math.sin(t * 5) * 1.5), dx = Math.round(cx - 16), dy = Math.round(cy - 14 + bob);
+  if (sprites.equip) g.drawImage(sprites.equip, 8 * 32, 0, 32, 32, dx, dy, 32, 32);
+  const sp = Math.floor(t * 20) % 2;
+  R(dx + 1, dy + 8, 11, 1, sp ? "#bfbfc8" : "#646379"); R(dx + 21, dy + 8, 11, 1, sp ? "#646379" : "#bfbfc8");
+  if (Math.floor(t * 2) % 2 === 0) R(dx + 13, dy + 15, 2, 1, "#ff6b6b");
+}
+function drawScissors(marks, t) {
+  const grown = marks.filter((mk) => mk.on && mk.f > 0.35);
+  if (grown.length) {
+    const mk = grown[Math.floor(t / 5) % grown.length];
+    const pcx = mk.x, pcy = mk.top + 14, ang = t * 1.4;
+    const px = pcx + Math.cos(ang) * 11, py = pcy + Math.sin(ang) * 6;
+    const d = Math.atan2(pcy - py, pcx - px);                    // lâminas viradas para a planta
+    const ph = (t * 3) % 1, open = ph < 0.5 ? 0.45 : 0.08;
+    if (Math.floor(t * 3) !== snipPhase) {                       // cada corte solta pedacinhos verdes
+      snipPhase = Math.floor(t * 3);
+      for (let k = 0; k < 2; k++) leafBits.push({ x: px + Math.cos(d) * 6, y: py + Math.sin(d) * 6, vx: (Math.random() - 0.5) * 0.3, life: 1, c: Math.random() < 0.5 ? "#7cb342" : "#4a8f40" });
+    }
+    for (const s of [-1, 1]) {
+      const a = d + s * open;
+      for (let r = 1; r <= 6; r++) R(px + Math.cos(a) * r, py + Math.sin(a) * r, 1, 1, r === 6 ? "#fffbef" : "#bfbfc8");
+      const ha = d + Math.PI + s * 0.5;
+      R(px + Math.cos(ha) * 3 - 1, py + Math.sin(ha) * 3 - 1, 2, 2, "#d95463");
+    }
+    R(px, py, 1, 1, OLC);
+  }
+  for (let i = leafBits.length - 1; i >= 0; i--) {
+    const b = leafBits[i]; b.x += b.vx; b.y += 0.3; b.life -= 1 / 70;
+    if (b.life <= 0) { leafBits.splice(i, 1); continue; }
+    g.globalAlpha = b.life; R(b.x, b.y, 1, 1, b.c); g.globalAlpha = 1;
+  }
+}
+function drawIaFace(x, y, t, marks) {
+  // a tela do controlador: pisca, olha para as plantas e sorri quando tem planta pronta ou na colheita
+  const units = E.stockUnits(S);
+  if (units > lastStockUnits) iaHappyUntil = t + 1.5;
+  lastStockUnits = units;
+  const ready = marks.some((mk) => mk.on && mk.f > 0.92);
+  const happy = t < iaHappyUntil;
+  R(x + 8, y + 3, 17, 10, "#132b38");
+  const fc = happy ? "#bcd95e" : "#8fd4a8";
+  const look = Math.round(Math.sin(t * 0.6) * 1.5);
+  const blink = (t % 3.2) < 0.15;
+  if (happy || ready) { for (const ex of [12, 19]) { dot(x + ex + look, y + 6, fc); dot(x + ex + 1 + look, y + 5, fc); dot(x + ex + 2 + look, y + 6, fc); } }
+  else if (blink) { R(x + 12 + look, y + 6, 3, 1, fc); R(x + 19 + look, y + 6, 3, 1, fc); }
+  else { R(x + 12 + look, y + 5, 2, 2, fc); R(x + 19 + look, y + 5, 2, 2, fc); }
+  if (happy) { R(x + 13, y + 9, 7, 1, fc); dot(x + 12, y + 8, fc); dot(x + 20, y + 8, fc); R(x + 14, y + 10, 5, 1, fc); }
+  else if (ready) { R(x + 13, y + 9, 7, 1, fc); dot(x + 12, y + 8, fc); dot(x + 20, y + 8, fc); }
+  else R(x + 14, y + 9, 5, 1, fc);
+  if (happy && Math.floor(t * 6) % 2) { dot(x + 24, y + 2, "#fff0a6"); dot(x + 8, y + 2, "#fff0a6"); }
 }
 
 // Garrafa PET de 2 L de cabeça para baixo, inclinada, com o gargalo enterrado na terra do vaso.
@@ -570,11 +747,13 @@ function draw() {
       const pf = i % 3 === 2 ? 2 : i % 2;
       // garrafa PET (se comprada) faz parte do sprite do vaso: ganha a luz e a profundidade da cena
       const pet = E.lvl(S, "regador") > 0 ? petWater(f) : -1, flip = i % 2 === 1;
-      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-") + ":" + pet + (flip ? "f" : ""),
+      const ph = i === 0 && E.lvl(S, "ph") > 0;
+      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-") + ":" + pet + (flip ? "f" : "") + (ph ? "ph" : ""),
         paint(c) {
           if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24);
           paintPlant(st)(c);
           if (pet >= 0) drawPet(c, 16 + (flip ? -7 : 7), 38, pet, flip);
+          if (ph) drawPh(c, 16 + (flip ? 8 : -8), 38, !flip);
         } });
       marks.push({ on: p.on, f, x: x + 16, top: y - 25, bar: [x + 8, y + 22, 16], pot: true, flip: i % 2 === 1 });
       if (!first) first = { x, y: y - 34 };
@@ -583,12 +762,12 @@ function draw() {
   // a cena acende cada sprite pelo mapa de luz e projeta a sombra
   // equipamentos comprados entram na cena: no chão (com as plantas, por profundidade), pendurados e voando
   const room = SCENES.roomMeta(S.place);
-  const EQ = placeEquip(room, items, first);
+  const EQ = placeEquip(room, items, marks, hydro);
   const ground = (it) => it.y + it.h - 1 - (it.foot || 0);
   const all = items.concat(EQ.floor).map((it, k) => [it, k]).sort((a, b) => ground(a[0]) - ground(b[0]) || a[1] - b[1]).map((a) => a[0]);
-  for (const hg of EQ.hang) if (hg.cord) { g.fillStyle = "#1a1420"; g.fillRect(hg.cord[0], hg.cord[1], 1, Math.max(0, hg.cord[2] - hg.cord[1])); }
-  if (sprites.vasos && sprites.estagios) SCENES.plants(g, S.place, all.concat(EQ.hang));
-  for (const a of EQ.anim) eqAnim(a, lastTime, room);
+  for (const f of EQ.back) f(lastTime);                 // parede e chão: duto, mangueira, termômetro
+  if (sprites.vasos && sprites.estagios) SCENES.plants(g, S.place, all);
+  for (const f of EQ.front) f(lastTime);                // animações por cima
   for (const m of marks) {
     if (!m.on) { g.fillStyle = "#d95463"; g.font = "bold 9px monospace"; g.fillText("$", m.x - 3, m.top + 27); }
     else if (m.f > 0.92 && Math.floor(lastTime * 4) % 2 === 0) { g.fillStyle = "#fff0a6"; g.fillRect(m.x + 8, m.top, 1, 3); g.fillRect(m.x + 7, m.top + 1, 3, 1); }
