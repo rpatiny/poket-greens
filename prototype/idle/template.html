@@ -20,13 +20,14 @@ body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:1
 #app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
 header.pad{position:sticky;top:0;z-index:15;background:var(--bg)}
 .pad{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
-header{background:var(--panel);padding-block:8px 8px;display:flex;flex-direction:column;gap:6px;border-bottom:2px solid var(--bg)}
+header{background:var(--panel);padding-block:6px 6px;display:flex;flex-direction:column;gap:4px;border-bottom:2px solid var(--bg)}
 .money{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
 .m small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .m b{font-family:var(--num);font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .m.dirty b{color:var(--dirty)} .m.clean b{color:var(--clean)}
 .m.lvl{text-align:right} .m.lvl b{color:#c7a6ff}
-.meter{display:grid;grid-template-columns:92px 1fr 44px;align-items:center;gap:8px;font-size:12px}
+.meters{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}
+.meter{display:grid;grid-template-columns:auto 1fr 34px;align-items:center;gap:5px;font-size:12px}
 .meter span:first-child{text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .meter span:last-child{font-family:var(--num);text-align:right;font-variant-numeric:tabular-nums}
 .bar{height:12px;background:var(--bg);border:2px solid var(--line);position:relative;overflow:hidden}
@@ -38,11 +39,12 @@ header{background:var(--panel);padding-block:8px 8px;display:flex;flex-direction
 .para span:first-child{color:#f2918a;font-weight:700}
 .sta .bar i{background:var(--sta)}
 .para .bar b{position:absolute;inset:0 auto 0 0;width:0;z-index:2;background:repeating-linear-gradient(135deg,#1a1420 0 3px,#6e2834 3px 6px);opacity:.85}
-.status{font-size:12px;color:var(--muted);min-height:15px}
+.status{font-size:11px;color:var(--muted);min-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .status.warn{color:var(--dirty)} .status.danger{color:var(--heat);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.4}}
 #scene{position:relative;touch-action:manipulation;cursor:pointer;background:#000;flex:0 0 auto}
 canvas{display:block;width:100%;image-rendering:pixelated}
+#zoombtn{position:absolute;right:6px;bottom:6px;z-index:5;font-size:16px;width:36px;height:36px;background:#1a1420d9;color:#fffbef;border:2px solid #1a1420;padding:0;cursor:pointer}
 .tag{position:absolute;font-size:12px;background:#1a1420d9;padding:3px 8px;border:2px solid #1a1420;pointer-events:none}
 #place{left:8px;top:8px} #busy{right:8px;top:8px;color:var(--leaf-2)}
 #tip{position:absolute;left:8px;right:8px;top:36px;z-index:5;display:flex;gap:8px;align-items:flex-start;background:#fffbef;color:#1a1420;border:2px solid #1a1420;box-shadow:3px 3px 0 #1a1420;padding:8px 10px;font-size:13px;line-height:1.35;cursor:default;animation:pop .25s}
@@ -60,6 +62,7 @@ canvas{display:block;width:100%;image-rendering:pixelated}
 .stockline b{color:var(--leaf-2);font-family:var(--num);font-size:13px}
 .sbtns{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .sb.tired{opacity:.45}
+.row.greyed{opacity:.45;filter:grayscale(.7)}
 .sb .stc{color:#a6cbeb}
 .fx{display:inline-block;padding:0 4px;margin:2px 3px 0 0;font-size:11px;font-weight:bold;border:1px solid #1a1420}
 .fx.g{background:#2c6a40;color:#bcd95e} .fx.r{background:#6e2834;color:#f2918a} .fx.n{background:#272436;color:#bfbfc8}
@@ -67,7 +70,8 @@ canvas{display:block;width:100%;image-rendering:pixelated}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 button:focus-visible{outline:2px solid var(--dirty);outline-offset:2px}
 .sb{background:var(--panel-2);border:2px solid var(--bg);box-shadow:inset 0 -3px 0 #0006;padding:5px 1px 6px;display:flex;flex-direction:column;align-items:center;min-width:0;line-height:1.15}
-.sb b{font-size:13px} .sb small{font-size:10px;color:var(--muted);white-space:nowrap}
+.sb b{font-size:13px} .sb small{font-size:11px;color:var(--muted);white-space:nowrap;letter-spacing:-.02em}
+.sb small[data-r]{font-size:10px}
 .sb[data-l="2"] b{color:var(--dirty)} .sb[data-l="3"] b{color:#f2918a} .sb[data-l="4"] b{color:var(--heat)}
 .sb:active{transform:translateY(2px);box-shadow:none}
 .sb:disabled{opacity:.4}
@@ -129,7 +133,7 @@ canvas.spark{display:inline-block;width:72px;height:18px;vertical-align:middle;i
 body.tut .sell,body.tut nav,body.tut #panel,body.tut header .meter,body.tut header .status{opacity:.12;pointer-events:none}
 body.tut #hint{opacity:0}
 body.tut.grow #hint{opacity:1}
-#easy{right:8px;bottom:8px;color:#bcd95e;border-color:#4a8f40;pointer-events:none}
+#easy{right:44px;bottom:8px;color:#bcd95e;border-color:#4a8f40;pointer-events:none}
 #master{left:8px;bottom:8px;color:#fff0a6;border-color:#d1952e;pointer-events:none}
 .sheet{position:fixed;inset:0;background:#1a1420d0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
 .sheet .in{background:var(--panel);border-top:3px solid var(--dirty);width:100%;max-width:520px;max-height:86%;overflow-y:auto;overscroll-behavior:contain;
@@ -151,8 +155,10 @@ body.tut.grow #hint{opacity:1}
       <div class="m clean"><small>Grana limpa</small><b id="clean">$0</b></div>
       <div class="m lvl"><small>Nível</small><b id="lvl">1</b></div>
     </div>
-    <div class="meter para"><span>👁 Paranoia</span><div class="bar"><i id="para"></i><b id="ficha" title="Ficha na polícia"></b></div><span id="paran">0%</span></div>
-    <div class="meter sta"><span>⚡ Estamina</span><div class="bar"><i id="sta"></i></div><span id="stan">100</span></div>
+    <div class="meters">
+      <div class="meter para" title="Paranoia"><span>👁</span><div class="bar"><i id="para"></i><b id="ficha" title="Ficha na polícia"></b></div><span id="paran">0%</span></div>
+      <div class="meter sta" title="Estamina"><span>⚡</span><div class="bar"><i id="sta"></i></div><span id="stan">100</span></div>
+    </div>
     <div class="status" id="status"></div>
   </header>
   <div id="scene" role="button" aria-label="Tocar para fazer as plantas crescerem">
@@ -163,6 +169,7 @@ body.tut.grow #hint{opacity:1}
     <div class="tag" id="master" hidden>MASTER</div>
     <div class="tag" id="easy" hidden>MODO FÁCIL</div>
     <button id="skip" hidden>Pular história ⏭</button>
+    <button id="zoombtn" title="Zoom no cômodo">🔍</button>
     <div id="dlg" hidden><canvas id="dlgface" width="48" height="48"></canvas><div><b id="dlgname"></b><span id="dlgtext"></span><div id="dlgact"></div></div><span id="dlgmore">▼</span></div>
     <div id="tip" hidden role="status"><div class="who" aria-hidden="true">👵</div><div><div id="tiptext"></div><div class="acts"><button id="tipgo">Ver</button><button class="ghost" id="tipok">Entendi</button></div></div></div>
   </div>
@@ -264,7 +271,7 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ at: Date
 //        4 = a planta multiplicou (conversa) · 99 ou indefinido = jogo de verdade
 const STORY = {
   intro: [
-    { who: "vo", t: "Netinho! Olha o que a vovó trouxe pra você!" },
+    { who: "vo", t: "{nome}, meu netinho! Olha o que a vovó trouxe pra você!" },
     { who: "vo", t: "Uma sementinha! Peguei no quintal da Dona Cleide, aquela fofoqueira da casa ao lado." },
     { who: "vo", t: "Ela nem viu, bem feito! Planta pra mim e depois me dá umas mudinhas, tá bom?" },
     { who: "neto", think: true, t: "(Dona Cleide? Acho que o filho dela já foi preso...)" },
@@ -274,7 +281,7 @@ const STORY = {
   armario: [
     { who: "neto", t: "Pronto, o armário tá vazio. Mas onde eu vou plantar isso?", act: ["🔍 Procurar um vaso", () => { S.pots = [{ g: 0, s: 0, on: false }]; S.tut = 2; }] },
     { who: "neto", t: "Achei uma lata de tinta vazia! Serve de vaso.", act: ["🌱 Plantar a sementinha da vovó", () => { S.pots[0].on = true; S.pots[0].g = 0; }] },
-    { who: "neto", t: "Agora é só cuidar. Toque na plantinha para regar: ela cresce mais rápido!" },
+    { who: "neto", closeOnTap: true, t: "Agora é só cuidar. Toque na plantinha para regar: ela cresce mais rápido!" },
   ],
   colheita: [
     { who: "neto", t: "Uau! A planta cresceu... e caíram várias sementinhas!" },
@@ -285,9 +292,22 @@ const STORY = {
   ],
 };
 const NAMES = { vo: "Vó Dita", neto: "Você" };
+const nameOf = (L) => (L.name ? L.name : L.who === "neto" ? (S.name || "Você") : L.who ? NAMES[L.who] + (L.phone ? " (no telefone)" : "") : "Greenhood");
+const fillName = (t) => t.replace(/\{nome\}/g, S.name || "Netinho");
 let story = null;
 const inTut = () => S && S.tut != null && S.tut < 99;
+function askName(then) {
+  const m = el(`<div class="modal"><div class="card"><b style="font-size:18px">Como o neto se chama?</b>
+    <input id="nm" maxlength="14" placeholder="Netinho" style="font:inherit;font-size:18px;padding:8px;margin:10px 0;width:100%;box-sizing:border-box;border:2px solid #1a1420;background:#fffbef;color:#1a1420">
+    <button class="buy" style="align-self:center">Começar</button></div></div>`);
+  const go = () => { const v = m.querySelector("#nm").value.trim(); S.name = v || "Netinho"; m.parentNode.removeChild(m); then(); };
+  m.querySelector("button").onclick = go;
+  m.querySelector("#nm").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  document.body.appendChild(m);
+  setTimeout(() => m.querySelector("#nm").focus(), 50);
+}
 function startIntro() {
+  if (!S.name) { S.tut = 0; S.place = 0; S.pots = []; document.body.classList.add("tut"); return askName(startIntro); }
   S.tut = 0; S.place = 0; S.pots = []; S.dirty = 0; S.clean = 0;
   document.body.classList.add("tut");
   startStory("intro", 0, () => { S.tut = 1; startStory("armario", 0, () => { S.tut = 3; }); });
@@ -317,6 +337,28 @@ function startStory(key, i, done, auto = 0) {
   $("skip").hidden = !inTut();                       // "pular" só na história de abertura
   showLine();
 }
+// cliente chegando com a encomenda
+const CLIENT_SAY = {
+  "Seu Jorge do bar": "Me vê {n} de {seed} pro pessoal do bar? Pago {pay}!",
+  "Tia do bolo": "Querido, preciso de {n} de {seed} pra uma receita especial... pago {pay}.",
+  "Playboy da faculdade": "Mano, manda {n} de {seed} aí. Pago {pay}, grana não é problema.",
+  "DJ da festa": "Tem festa hoje! Preciso de {n} de {seed}, urgente. Pago {pay}.",
+  "Irmã Lurdes": "Meu filho, {n} de {seed} pro chá do grupo, pode ser? Deixo {pay}.",
+  "Personal da academia": "{n} de {seed}, campeão. É pro meu suplemento. Pago {pay}.",
+  "Artista da praça": "Preciso de inspiração: {n} de {seed}, por favor. Te dou {pay}.",
+  "Motoboy do bairro": "Ô parceiro, {n} de {seed} que eu levo rapidinho. Pago {pay}.",
+};
+let lastOrderSeen = 0;
+function clientTick() {
+  if (!S.orders || inTut() || story || document.querySelector(".modal")) return;
+  const o = S.orders.find((x) => x.id > lastOrderSeen);
+  if (!o) return;
+  lastOrderSeen = Math.max(...S.orders.map((x) => x.id));
+  const t = (CLIENT_SAY[o.who] || "Preciso de {n} de {seed}. Pago {pay}.").replace("{n}", o.n).replace("{seed}", E.SEEDS[o.seed].name).replace("{pay}", $$(o.pay));
+  say({ name: o.who, emoji: o.emoji, t }, "estufa");
+  if (tab === "estufa") renderPanel();
+}
+
 // comentário do neto depois de uma entrega (metade das vezes): fala do cliente ou fala geral
 const DELIVERY_TALK = {
   "Seu Jorge do bar": ["O Seu Jorge disse que vai pôr na porção de petisco. Melhor eu não perguntar."],
@@ -350,7 +392,13 @@ function deliveryTalk(o) {
 let faceKey = "";
 function drawFace(L, open = false) {
   const c = $("dlgface"), x = c.getContext("2d");
-  c.classList.toggle("none", !L.who);
+  c.classList.toggle("none", !L.who && !L.emoji);
+  if (L.emoji) {
+    if (faceKey === "e" + L.emoji) return;
+    faceKey = "e" + L.emoji; x.clearRect(0, 0, 48, 48);
+    x.font = "34px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(L.emoji, 24, 27);
+    return;
+  }
   if (!L.who || !sprites.chars) return;
   // retrato: a Vó mexe a boca enquanto o texto aparece
   const frame = L.who === "vo" ? (open ? 1 : 0) : L.think ? 3 : 2;
@@ -364,13 +412,13 @@ function showLine() {
   const L = story.lines[story.i];
   $("dlg").hidden = false;
   story.chars = 0; story.full = false;
-  $("dlgname").textContent = L.who ? NAMES[L.who] + (L.phone ? " (no telefone)" : "") : "Greenhood";
+  $("dlgname").textContent = nameOf(L);
   $("dlgtext").textContent = "";
   $("dlgact").innerHTML = ""; $("dlgmore").hidden = true;
   faceKey = ""; drawFace(L);
 }
 function storyTick(dt) {
-  if (story && story.full && story.auto) {
+  if (story && story.full && story.auto) {   // falas soltas somem sozinhas
     story.autoAt += dt;
     if (story.autoAt >= story.auto) nextLine();
     return;
@@ -378,17 +426,18 @@ function storyTick(dt) {
   if (!story || story.full) return;
   const L = story.lines[story.i];
   story.chars += dt * 45;
-  const n = Math.min(L.t.length, Math.floor(story.chars));
-  $("dlgtext").textContent = L.t.slice(0, n);
+  const T = fillName(L.t);
+  const n = Math.min(T.length, Math.floor(story.chars));
+  $("dlgtext").textContent = T.slice(0, n);
   drawFace(L, Math.floor(story.chars / 3) % 2 === 0);
-  if (n >= L.t.length) finishLine();
+  if (n >= T.length) finishLine();
 }
 function finishLine() {
   const L = story.lines[story.i];
-  story.full = true; $("dlgtext").textContent = L.t; drawFace(L, false);
+  story.full = true; $("dlgtext").textContent = fillName(L.t); drawFace(L, false);
   if (L.act) {
     const b = el(`<button class="buy">${L.act[0]}</button>`);
-    b.addEventListener("pointerdown", (e) => { e.stopPropagation(); e.preventDefault(); L.act[1](); nextLine(); });
+    b.addEventListener("pointerdown", (e) => { e.stopPropagation(); e.preventDefault(); const f = L.act[1]; nextLine(); f(); });
     $("dlgact").appendChild(b);
   } else $("dlgmore").hidden = false;
 }
@@ -430,6 +479,46 @@ function drawPeople(id) {
   }
 }
 
+// ---------------------------------------------------------------- o neto pensando alto (objetivos e dicas)
+// Cada pensamento aparece uma vez, quando faz sentido, com pelo menos 25 s entre um e outro.
+const THOUGHTS = [
+  { id: "vender", when: () => E.stockUnits(S) > 0 && S.saleCd <= 0 && S.runEarned === 0, t: "(Tenho folhas sobrando... dá pra vender um pouquinho no Discreto sem chamar atenção.)" },
+  { id: "vaso2", when: () => S.pots.length < E.maxPots(S) && E.canPay(S, E.potCost(S)), t: "(Cabe mais um vasinho aqui no armário. Já tenho grana pra isso.)", tab: "estufa" },
+  { id: "quarto", when: () => S.place === 0 && S.pots.length >= E.maxPots(S) && E.canPay(S, E.placeCost(S) * 0.6), t: "(O armário tá ficando pequeno. Meu quarto é aqui do lado... pago com o que tenho mesmo.)", tab: "estufa" },
+  { id: "limpa", when: () => S.place >= 1 && E.PLACES[S.place + 1] && E.placeNeedsClean(S) && S.clean < E.placeCost(S) && S.dirty > 60, t: "(Pra sair de casa vou precisar de dinheiro limpo. Ninguém aluga garagem com grana de planta... preciso lavar.)", tab: "lavagem" },
+  { id: "lavou", when: () => S.clean >= 20 && S.runEarned > 0, t: "(Pronto, dinheiro limpinho. Agora ninguém pergunta de onde veio.)" },
+  { id: "loja", when: () => E.EQUIP.some((e) => !E.equipBlock(S, e) && S.clean >= E.equipCost(S, e)), t: "(Com grana limpa dá pra comprar umas coisinhas pras plantas. Vou dar uma olhada na loja.)", tab: "loja" },
+  { id: "para60", when: () => S.para >= 60, t: "(Tá muito movimento... melhor parar de vender um pouco. Um dia no Spa ou uma tarde no fliperama ia bem.)", tab: "cidade" },
+  { id: "para80", when: () => S.para >= 80, t: "(A polícia tá rondando a rua. Se eu vender agora, é cadeia. Calma...)" },
+  { id: "cansado", when: () => S.sta < 20, t: "(Tô morto de cansado. Um café na cidade resolve.)", tab: "cidade" },
+  { id: "semente", when: () => E.bestSeed(S) >= 1, t: "(Aprendi a cuidar de outra planta! Rende mais que a Alface.)", tab: "estufa" },
+  { id: "ficha", when: () => S.ficha > 0, t: "(Tô fichado. Enquanto isso, a Paranoia não baixa até o zero... um advogado resolveria.)", tab: "cidade" },
+  { id: "freguesia", when: () => S.orders && S.orders.length > 0, t: "(Agora tem freguesia batendo na porta! Encomenda paga bem mais que vender na rua.)", tab: "estufa" },
+  { id: "ze", when: () => !S.ze && S.clean >= E.R.zeCost, t: "(O Zé da esquina disse que vende pra mim. Assim eu descanso e a grana entra.)", tab: "estufa" },
+];
+let thinkGap = 15;
+function thinkTick(dt) {
+  if (inTut() || story || document.querySelector(".modal") || document.querySelector(".sheet")) return;
+  thinkGap -= dt;
+  if (thinkGap > 0) return;
+  S.seen = S.seen || {};
+  const th = THOUGHTS.find((x) => !S.seen[x.id] && x.when());
+  if (!th) { thinkGap = 3; return; }
+  S.seen[th.id] = 1; thinkGap = 25;
+  say({ who: "neto", think: true, t: th.t }, th.tab);
+}
+// uma fala solta (some sozinha em 6 s); com aba, ganha o botão "Ver"
+function say(line, tabName) {
+  if (story) return false;
+  const L = { ...line };
+  if (tabName) L.act = ["Ver ▸", () => { const b = document.querySelector('[data-tab="' + tabName + '"]'); if (b) b.click(); }];
+  startStory([L], 0, null, 6);
+  return true;
+}
+
+// ---------------------------------------------------------------- vibração (celular)
+function buzz(p) { try { if (S && S.vibe !== false && navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+
 // ---------------------------------------------------------------- sprites
 const sprites = {};
 const loadImg = (k) => new Promise((r) => { const i = new Image(); i.onload = () => { sprites[k] = i; r(); }; i.src = IMG[k]; });
@@ -456,15 +545,27 @@ const cv = $("cv"), g = cv.getContext("2d");
 let W = 320, H = 180, FLOOR = 66, curRoom = -1;
 let K = 1;
 // cada imóvel tem o seu tamanho de cômodo (16:9); o canvas acompanha
+// câmera: com zoom, o canvas recorta só o cômodo (e as portas do armário); sem zoom, mostra a maquete inteira
+let VX = 0, VY = 0;
 function setRoom(id = S.place) {
-  if (id === curRoom) return;
-  const r = SCENES.size(id);
-  W = r.w; H = r.h; FLOOR = r.floor; curRoom = id;
+  const zoom = S.zoom !== false;
+  const key = id + (zoom ? "z" : "");
+  if (key === curRoom) return;
+  const r = SCENES.size(id), m = SCENES.roomMeta(id);
+  FLOOR = r.floor; curRoom = key;
+  if (zoom && m) {
+    const [x0, y0, w, h] = m.room, side = id === 0 ? 36 : 9;          // o armário tem as portas abertas dos lados
+    VX = Math.max(0, x0 - side); VY = Math.max(0, y0 - 9);
+    W = Math.min(r.w - VX, w + side * 2); H = Math.min(r.h - VY, h + 18);
+  } else { VX = 0; VY = 0; W = r.w; H = r.h; }
   fitCanvas();
 }
 function fitCanvas() {
-  const css = cv.getBoundingClientRect().width || W;
-  K = Math.max(1, Math.ceil((css * (window.devicePixelRatio || 1)) / W));
+  // cabe na largura, sem passar de 55% da altura da tela
+  const avail = $("scene").getBoundingClientRect().width || W;
+  const cssW = Math.max(120, Math.min(avail, (window.innerHeight * 0.55 * W) / H));
+  cv.style.width = cssW + "px"; cv.style.margin = "0 auto";
+  K = Math.max(1, Math.ceil((cssW * (window.devicePixelRatio || 1)) / W));
   cv.width = W * K; cv.height = H * K;
   g.setTransform(K, 0, 0, K, 0, 0); g.imageSmoothingEnabled = false;
 }
@@ -910,12 +1011,23 @@ function layout(n) {
 }
 const fx = [];
 function float(s, x, y, c = "#fffbef") { fx.push({ s, x, y, c, t: 0 }); if (fx.length > 40) fx.shift(); }
-let shake = 0, lastTime = 0;
+let shake = 0, lastTime = 0, lastTapT = -9, harvestPop = -9;
+const stagePrev = {}, stagePop = {}, drops = [];
+// pulinho: toque = 1 px; estágio novo = 3 px; colheita = 2 px
+function hop(i) {
+  const t = lastTime, sp = t - (stagePop[i] ?? -9), tp = t - lastTapT, hp = t - harvestPop;
+  if (sp < 0.25) return -Math.round(3 * Math.sin((sp / 0.25) * Math.PI));
+  if (hp < 0.2) return -Math.round(2 * Math.sin((hp / 0.2) * Math.PI));
+  if (tp < 0.12) return -1;
+  return 0;
+}
 function draw() {
   const tier = E.PLACES[S.place].tier;
   const roomId = S.tut === 0 ? 1 : S.place;            // a abertura acontece no seu quarto
   setRoom(roomId);
   g.save();
+  g.fillStyle = "#120e16"; g.fillRect(0, 0, W, H);
+  g.translate(-VX, -VY);
   if (shake > 0) g.translate(Math.round((Math.random() - 0.5) * shake), 0);
   SCENES.background(g, roomId);
   if (S.tut !== 0) {
@@ -930,7 +1042,10 @@ function draw() {
       items.push({ x: gt.x, y: gt.y, w: gt.w, h: GUTTER_H, foot: 0, key: "calha:" + gt.count + ":" + tier, paint: (c) => paintGutter(c, gt.w, gt.count, tier) });
       for (let k = 0; k < gt.count; k++) {
         const i = gt.first + k, { p, f, st } = plantOf(i), cx = gt.x + 4 + HYDRO_SP / 2 + k * HYDRO_SP;
-        if (st) items.push({ x: cx - 16, y: gt.y + 4 - 40, w: 32, h: 40, foot: -19, key: "p:" + st.join(","), paint: paintPlant(st) });
+        const sk = st ? st.join(",") : "-";
+        if (stagePrev[i] !== undefined && stagePrev[i] !== sk && st) stagePop[i] = lastTime;
+        stagePrev[i] = sk;
+        if (st) items.push({ x: cx - 16, y: gt.y + 4 - 40, w: 32, h: 40, foot: -19, dy: hop(i), key: "p:" + st.join(","), paint: paintPlant(st) });
         if (st && !first) first = items[items.length - 1];
         marks.push({ on: p.on, f, x: cx, top: gt.y + 4 - 26, bar: [cx - 4, gt.y + 7, 8] });
       }
@@ -940,10 +1055,13 @@ function draw() {
     layout(S.pots.length).pts.forEach(([x, y], i) => {
       const { p, f, st } = plantOf(i);
       const pf = i % 3 === 2 ? 2 : i % 2;
+      const sk = st ? st.join(",") : "-";
+      if (stagePrev[i] !== undefined && stagePrev[i] !== sk && st) stagePop[i] = lastTime;
+      stagePrev[i] = sk;
       // garrafa PET (se comprada) faz parte do sprite do vaso: ganha a luz e a profundidade da cena
       const pet = E.lvl(S, "regador") > 0 ? petWater(f) : -1, flip = i % 2 === 1;
       const ph = i === 0 && E.lvl(S, "ph") > 0;
-      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, key: pf + ":" + (st ? st.join(",") : "-") + ":" + pet + (flip ? "f" : "") + (ph ? "ph" : ""),
+      items.push({ x, y: y - 34, w: 32, h: 58, foot: 2, dy: hop(i), key: pf + ":" + (st ? st.join(",") : "-") + ":" + pet + (flip ? "f" : "") + (ph ? "ph" : ""),
         paint(c) {
           if (sprites.vasos) c.drawImage(sprites.vasos, pf * 32, 0, 32, 24, 0, 34, 32, 24);
           paintPlant(st)(c);
@@ -954,6 +1072,7 @@ function draw() {
       if (!first) first = { x, y: y - 34 };
     });
   }
+  lastMarks = marks;
   // a cena acende cada sprite pelo mapa de luz e projeta a sombra
   // equipamentos comprados entram na cena: no chão (com as plantas, por profundidade), pendurados e voando
   const room = SCENES.roomMeta(S.place);
@@ -963,6 +1082,15 @@ function draw() {
   for (const f of EQ.back) f(lastTime);                 // parede e chão: duto, mangueira, termômetro
   if (sprites.vasos && sprites.estagios) SCENES.plants(g, S.place, all);
   for (const f of EQ.front) f(lastTime);                // animações por cima
+  for (let k = drops.length - 1; k >= 0; k--) {            // gotinhas da rega
+    const d = drops[k]; d.y += d.v; d.v += 0.05; d.life -= 1 / 40;
+    if (d.life <= 0) { drops.splice(k, 1); continue; }
+    g.globalAlpha = Math.min(1, d.life * 2); g.fillStyle = "#a6cbeb"; g.fillRect(Math.round(d.x), Math.round(d.y), 1, 2); g.globalAlpha = 1;
+  }
+  for (const m of marks) {                                  // brilho quando a planta muda de estágio
+    const k = marks.indexOf(m), sp = lastTime - (stagePop[k] ?? -9);
+    if (sp < 0.5) { g.fillStyle = "#fff0a6"; const r = Math.round(4 + sp * 14); for (const [dx, dy] of [[-r, 0], [r, 0], [0, -r], [-r * 0.7, -r * 0.7], [r * 0.7, -r * 0.7]]) g.fillRect(Math.round(m.x + dx), Math.round(m.top + 12 + dy), 1, 1); }
+  }
   for (const m of marks) {
     if (!m.on && inTut()) continue;
     if (!m.on) { g.fillStyle = "#d95463"; g.font = "bold 9px monospace"; g.fillText("$", m.x - 3, m.top + 27); }
@@ -987,17 +1115,30 @@ function draw() {
 
 // ---------------------------------------------------------------- entrada
 let taps = 0;
+function splash() {
+  lastTapT = lastTime;
+  if (!lastMarks.length) return;
+  for (let k = 0; k < Math.min(4, lastMarks.length); k++) {
+    const m = lastMarks[Math.floor(Math.random() * lastMarks.length)];
+    if (!m.on) continue;
+    drops.push({ x: m.x - 6 + Math.random() * 12, y: m.top + 2 + Math.random() * 6, v: 0.3, life: 0.5 });
+  }
+  if (drops.length > 60) drops.splice(0, drops.length - 60);
+}
+let lastMarks = [];
 $("scene").addEventListener("pointerdown", (e) => {
   if (e.target.closest && (e.target.closest("#skip") || e.target.closest("#dlgact") || e.target.closest("#dlg"))) return;
-  if (story && inTut()) return;                        // na história, só a caixa de diálogo avança
+  if (story && story.lines[story.i].closeOnTap) { if (!story.full) finishLine(); nextLine(); }
+  else if (story && inTut()) return;                   // na história, só a caixa de diálogo avança
   if (inTut() && S.tut < 3) return;
   const r = cv.getBoundingClientRect();
   const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
   const before = E.stockUnits(S);
   E.tap(S);
+  splash();
   if (taps % 4 === 0) float("+" + E.tapPower(S).toFixed(1).replace(".", ",") + "s", x - 10, y, "#bcd95e");
   const got = E.stockUnits(S) - before;
-  if (got > 0) float(`+${got} un`, x - 10, y - 14, "#fff0a6");
+  if (got > 0) { float(`+${got} un`, x - 10, y - 14, "#fff0a6"); buzz(25); harvestPop = lastTime; }
   if (++taps === 10) $("hint").style.opacity = 0;
   checkEvents();
 });
@@ -1006,13 +1147,13 @@ $("scene").addEventListener("pointerdown", (e) => {
 E.SALES.forEach((L, i) => {
   const b = document.createElement("button");
   b.className = "sb"; b.dataset.l = i;
-  b.innerHTML = `<b>${L.name}</b><small data-q></small><small data-r></small><small data-s class="stc"></small>`;
+  b.innerHTML = `<b>${L.name}</b><small data-q></small><small data-r></small>`;
   b.onclick = () => {
     if (S.sta < E.saleSta(S, i) && S.saleCd <= 0) { toast(`Sem energia para vender no ${L.name} (precisa de ${E.saleSta(S, i)}⚡). Toma um café na Cidade ou venda menos.`, true); return; }
     const r = E.sell(S, i);
     if (!r) return;
-    if (r.caught) { toast(`Flagrante! Perdeu ${r.units} un e pagou multa.`, true); shake = 6; }
-    else float("+" + $$(r.money), 120, 34, "#f0c94f");
+    if (r.caught) { toast(`Flagrante! Perdeu ${r.units} un e pagou multa.`, true); shake = 6; buzz([80, 40, 80]); }
+    else { float("+" + $$(r.money), W / 2 - 20, 34, "#f0c94f"); buzz(15); }
     checkEvents(); refresh();
   };
   $("sbtns").appendChild(b);
@@ -1022,16 +1163,25 @@ E.SALES.forEach((L, i) => {
 let seenLog = 0, seenBusts = 0;
 function checkEvents() {
   if (S.busts > seenBusts) {
-    seenBusts = S.busts; shake = 10;
+    seenBusts = S.busts; shake = 10; buzz([250, 100, 250, 100, 400]);
     const b = S.lastBust || {};
     bustModal(b);
     renderPanel();
   }
   if (S.fiscal && fiscalSeen !== S.fiscal.at && !document.querySelector(".modal")) { fiscalSeen = S.fiscal.at; fiscalModal(); }
+  if (S.lastWarn && !story && !document.querySelector(".modal")) {
+    S.lastWarn = null; shake = 8; buzz([200, 80, 200]);
+    startStory([
+      { name: "Dona Cleide", emoji: "🙎‍♀️", t: "Eu vi o que você tá plantando aí, menino! A rua inteira tá comentando!" },
+      { name: "Dona Cleide", emoji: "🙎‍♀️", t: "Da próxima vez eu conto TUDO pra sua avó. E chamo a polícia, ouviu?" },
+      { who: "neto", think: true, t: "(Se a Vó descobrir... ela vai ficar tão decepcionada comigo.)" },
+      { who: "neto", think: true, t: "(Preciso baixar a Paranoia: vender devagar, ir ao Spa... e não chamar atenção. Da próxima vez é cadeia.)" },
+    ], 0, () => { renderPanel(); refresh(); });
+  }
   if (S.surprise && surpriseSeen !== S.surprise.at && !document.querySelector(".modal")) { surpriseSeen = S.surprise.at; surpriseModal(); }
   while (seenLog < S.log.length) {
     const l = S.log[seenLog++];
-    if (l.kind === "attr" || l.kind === "city" || l.kind === "avo" || l.kind === "order") toast(l.text);
+    if (l.kind === "attr" || l.kind === "city" || l.kind === "avo" || (l.kind === "order" && !l.text.includes(" quer "))) toast(l.text);
     if (l.kind === "order" && tab === "estufa") renderPanel();
   }
   if (S.log.length < seenLog) seenLog = S.log.length;
@@ -1069,6 +1219,7 @@ function renderPanel() {
   structKey = keyNow();
 }
 
+let showAllSeeds = false, showAllEquip = false;
 function estufa() {
   const cur = E.SEEDS[S.seed];
   // encomendas dos clientes (pagam 2-3x a venda comum)
@@ -1095,19 +1246,28 @@ function estufa() {
   const perMin = (sd) => (Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell * k - sd.price * k) / (sd.time / E.speed(S) / 60);
   const okSeeds = E.SEEDS.filter((sd, i) => E.seedOk(S, i));
   const best = okSeeds.reduce((a, b) => (perMin(b) > perMin(a) ? b : a), okSeeds[0]);
+  const okIdx = E.SEEDS.map((sd, i) => i).filter((i) => E.seedOk(S, i));
+  const keep = new Set([...okIdx.slice(-3), S.seed, best ? best.id : -1]);
+  let hidden = 0;
   E.SEEDS.map((sd, i) => [sd, i]).reverse().forEach(([sd, i]) => {
     const lock = E.seedLocked(S, sd);
+    if (!lock.length && !keep.has(i) && !showAllSeeds) { hidden++; return; }
     const profit = (Math.max(1, Math.floor(sd.prod * E.prodMult(S))) * sd.sell - sd.price) * k;
     if (lock.length && i > 0 && E.seedLocked(S, E.SEEDS[i - 1]).length) return; // mostra só a próxima trancada
     row({
       ico: seedIcon(i), title: sd.name, cls: (i === S.seed ? "sel" : "") + (lock.length ? " locked" : ""),
       desc: lock.length ? `<span class="req">Precisa: ${lock.join(", ")}</span>`
-        : `Semente ${$$(sd.price * k)} · ${Math.max(1, Math.floor(sd.prod * E.prodMult(S)))} un × ${$$(sd.sell * k)} · ${dur(sd.time / E.speed(S))}<br>` +
+        : `Custa ${$$(sd.price * k)} · rende ${Math.max(1, Math.floor(sd.prod * E.prodMult(S)))} × ${$$(sd.sell * k)} a cada ${dur(sd.time / E.speed(S))}<br>` +
           `<span class="gain">+${$$(perMin(sd))}/min por vaso</span> <span class="gain2">(+${$$(profit)} por colheita)</span>${sd === best ? ' <span class="best">★ mais lucro</span>' : ""}`,
       btn: lock.length ? null : i === S.seed ? "Plantando" : "Plantar", enabled: () => i !== S.seed,
       onClick: () => E.chooseSeed(S, i),
     });
   });
+  if (hidden || showAllSeeds) {
+    const more = el(`<button class="buy" style="align-self:center;background:#403d54;color:#fffbef">${showAllSeeds ? "Mostrar só as melhores" : `Ver todas as sementes (+${hidden})`}</button>`);
+    more.onclick = () => { showAllSeeds = !showAllSeeds; renderPanel(); };
+    panel.appendChild(more);
+  }
   h3("Esconderijo");
   const pl = E.PLACES[S.place];
   if (S.pots.length < E.maxPots(S)) row({
@@ -1116,8 +1276,9 @@ function estufa() {
   });
   const np = E.PLACES[S.place + 1];
   if (np) row({
-    ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} Pago com grana limpa.<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>`,
-    btn: $$(E.placeCost(S)), btnCls: "clean", enabled: () => S.clean >= E.placeCost(S), onClick: () => E.buyPlace(S),
+    ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} ${E.placeNeedsClean(S) ? "Pago com grana limpa." : "É a sua casa: paga com qualquer grana."}<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>`,
+    btn: $$(E.placeCost(S)), btnCls: E.placeNeedsClean(S) ? "clean" : "dirty",
+    enabled: () => (E.placeNeedsClean(S) ? S.clean : S.clean + S.dirty) >= E.placeCost(S), onClick: () => E.buyPlace(S),
   });
   // fim do jogo: mudar de cidade (recomeça mais forte, sem fim)
   if (E.TOWNS_ON && S.place === E.PLACES.length - 1) {
@@ -1240,12 +1401,19 @@ function lavagem() {
   });
   if (S.laundry.length) {
     h3("Lavando agora");
-    S.laundry.forEach((l) => {
-      const m = E.LAUNDRY.find((x) => x.id === l.id);
-      const c = el(`<div class="card"><p>${m.name}: <b>${$$(l.net)}</b> limpos em <span data-t></span></p><div class="prog"><i></i></div></div>`);
-      bind(() => { c.querySelector("[data-t]").textContent = dur(l.done - S.time); c.querySelector("i").style.width = pct(1 - (l.done - S.time) / m.time); });
-      panel.appendChild(c);
+    const c = el(`<div class="card"><p><b data-n></b> · <b data-v></b> limpos · tudo pronto em <span data-t></span></p><p style="font-size:12px" data-x></p><div class="prog"><i></i></div></div>`);
+    bind(() => {
+      if (!S.laundry.length) { c.querySelector("[data-n]").textContent = "Tudo lavado!"; c.querySelector("i").style.width = "100%"; return; }
+      const total = S.laundry.reduce((a, l) => a + l.net, 0), last = Math.max(...S.laundry.map((l) => l.done));
+      const next = Math.min(...S.laundry.map((l) => l.done)), first = S.laundry.reduce((a, l) => (l.done < a.done ? l : a));
+      const m = E.LAUNDRY.find((x) => x.id === first.id);
+      c.querySelector("[data-n]").textContent = S.laundry.length + (S.laundry.length > 1 ? " lavagens" : " lavagem");
+      c.querySelector("[data-v]").textContent = $$(total);
+      c.querySelector("[data-t]").textContent = dur(last - S.time);
+      c.querySelector("[data-x]").textContent = `Próxima: ${$$(first.net)} em ${dur(next - S.time)}`;
+      c.querySelector("i").style.width = pct(1 - (next - S.time) / Math.max(1, m.time));
     });
+    panel.appendChild(c);
   }
 }
 
@@ -1319,10 +1487,12 @@ function loja() {
   const nextLocked = E.SEEDS.find((sd) => E.seedLocked(S, sd).length);
   cashCard();
   const inc0 = E.incomePerSec(S);
-  panel.appendChild(el(`<div class="card"><p>Cada equipamento sobe até o <b>nível 5</b>, e cada nível custa 3× o anterior. Ao se mudar, os equipamentos <b>ficam para trás</b> e você compra de novo no lugar novo. Drone, hidroponia e controlador IA são <b>compra única</b> e vão com você.</p></div>`));
+  panel.appendChild(el(`<div class="card"><p style="font-size:12px">Até o nível 5. Ao se mudar, os equipamentos ficam para trás (menos os de <b>compra única</b>).</p></div>`));
   h3("Equipamentos (grana limpa)");
+  let lockedShown = 0, lockedHidden = 0;
   E.EQUIP.forEach((e, i) => {
     const lv = E.lvl(S, e.id), block = E.equipBlock(S, e);
+    if (block && S.place < e.place) { if (lockedShown >= 2 && !showAllEquip) { lockedHidden++; return; } lockedShown++; }
     const needed = nextLocked && nextLocked.req.includes(e.id) && !lv;
     const c = E.equipCost(S, e);
     const room = block && S.place < e.place;
@@ -1331,15 +1501,22 @@ function loja() {
     const dInc = Math.max(0, E.incomePerSec(s2) - inc0);
     const worth = !block ? (dInc > 0 ? `<br><span class="gain">+${$$(dInc * 60)}/min de renda</span> <span class="gain2">· se paga em ${dur(c / dInc)}</span>` : "") : "";
     row({
-      ico: equipIcon(e.frame), title: e.name, lv: e.max === 1 ? (lv ? "instalado" : "compra única") : `nv ${lv}/${e.max}`, cls: room ? "locked" : "",
-      desc: `+${pct(e.prod)} de produção${e.max > 1 ? " por nível" : ""}${e.fxText ? " · " + e.fxText : ""}${e.keep && !e.only ? " · vai com você" : ""}` +
-        (room ? `<br><span class="req">${block}</span>` : needed ? `<br><span class="best">🔓 libera ${nextLocked.name}</span>` : "") + worth,
+      ico: equipIcon(e.frame), title: e.name, lv: e.max === 1 ? (lv ? "instalado" : "compra única") : `nv ${lv}/${e.max}`, cls: room ? "greyed" : "",
+      desc: (worth ? worth.replace(/^<br>/, "") + "<br>" : "") +
+        `<span style="opacity:.75">${e.fxText ? e.fxText + " · " : ""}+${pct(e.prod)} de produção${e.max > 1 ? " por nível" : ""}${e.keep && !e.only ? " · vai com você" : ""}</span>` +
+        (room ? `<br><span style="opacity:.8">🔒 ${block}</span>` : needed ? `<br><span class="best">🔓 libera ${nextLocked.name}</span>` : ""),
       btn: block ? (room ? null : block === "Já instalado" ? "Instalado" : "Máximo") : $$(c), btnCls: "clean",
       enabled: () => !block && S.clean >= c, onClick: () => E.buyEquip(S, e.id),
     });
   });
+  if (lockedHidden || showAllEquip) {
+    const more = el(`<button class="buy" style="align-self:center;background:#403d54;color:#fffbef">${showAllEquip ? "Esconder os que ainda não cabem" : `Ver todos os equipamentos (+${lockedHidden})`}</button>`);
+    more.onclick = () => { showAllEquip = !showAllEquip; renderPanel(); };
+    panel.appendChild(more);
+  }
 }
 
+function lojaMore() {}
 function cidade() {
   if (S.city) {
     const a = E.CITY.find((x) => x.id === S.city.id);
@@ -1429,6 +1606,9 @@ function perfil() {
     document.body.appendChild(m);
   };
   panel.appendChild(mode);
+  const vb = el(`<button class="buy" style="align-self:flex-start;background:#403d54;color:#fffbef">${S.vibe === false ? "📴 Vibração desligada" : "📳 Vibração ligada"}</button>`);
+  vb.onclick = () => { S.vibe = S.vibe === false; if (S.vibe) buzz(40); renderPanel(); save(); };
+  panel.appendChild(vb);
   panel.appendChild(el(`<div class="card"><p>Nível <b class="big">${lvl}</b> · Respeito ${fmt(S.resp)} · preso ${S.timesArrested} vez(es)</p><p>Cada nível dá +1% no preço de venda.</p></div>`));
   h3("Atributos");
   const info = {
@@ -1444,15 +1624,13 @@ function perfil() {
   }
   h3("Lenda");
   const gain = E.legendFor(S.runEarned);
-  const c = el(`<div class="card"><p>Lenda é a sua fama. Cada ponto dá <b>+10%</b> no preço de tudo, para sempre. Agora: <span class="big">${S.legend}</span> (×${E.legendMult(S).toFixed(1).replace(".", ",")}).</p>
-    <p><b>Passar o ponto</b>: você recomeça (grana, equipamentos, imóveis) mas mantém atributos e Lenda. Se a polícia te pegar, você perde tudo do mesmo jeito (até o esconderijo), mas ganha só metade da Lenda.</p>
-    <p>Vendido nesta rodada: ${$$(S.runEarned)} · vale <span class="big">+${gain}</span> Lenda</p></div>`);
+  const c = el(`<div class="card"><p>Lenda é a sua fama: cada ponto vende <b>10% mais caro</b>, para sempre. Você tem <span class="big">${S.legend}</span>.</p>
+    <p>Passando o ponto, você recomeça do zero mas leva a Lenda e os atributos. Agora isso vale <span class="big">+${gain}</span>.</p></div>`);
   const b = el(`<button class="danger">${gain > 0 ? `Passar o ponto (+${gain} Lenda)` : "Venda $100 mil nesta rodada para passar o ponto"}</button>`);
   b.disabled = gain < 1;
   b.onclick = () => { const got = E.retire(S); if (got) { modal("Você passou o ponto", `Recomeçou com <span class="big">${S.legend}</span> de Lenda e ${$$(S.dirty)} de grana suja.`); renderPanel(); refresh(); } };
   c.appendChild(b); panel.appendChild(c);
-  const mb = el(`<button class="danger" style="background:#94592a">🛠 Modo master (para testar)</button>`);
-  mb.onclick = openMaster; panel.appendChild(mb);
+
   h3("Diário");
   const lg = el(`<div class="card log"></div>`);
   lg.innerHTML = S.log.slice(-15).reverse().map((l) => `<div class="${l.kind}">${dur(S.time - l.t)} atrás · ${l.text}</div>`).join("") || "Nada ainda.";
@@ -1475,9 +1653,9 @@ function refresh() {
   $("sta").style.width = Math.min(100, S.sta) + "%"; $("stan").textContent = Math.floor(S.sta);
   const st = $("status");
   const nextRaid = E.R.raidEvery - S.raidT;
-  if (p > E.R.raidAt) { st.className = "status danger"; st.textContent = `🚨 Polícia rondando! Próxima ronda em ${dur(nextRaid)} (50% de chance de batida)`; }
-  else if (p >= 60) { st.className = "status warn"; st.textContent = "Paranoia alta: tudo na cidade custa o dobro de Estamina. Acima de 80% a polícia faz rondas."; }
-  else if (S.debt > 0) { st.className = "status warn"; st.textContent = `Dívida com o agiota: ${$$(S.debt)} (+3 Paranoia/min)`; }
+  if (p > E.R.raidAt) { st.className = "status danger"; st.textContent = `🚨 Polícia rondando! Ronda em ${dur(nextRaid)}`; }
+  else if (p >= 60) { st.className = "status warn"; st.textContent = "Paranoia alta: ⚡ custa o dobro · ronda acima de 80%"; }
+  else if (S.debt > 0) { st.className = "status warn"; st.textContent = `🦈 Dívida: ${$$(S.debt)} (+3 Paranoia/min)`; }
   else if (S.pots.some((x) => !x.on)) { st.className = "status warn"; st.textContent = `Sem grana para replantar (${$$(E.seedPrice(S, S.seed))} por vaso). Venda o estoque, mendigue, visite a Vó ou encare o agiota (aba Cidade).`; }
   else { st.className = "status"; st.textContent = `Renda estimada ${$$(E.incomePerSec(S))}/s · Lenda ${S.legend}`; }
   $("units").textContent = fmt(E.stockUnits(S));
@@ -1485,9 +1663,11 @@ function refresh() {
   document.querySelectorAll(".sb").forEach((b) => {
     const i = +b.dataset.l, L = E.SALES[i];
     b.disabled = S.saleCd > 0 || E.stockUnits(S) <= 0;
-    b.querySelector("[data-q]").textContent = (L.pct >= 1 ? "tudo" : Math.round(L.pct * 100) + "%") + " · +" + Math.round(E.paraOf(S, i)) + "👁";
-    b.querySelector("[data-r]").textContent = "risco " + Math.round(E.riskOf(S, i) * 100) + "%";
-    b.querySelector("[data-s]").textContent = "−" + E.saleSta(S, i) + "⚡";
+    const rk = Math.round(E.riskOf(S, i) * 100);
+    b.querySelector("[data-q]").textContent = (L.pct >= 1 ? "tudo" : Math.round(L.pct * 100) + "%") + " +" + Math.round(E.paraOf(S, i)) + "👁";
+    const r = b.querySelector("[data-r]");
+    r.textContent = "−" + E.saleSta(S, i) + "⚡" + (rk ? "⚠" + rk + "%" : "");
+    r.style.color = rk >= 10 ? "#f2918a" : rk ? "#f0c94f" : "";
     b.classList.toggle("tired", S.sta < E.saleSta(S, i));
   });
   $("cd").style.width = S.saleCd > 0 ? pct(1 - S.saleCd / E.saleCooldown(S)) : "100%";
@@ -1658,25 +1838,23 @@ function nextTip() {
   const units = E.stockUnits(S), place = E.PLACES[S.place], nextPlace = E.PLACES[S.place + 1];
   const lockedSeed = E.SEEDS.find((sd) => E.seedLocked(S, sd).length);
   const tips = [];
-  if (S.para >= 60) tips.push(["Paranoia em <b>" + Math.round(S.para) + "%</b>! Para de vender um pouco e deixa esfriar. Acima de 80% a polícia faz ronda. O Spa da cidade acalma.", "cidade"]);
-  if (S.pots.some((p) => !p.on)) tips.push(["Tem vaso vazio! Escolhe uma semente na Estufa para começar a plantar.", "estufa"]);
-  if (units > 0 && S.saleCd <= 0 && S.para < 60) tips.push(["Você tem <b>" + units + " un</b> paradas no estoque. Vende no <b>Discreto (5%)</b>: chama menos atenção da polícia.", null]);
-  if (S.pots.length < E.maxPots(S) && S.dirty >= E.potCost(S)) tips.push(["Dá pra comprar <b>mais um vaso</b> com a grana suja. Mais plantas, mais grana.", "estufa"]);
-  if (S.pots.length >= E.maxPots(S) && nextPlace && S.clean >= E.placeCost(S)) tips.push(["O " + place.name + " ficou pequeno. Você já pode se mudar para o <b>" + nextPlace.name + "</b>!", "estufa"]);
-  if (S.dirty > 200 && S.clean < S.dirty / 2 && !S.laundry.length) tips.push(["Grana suja só compra semente e vaso. <b>Lava o dinheiro</b> para comprar equipamento e esconderijo.", "lavagem"]);
-  if (!S.ze && S.clean >= E.R.zeCost) tips.push(["Contrata o <b>Zé</b>: ele vende sozinho, até com o jogo fechado.", "loja"]);
-  if (lockedSeed) tips.push(["Para plantar <b>" + lockedSeed.name + "</b> falta: " + E.seedLocked(S, lockedSeed).join(", ") + ".", "loja"]);
-  if (S.sta < 30) tips.push(["Tá sem energia. Toma um café na Cidade ou passa aqui em casa que eu te dou um prato de comida.", "cidade"]);
-  tips.push(["Toca nas plantas para elas crescerem mais rápido. Cada toque é água e carinho.", null]);
+  if (S.para >= 60) tips.push(["Paranoia em " + Math.round(S.para) + "%... melhor parar de vender e deixar esfriar. O Spa da cidade acalma", "cidade"]);
+  if (S.pots.some((p) => !p.on)) tips.push(["Tem vaso vazio. Preciso escolher uma semente na Estufa", "estufa"]);
+  if (units > 0 && S.saleCd <= 0 && S.para < 60) tips.push(["Tenho " + units + " un paradas. Dá pra vender no Discreto sem chamar atenção", null]);
+  if (S.pots.length < E.maxPots(S) && E.canPay(S, E.potCost(S))) tips.push(["Dá pra comprar mais um vaso. Mais plantas, mais grana", "estufa"]);
+  if (S.pots.length >= E.maxPots(S) && nextPlace && (E.placeNeedsClean(S) ? S.clean : S.clean + S.dirty) >= E.placeCost(S)) tips.push(["O " + place.name + " ficou pequeno. Já dá pra mudar pro " + nextPlace.name, "estufa"]);
+  if (S.dirty > 200 && S.clean < S.dirty / 2 && !S.laundry.length) tips.push(["Grana suja só compra semente e vaso. Preciso lavar pra comprar equipamento", "lavagem"]);
+  if (!S.ze && S.clean >= E.R.zeCost) tips.push(["Dá pra contratar o Zé. Ele vende sozinho, até quando eu não tô aqui", "estufa"]);
+  if (lockedSeed) tips.push(["Pra plantar " + lockedSeed.name + " ainda falta: " + E.seedLocked(S, lockedSeed).join(", "), "loja"]);
+  if (S.sta < 30) tips.push(["Tô sem energia. Um café na cidade ou um prato de comida na casa da Vó", "cidade"]);
+  tips.push(["Se eu tocar nas plantas, elas crescem mais rápido. Água e carinho", null]);
   return tips.find((t) => t[0] !== lastTip) || tips[0];
 }
 function showTip() {
   const [text, tabName] = nextTip();
-  lastTip = text; tipTab = tabName;
-  $("tiptext").innerHTML = text;
-  $("tipgo").hidden = !tabName;
-  $("tip").hidden = false;
-  tipShownT = 0;
+  lastTip = text;
+  if (!say({ who: "neto", think: true, t: "(" + text.replace(/<[^>]+>/g, "") + ")" }, tabName)) return;
+  idleT = 0;
 }
 function hideTip() { $("tip").hidden = true; idleT = 0; }
 $("tipok").addEventListener("click", (e) => { e.stopPropagation(); hideTip(); });
@@ -1706,6 +1884,8 @@ function loop(now) {
   E.tick(S, dt * speedUp);
   checkEvents();
   storyTick(dt);
+  thinkTick(dt);
+  clientTick();
   if (S.tut === 3 && !story && E.stockUnits(S) > 0) {
     S.tut = 4;
     S.pots[0] = { s: 0, on: true, g: E.SEEDS[0].time * 0.9 };   // a planta continua bonita na conversa
@@ -1727,9 +1907,17 @@ Promise.all(Object.keys(IMG).map(loadImg)).then(() => {
   seenBusts = S.busts; seenLog = S.log.length;
   renderPanel(); refresh();
   if (location.hash === "#master") openMaster();
+  // modo master escondido: 7 toques seguidos no "Nível"
+  let lvTaps = 0, lvT = 0;
+  document.querySelector(".m.lvl").addEventListener("pointerdown", () => {
+    const now = performance.now(); lvTaps = now - lvT < 600 ? lvTaps + 1 : 1; lvT = now;
+    if (lvTaps >= 7) { lvTaps = 0; openMaster(); }
+  });
   $("skip").addEventListener("pointerdown", (e) => { e.stopPropagation(); skipTut(); });
   $("dlg").addEventListener("pointerdown", (e) => { if (e.target.closest("#dlgact")) return; e.stopPropagation(); e.preventDefault(); storyTap(); });
   resumeTut();
+  lastOrderSeen = S.orders && S.orders.length ? Math.max(...S.orders.map((x) => x.id)) : 0;
+  $("zoombtn").addEventListener("pointerdown", (e) => { e.stopPropagation(); S.zoom = S.zoom === false; curRoom = -1; save(); toast(S.zoom !== false ? "Zoom no cômodo" : "Maquete inteira"); });
   requestAnimationFrame(loop);
 });
 </script>

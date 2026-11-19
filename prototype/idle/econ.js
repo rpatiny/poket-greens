@@ -32,8 +32,8 @@
   // Regras de instalação. max: níveis (5, ou 1 = compra única). keep: vai com você ao se mudar
   // (os outros ficam para trás e são comprados de novo no lugar novo). place: lugar mínimo onde cabe.
   const EQUIP_RULES = {
-    regador: { max: 5, place: 0 }, tesoura: { max: 5, place: 1 }, ventilador: { max: 5, place: 1 },
-    termometro: { max: 5, place: 1 }, fertilizante: { max: 5, place: 2 }, lampada: { max: 5, place: 1 },
+    regador: { max: 5, place: 0 }, tesoura: { max: 5, place: 0 }, ventilador: { max: 5, place: 1 },
+    termometro: { max: 5, place: 0 }, fertilizante: { max: 5, place: 2 }, lampada: { max: 5, place: 1 },
     ph: { max: 5, place: 2 }, estufa: { max: 5, place: 2 }, drone: { max: 1, keep: true, place: 3 },
     filtro: { max: 5, place: 3 }, led: { max: 5, place: 3 }, hidro: { max: 1, keep: true, place: 6 },
     co2: { max: 5, place: 6 }, cameras: { max: 5, place: 4 }, osmose: { max: 5, place: 7 },
@@ -67,7 +67,7 @@
 
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).
   const PLACES = [
-    ["Armário Grow", 0, 1, 0],
+    ["Armário Grow", 0, 2, 0],
     ["Quartinho dos fundos", 150, 3, 0],
     ["Garagem do Vizinho", 900, 4, 0],
     ["Porão Abandonado", 5000, 5, 0],
@@ -161,6 +161,7 @@
   const R = {
     tapSeconds: 0.35, // cada toque adianta 0,35 s de crescimento em todos os vasos
     paraDecay: 1 / 8, // Paranoia cai 1 a cada 8 s
+    paraDecayLow: 1 / 3, paraCalm: 40, // abaixo de 40%: cai 1 a cada 3 s (vender no Discreto não acumula)
     fichaStep: 10, fichaMax: 50, // cada batida sobe a ficha na polícia (piso da Paranoia)
     fichaLenda: 5, // a cada 5 de Lenda ganhos depois da batida, a ficha baixa 5
     loanPara: 3 / 60, // dívida com o agiota: +3 por minuto
@@ -508,11 +509,14 @@
     s.equip[id] = lvl(s, id) + 1;
     return true;
   }
+  const HOME_PLACE = 1; // o Quartinho é da sua casa: aceita grana suja
+  const placeNeedsClean = (s, i = s.place + 1) => i !== HOME_PLACE;
   function buyPlace(s) {
     const next = PLACES[s.place + 1];
     const pc = placeCost(s);
-    if (!next || s.clean < pc) return false;
-    s.clean -= pc;
+    if (!next) return false;
+    if (s.place + 1 === HOME_PLACE) { if (!canPay(s, pc)) return false; pay(s, pc); }
+    else { if (s.clean < pc) return false; s.clean -= pc; }
     s.place++;
     // os equipamentos do lugar antigo ficam para trás; só os de compra única vêm junto
     for (const e of EQUIP) if (!e.keep) delete s.equip[e.id];
@@ -605,7 +609,15 @@
   }
   // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Armário.
   // Fica só o que é do personagem: atributos, Respeito e Lenda (+ metade da Lenda da rodada).
-  function bust(s, why) {
+  function bust(s, why, force = false) {
+    if (!s.warned && !force) {                                     // a primeira vez é só um susto
+      s.warned = true;
+      s.para = 50;
+      s.raidT = 0;
+      s.lastWarn = { why, at: s.time };
+      note(s, "aviso", "A Dona Cleide te pegou no flagra. Da próxima vez ela conta tudo pra Vó.");
+      return;
+    }
     const gain = Math.floor(legendFor(s.runEarned / townScale(s)) / 2);
     note(s, "batida", `${why} Batida policial! +${gain} Lenda.`);
     const ficha = Math.min(R.fichaMax, (s.ficha || 0) + R.fichaStep);
@@ -635,7 +647,7 @@
     s.surprise = null;
     if (o.kind === "bust") {
       if (s.cheat && s.cheat.noPolice) return { ...o, kind: "safe", res: o.res + " (Imune à polícia: escapou.)" };
-      bust(s, "A Vó fez uma visita surpresa e descobriu tudo.");
+      bust(s, "A Vó fez uma visita surpresa e descobriu tudo.", true);
     } else if (o.kind === "para") s.para = Math.max(s.para, 90);
     else {
       if (o.sta) s.sta = Math.min(100, s.sta + o.sta);
@@ -697,7 +709,7 @@
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, town: s.town || 0, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, warned: s.warned, town: s.town || 0, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -709,7 +721,8 @@
     s.time += dt;
     s.saleCd = Math.max(0, s.saleCd - dt);
     s.sta = Math.min(100, s.sta + R.staRegen * dt);
-    s.para = Math.max(s.ficha || 0, s.para - R.paraDecay * ez(s, "decay") * dt + (s.debt > 0 ? R.loanPara * dt : 0));
+    const decay = s.para < R.paraCalm ? R.paraDecayLow : R.paraDecay;   // até 40% a cabeça esfria rápido
+    s.para = Math.max(s.ficha || 0, s.para - decay * ez(s, "decay") * dt + (s.debt > 0 ? R.loanPara * dt : 0));
     // ficha limpa aos poucos: a cada 5 de Lenda ganhos depois da última batida
     while (s.ficha > 0 && s.legend >= s.fichaLenda + R.fichaLenda) {
       s.ficha = Math.max(0, s.ficha - 5); s.fichaLenda += R.fichaLenda;
@@ -774,7 +787,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, TOWNS_ON, ORDERS_FROM, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),

@@ -409,14 +409,17 @@ def r1():
     c.line(lx + 14, ry + 6, x0 + w - 3, ry + 10, OL); c.vline(x0 + w - 3, ry + 10, fy + 54, OL)
     R.anims.append(["purple", lx - 11, ry + 10, 22])
     R.glow = [lx, fy - 4, 40, 44, "rgba(129,96,168,0.16)"]
-    # cadeira com o vaso em cima (o vaso é do jogo; a cadeira fica no cenário)
-    ch = Sprite(24, 28)
-    ch.rect(1, 0, 3, 9, W_[2]); ch.rect(20, 0, 22, 9, W_[2]); ch.rect(1, 1, 22, 4, W_[3]); ch.hline(1, 22, 1, W_[4])
-    ch.rect(0, 9, 23, 20, W_[3]); ch.hline(0, 23, 9, W_[4]); ch.vline(0, 9, 20, W_[4])
-    for yy in (12, 16):
-        ch.hline(1, 22, yy, W_[2])
-    ch.rect(0, 21, 23, 23, W_[1]); ch.rect(1, 24, 2, 27, W_[1]); ch.rect(21, 24, 22, 27, W_[1])
-    R.add(ch, w // 2 - 12, 18, 0.45)
+    # banquinho de madeira com os dois vasos em cima (os vasos são do jogo; o banco fica no cenário)
+    bn = Sprite(62, 19)
+    bn.rect(0, 0, 61, 10, W_[3]); bn.hline(0, 61, 0, W_[4]); bn.vline(0, 0, 10, W_[4])
+    for yy in (3, 7):
+        bn.hline(1, 60, yy, W_[2])
+    for xx in (14, 33, 49):
+        bn.set(xx, 1 + xx % 5, W_[2]); bn.set(xx + 1, 1 + xx % 5, W_[2])
+    bn.rect(0, 11, 61, 13, W_[1]); bn.hline(0, 61, 11, W_[2])
+    for lx in (2, 57):
+        bn.rect(lx, 14, lx + 2, 18, W_[1]); bn.vline(lx, 14, 18, W_[2])
+    R.add(bn, w // 2 - 31, 25, 0.35)
     # no chão: tênis, borrifador e a extensão
     for i, col in enumerate((S_[6], S_[6])):
         sh = Sprite(7, 11); sh.ell(3, 5.5, 3, 5, col); sh.rect(1, 6, 5, 9, CR[3]); sh.ell(3, 2.5, 2, 2, S_[5])
@@ -445,7 +448,7 @@ def r1():
         km = yb + 4 - H // 2
         c.rect(tip - side * 3, km, tip - side * 2, km + 2, G_[3])
     return R.finish((50, -50), [L_point(50, 18, 44, 34, 1.15), L_point(50, -36, 40, 30, 0.75), L_poly([(0, 58), (100, 58), (100, 76), (0, 76)], 0.3)],
-                    pots=(50, 14, 0, 0), dark=True)
+                    pots=(37, 10, 26, 0), dark=True)
 
 
 # ======================================================================= 2 · Garagem

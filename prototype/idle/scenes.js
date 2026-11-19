@@ -609,7 +609,7 @@
     const r = ROOM[id];
     if (!r) { for (const it of items) g.drawImage(rawSprite({ raw: PLAIN }, it), it.x, it.y); return; }
     g.drawImage(shadowLayer(r, items), 0, 0);
-    for (const it of items) g.drawImage(litSprite(r, it), it.x, it.y);
+    for (const it of items) g.drawImage(litSprite(r, it), it.x, it.y + (it.dy || 0));
   }
   const PLAIN = new Map();
   const roomMeta = (id) => ROOM[id] && ROOM[id].meta;
