@@ -27,49 +27,53 @@ calor e batidas continuam. Assim o jogo cabe em 12+, fica diferente dos jogos de
 a graça. Já troquei os nomes: Ayahuasca → Cipó Enrolado, San Pedro → Cacto Cabeludo,
 Esporos Especiais → Cogumelo Saltitante, Carolina Reaper → Pimenta do Capeta.
 
-## 2. O que deixa este idle diferente
+## 2. O jogo completo, adaptado para idle (v2)
 
-A maioria dos idles não tem risco: o número só sobe. Aqui o risco é o centro do jogo.
+Todos os sistemas do GDD original estão no protótipo, com os números do GDD:
 
-1. **Tocar para crescer.** Cada toque rega todos os vasos. Equipamentos fazem crescer sozinho.
-2. **Vender é apostar.** Quatro níveis: Discreto (×1, vende 25%), Normal (×1,5), Ousado (×2,2) e
-   All-in (×3,2, vende tudo). Cada venda esquenta o **Calor**, com variação aleatória. O calor
-   esfria com o tempo.
-3. **Batida = prestígio forçado.** Com calor em 100%, a polícia leva tudo. Esse era o wipe
-   punitivo do protótipo web; agora ele vira **Lenda**: você recomeça, mas mais famoso.
-4. **Passar o ponto = prestígio por escolha.** Dá a Lenda inteira; a batida dá só metade.
-   Arriscar acelera, mas pode custar caro.
-5. **Progressão visual** da gambiarra ao high-tech: lata de tinta → vaso de barro → bancada →
-   rack hidropônico; garagem → porão → galpão → bunker (ver `ARTE.md`).
+| Sistema do GDD | Como ficou no idle |
+|---|---|
+| Grana suja e limpa | Venda dá grana suja (paga sementes e vasos). Lavagem vira grana limpa (equipamentos, imóveis, cidade, Zé). |
+| Paranoia 👁️ | Barra grande no topo, com marcas em 60% e 80%. Cai sozinha (−1 a cada 4 s). Em 60% a Estamina custa o dobro; acima de 80% a polícia faz **rondas** a cada 5 min (50% de chance de batida); em 100% é batida na hora. |
+| Estamina ⚡ | Gasta na cidade e para mendigar; recupera +1 a cada 20 s, com Café, Energético, Bar e Vó. |
+| 18 sementes | Preço, venda, produção, tempo, Botânica e equipamentos exigidos iguais ao GDD. O replantio é automático e paga a semente com grana suja. |
+| 6 estágios por planta | Semente na terra → broto → muda → jovem → crescida → adulta, com desenho próprio de cada planta. |
+| 18 equipamentos | Preços e bônus do GDD. O 1º nível libera sementes, os seguintes repetem o bônus (custo ×2,4). Alguns têm efeito extra: velocidade, toque, menos Paranoia, proteção contra batida. |
+| 13 imóveis | Do Quartinho (2 vasos) à Estação Espacial (60 vasos). O visual muda: gambiarra → profissional → high-tech. |
+| 5 níveis de venda | Discreto, Normal, Ousado, Agressivo e All-in, com quantidade máxima, Paranoia, chance de flagrante e bônus de preço. Uma venda por vez (espera de 20 s a 3 s). |
+| Flagrante | Perde a mercadoria, paga multa de 5–25% da grana suja, −20⚡, +15 Paranoia. |
+| Batida | Perde tudo (fora atributos e Lenda), Furtividade e Segurança voltam a 1; ganha metade da Lenda. Câmeras e bunker salvam parte da grana limpa. |
+| Lavagem | Laranjas, NFTs, Crypto e Consultoria, com taxa, tempo, Paranoia e Lábia do GDD. Vários processos ao mesmo tempo. |
+| Cidade | Café, Energético, Bar, Biblioteca, Academia, Beco, Praça, Spa e Fliperama, com tempo real, uma por vez. |
+| Atributos | Botânica, Lábia, Furtividade e Segurança sobem por experiência (colher, vender, arriscar) e com a cidade. Ficam com você ao passar o ponto. |
+| Avó, Agiota, Mendigar | Na aba Cidade, para recomeçar depois de uma batida. |
+| Respeito e Nível | Sobem colhendo e vendendo; cada nível dá +1% no preço. |
+| Lenda (prestígio) | (log10(vendido) − 4)², +10% de preço por ponto. Passar o ponto dá tudo; batida dá metade. |
+| Zé | Vende sozinho no Discreto a cada 20 s, inclusive com o app fechado. |
+| Offline | Até 8 h: plantas, replantio, Zé, lavagem e Paranoia continuam. |
+
+Não entraram (precisam de servidor): ranking, cartéis, chat, visitas e trocas.
 
 ## 3. Economia (testada por simulação)
 
-| Item | Regra |
-|---|---|
-| Sementes (18) | valor ×3 e tempo de crescimento ×2 por nível; liberar custa ×15 |
-| Equipamentos (9) | níveis com custo ×1,13 a ×1,27; força do toque, crescimento automático, multiplicadores, esfriar o calor |
-| Esconderijos (4) | 3, 6, 12 e 24 vasos |
-| Zé | vende sozinho no Discreto a cada 8 s, inclusive com o app fechado |
-| Lenda | pontos = raiz cúbica(ganho da rodada / 10 mi); bônus = 1 + 0,3 × Lenda^0,6 |
-| Offline | até 8 h de produção automática |
-
-Resultados de `node prototype/idle/sim.js` depois de três rodadas de ajuste:
+`node prototype/idle/sim.js` joga com um robô que usa todos os sistemas (vende pelo risco aceito,
+lava dinheiro, vai à cidade e compra os equipamentos exigidos):
 
 | Perfil | Resultado |
 |---|---|
-| Ativo (5 toques/s, sem parar) | 1ª Lenda aos ~10 min; 11 de 18 sementes em 6 h |
-| Arriscado (vende Ousado/All-in) | progride mais rápido no começo, mas foi preso 7 vezes em 3 h |
-| Casual (10 min a cada 3 h) | 12 de 18 sementes em 2 dias |
-| Idle puro (só toca no 1º minuto) | progride sozinho, devagar: 1ª Lenda em ~1 h |
+| Ativo cauteloso (8 h) | chega à semente 18 sem nenhuma batida |
+| Ativo arriscado (8 h) | 34 batidas e 55 flagrantes; termina na semente 12. Viver acima de 80% de Paranoia não compensa |
+| Casual (15 min a cada 4 h, 5 dias) | semente 18 |
+| Idle (só joga 2 min, 24 h) | semente 18 em ~19 h |
 
-O que a simulação pegou e foi corrigido:
-- **A Lenda disparava até o infinito.** O bônus multiplicava crescimento e valor ao mesmo tempo.
-  Agora vale só uma vez e tem retorno decrescente.
-- **O jogo inteiro acabava em 8 minutos.** As sementes ficaram mais caras (×15 por nível).
-- **O jogador idle travava depois do prestígio.** Agora ele recomeça com um regador.
+O que a simulação pegou e foi corrigido nesta versão:
+- **Batidas a cada 10 minutos.** Ações que levariam a Paranoia a 100% agora ficam bloqueadas (só a venda é aposta).
+- **Botânica sem freio.** Os atributos agora sobem por experiência, com curva mais longa.
+- **A Lenda disparava.** Agora cresce de forma logarítmica.
+- **A espera entre vendas era longa demais no começo.** Caiu de 30 s para 20 s.
 
-Ainda falta: equilibrar o fim de jogo (sementes 12 a 18) e decidir se arriscar deve compensar
-mais. Hoje o jogador cauteloso e o arriscado terminam parecidos.
+Ainda a ajustar: o jogador que fica ativo por 8 horas seguidas termina o jogo; a Botânica
+continua crescendo depois da semente 18 (falta um uso para ela no fim de jogo).
 
 ## 4. Tecnologia: Android nativo, Godot ou web?
 

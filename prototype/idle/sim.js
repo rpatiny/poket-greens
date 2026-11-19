@@ -3,76 +3,117 @@
 const E = require("./econ.js");
 
 const fmt = (n) => {
-  if (n < 1000) return n.toFixed(0);
+  if (Math.abs(n) < 1000) return n.toFixed(0);
   const u = ["K", "M", "B", "T", "Qa", "Qi"];
   let i = -1;
-  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  while (Math.abs(n) >= 1000 && i < u.length - 1) { n /= 1000; i++; }
   return n.toFixed(1) + u[i];
 };
 const hms = (t) => {
-  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = Math.floor(t % 60);
-  return h ? `${h}h${String(m).padStart(2, "0")}` : `${m}m${String(s).padStart(2, "0")}s`;
+  const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60);
+  return d ? `${d}d${String(h).padStart(2, "0")}h` : h ? `${h}h${String(m).padStart(2, "0")}` : `${m}m${String(Math.floor(t % 60)).padStart(2, "0")}s`;
 };
 
-// Compra o item mais barato disponível (com prioridade para semente nova e Zé)
-function shop(s) {
-  let bought = true, n = 0;
-  while (bought && n++ < 50) {
-    bought = false;
-    if (E.buySeed(s)) { bought = true; continue; }
-    if (E.hireZe(s)) { bought = true; continue; }
-    const opts = [];
-    if (s.place + 1 < E.PLACES.length) opts.push([E.PLACES[s.place + 1].cost, () => E.buyPlace(s)]);
-    if (s.pots.length < E.maxPots(s)) opts.push([E.potCost(s), () => E.buyPot(s)]);
-    for (const u of E.UPGRADES) opts.push([E.upgradeCost(s, u), () => E.buyUpgrade(s, u.id)]);
-    opts.sort((a, b) => a[0] - b[0]);
-    // guarda para a próxima semente se ela estiver perto
-    const next = E.SEEDS[s.unlocked];
-    if (next && s.cash > next.unlock * 0.5 && opts[0][0] > next.unlock * 0.1) continue;
-    if (opts.length && s.cash >= opts[0][0]) { opts[0][1](); bought = true; }
-  }
+function bestSeed(s) {
+  for (let i = E.SEEDS.length - 1; i >= 0; i--) if (E.seedOk(s, i)) return i;
+  return 0;
+}
+function nextSeedNeeds(s) {
+  const i = bestSeed(s) + 1;
+  if (i >= E.SEEDS.length) return [];
+  return E.SEEDS[i].req.filter((r) => !E.lvl(s, r));
 }
 
-function run(name, { taps, activeFor = Infinity, session = null, hours = 6, greed = 1, retireAt = 1.0 }) {
-  const s = E.newState();
+function brain(s, p) {
+  // 1) semente: troca para a melhor se der para plantar em todos os vasos
+  const b = bestSeed(s);
+  if (b !== s.seed && s.dirty >= E.SEEDS[b].price * s.pots.length) E.chooseSeed(s, b);
+  // 2) venda: o maior nível que não estoura a Paranoia nem passa do risco aceito
+  const needWash = s.dirty > (E.SEEDS[s.seed].price * s.pots.length * 4 + 20) * 3 && s.laundry.length < 3;
+  if (s.saleCd <= 0 && E.stockUnits(s) > 0 && !(needWash && s.para > 35)) {
+    let pick = -1;
+    for (let l = E.SALES.length - 1; l >= 0; l--) {
+      if (E.riskOf(s, l) > p.risk) continue;
+      if (s.para + E.paraOf(s, l) > p.paraLimit) continue;
+      pick = l; break;
+    }
+    if (pick >= 0) E.sell(s, pick);
+  }
+  // 3) vasos com grana suja
+  while (s.pots.length < E.maxPots(s) && s.dirty > E.potCost(s) * 2 && E.buyPot(s));
+  // 4) lavagem: guarda o suficiente para replantar
+  const reserve = E.SEEDS[s.seed].price * s.pots.length * 4 + 20;
+  if (s.dirty > reserve + 50 && s.laundry.length < 3) {
+    const m = s.attrs.lab >= 10 ? "consultoria" : s.attrs.lab >= 5 ? "crypto" : "laranjas";
+    const frac = (s.dirty - reserve) / s.dirty;
+    if (s.para + 8 < p.paraLimit - 10) E.launder(s, m, frac);
+  }
+  // 5) compras com grana limpa
+  let guard = 0;
+  while (guard++ < 20) {
+    if (!s.ze && s.clean >= E.R.zeCost && s.time > 120) { E.hireZe(s); continue; }
+    const need = nextSeedNeeds(s);
+    if (need.length) {
+      const e = E.EQUIP.find((x) => x.id === need[0]);
+      if (E.buyEquip(s, e.id)) continue;
+      if (s.clean < E.equipCost(s, e)) break; // juntando para o equipamento exigido
+    }
+    if (s.pots.length >= E.maxPots(s) && E.PLACES[s.place + 1] && E.buyPlace(s)) continue;
+    // equipamento mais barato que ainda não estoura o orçamento para o próximo imóvel
+    const opts = E.EQUIP.map((e) => [E.equipCost(s, e), e]).sort((a, b) => a[0] - b[0]);
+    const nextPlace = E.PLACES[s.place + 1];
+    const budget = nextPlace ? s.clean - nextPlace.cost * 0.3 : s.clean;
+    if (opts[0][0] <= budget && E.buyEquip(s, opts[0][1].id)) continue;
+    break;
+  }
+  // 6) cidade: Spa se a Paranoia apertar; senão treina
+  if (!s.city) {
+    if (s.para > 55 && s.clean > 150) E.startCity(s, "spa");
+    else if (s.para > 45 && s.clean > 15) E.startCity(s, "fliperama");
+    else if (s.sta > 40 && s.clean > 50) E.startCity(s, ["biblioteca", "praca", "biblioteca", s.para < 40 ? "beco" : "biblioteca", "academia"][Math.floor(s.time / 600) % 5]);
+    else if (s.sta < 30 && s.clean > 20) E.startCity(s, "bar");
+  }
+  // 7) começo: mendiga e visita a Vó
+  if (s.dirty < 10) E.beg(s);
+  if (s.para < 50) E.visitAvo(s);
+}
+
+function run(name, p) {
+  const s = E.newState(p.seed || 7);
   const ms = [];
-  let lastSeed = 1, lastPlace = 0;
-  const end = hours * 3600;
+  let lastSeed = bestSeed(s), lastPlace = 0, lastFlag = 0;
+  const end = p.hours * 3600;
   let t = 0;
   while (t < end) {
-    const playing = session ? (t % session.every) < session.len : true;
+    const playing = p.session ? (t % p.session.every) < p.session.len : true;
     if (!playing) {
-      // pula até a próxima sessão (app fechado)
-      const skip = session.every - (t % session.every);
-      E.offline(s, skip);
-      s.time += skip; t += skip;
-      shop(s);
+      const skip = p.session.every - (t % p.session.every);
+      const r = E.offline(s, skip);
+      if (r.busted) ms.push([t, "PRESO com o app fechado"]);
+      t += skip;
       continue;
     }
-    const tapping = t < activeFor;
-    for (let k = 0; k < (tapping ? taps : 0); k++) E.tap(s);
+    for (let k = 0; k < p.taps && t < (p.tapFor ?? Infinity); k++) E.tap(s);
     E.tick(s, 1);
-    // venda: o jogador ativo arrisca até um limite de calor
-    if (tapping || !s.ze) {
-      const lvl = s.heat < 30 * greed ? 2 : s.heat < 55 * greed ? 1 : 0;
-      if (s.heat < 75) E.sell(s, lvl);
-    }
-    shop(s);
-    // aposenta quando dobraria a Lenda (ou na primeira vez que der 3+ pontos)
+    brain(s, p);
     const gain = E.legendFor(s.runEarned);
-    if (gain >= Math.max(1, s.legend * retireAt)) { E.retire(s); ms.push([t, `-- aposentou: Lenda agora ${s.legend}`]); lastSeed = 1; lastPlace = 0; }
-    if (s.unlocked > lastSeed) { ms.push([t, `semente ${s.unlocked}: ${E.SEEDS[s.unlocked - 1].name}`]); lastSeed = s.unlocked; }
-    if (s.place > lastPlace) { ms.push([t, `mudou para ${E.PLACES[s.place].name}`]); lastPlace = s.place; }
+    if (gain >= Math.max(1, s.legend * p.retireAt)) { E.retire(s); ms.push([t, `-- passou o ponto: Lenda ${s.legend}`]); lastSeed = 0; lastPlace = 0; }
+    const bs = bestSeed(s);
+    if (bs > lastSeed) { ms.push([t, `semente ${bs + 1}: ${E.SEEDS[bs].name} (Bot ${s.attrs.bot})`]); lastSeed = bs; }
+    if (s.place > lastPlace) { ms.push([t, `imóvel: ${E.PLACES[s.place].name} (${E.PLACES[s.place].pots} vasos)`]); lastPlace = s.place; }
+    if (s.timesArrested > lastFlag) { lastFlag = s.timesArrested; }
+    if (s.lastBust) { ms.push([t, `BATIDA: ${s.lastBust.why} +${s.lastBust.gain} Lenda`]); s.lastBust = null; lastSeed = 0; lastPlace = 0; }
     t += 1;
   }
-  console.log(`\n=== ${name} (${hours}h) ===`);
-  for (const [tt, m] of ms.slice(0, 45)) console.log(`  ${hms(tt).padStart(7)}  ${m}`);
-  const busts = s.log.filter((l) => l.ev === "batida");
-  for (const l of busts.slice(0, 5)) console.log(`  ${hms(l.t).padStart(7)}  PRESO (batida) +${l.gain} Lenda`);
-  console.log(`  fim: Lenda ${s.legend}, dinheiro ${fmt(s.cash)}, semente ${s.unlocked}/18, vasos ${s.pots.length}, renda auto ${fmt(E.incomePerSec(s))}/s, batidas ${s.busts}`);
+  console.log(`\n=== ${name} (${p.hours}h) ===`);
+  const show = ms.length > 60 ? ms.slice(0, 40).concat([[0, "..."]], ms.slice(-15)) : ms;
+  for (const [tt, m] of show) console.log(`  ${hms(tt).padStart(7)}  ${m}`);
+  console.log(`  fim: Lenda ${s.legend} · suja ${fmt(s.dirty)} · limpa ${fmt(s.clean)} · semente ${bestSeed(s) + 1}/18 · ${E.PLACES[s.place].name} · ` +
+    `Bot ${s.attrs.bot} Láb ${s.attrs.lab} Fur ${s.attrs.fur} Seg ${s.attrs.seg} · nível ${E.level(s)} · flagrantes ${s.timesArrested} · batidas ${s.busts}`);
 }
 
-run("Ativo: 5 toques/s, joga sem parar", { taps: 5, hours: 6 });
-run("Ativo arriscado: vende Ousado/All-in", { taps: 5, hours: 3, greed: 2.2 });
-run("Casual: 10 min a cada 3h, toca nos 10 min", { taps: 4, session: { every: 3 * 3600, len: 600 }, hours: 48 });
-run("Idle puro: toca só no 1º minuto", { taps: 5, activeFor: 60, hours: 12 });
+const base = { taps: 5, risk: 0.05, paraLimit: 70, retireAt: 1 };
+run("Ativo cauteloso", { ...base, hours: 8 });
+run("Ativo arriscado", { ...base, risk: 0.3, paraLimit: 95, hours: 8 });
+run("Casual: 15 min a cada 4h", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, hours: 24 * 5 });
+run("Idle: toca só nos 2 primeiros min", { ...base, tapFor: 120, hours: 24 });
