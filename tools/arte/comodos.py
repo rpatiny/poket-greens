@@ -405,20 +405,25 @@ def r1():
     R.add(sp, 84, 30, 0.6)
     ex = box3d(14, 5, 3, WHITE, S_[5]); ex.set(4, 2, OL); ex.set(9, 2, OL)
     R.add(ex, 82, 48, 0.2)
-    # portas abertas para fora, presas nas quinas da frente
+    # portas abertas para fora, presas nas quinas da frente, da base até o topo do guarda-roupa
     yb = y0 + R.h + 5
+    H = R.h + 10
     for side in (-1, 1):
         hx = x0 - 6 if side < 0 else x0 + w + 5
         tip = hx + side * 26
-        face = [(hx, yb), (tip, yb + 7), (tip, yb - 31), (hx, yb - 38)]
-        c.poly(face, W_[2])
-        c.poly([(hx + side * 4, yb - 4), (tip - side * 4, yb + 3), (tip - side * 4, yb - 26), (hx + side * 4, yb - 33)], W_[1])
-        if side < 0:                                     # espelho na porta da esquerda
-            c.poly([(hx - 6, yb - 8), (tip + 6, yb - 1), (tip + 6, yb - 24), (hx - 6, yb - 31)], D_[3])
-            c.line(hx - 9, yb - 12, hx - 14, yb - 20, WHITE); c.line(hx - 12, yb - 9, hx - 18, yb - 18, D_[4])
-        c.line(hx, yb, tip, yb + 7, OL); c.line(hx, yb - 38, tip, yb - 31, W_[3]); c.line(tip, yb + 7, tip, yb - 31, OL)
-        c.line(hx, yb - 39, tip, yb - 32, OL)
-        c.rect(tip - side * 3, yb - 14, tip - side * 2, yb - 12, G_[3])
+        q = lambda a, b: [(hx + side * 4, yb - b), (tip - side * 4, yb + 7 - b), (tip - side * 4, yb + 7 - a), (hx + side * 4, yb - a)]
+        c.poly([(hx, yb), (tip, yb + 7), (tip, yb + 7 - H), (hx, yb - H)], W_[2])
+        c.poly(q(H - 5, H * 0.55 + 2), W_[1])                         # almofada de cima
+        c.poly(q(H * 0.55 - 3, 5), W_[1])                             # almofada de baixo
+        if side < 0:                                                 # espelho de corpo inteiro na porta da esquerda
+            c.poly(q(H - 8, 8), D_[3])
+            for k in range(3):
+                c.line(hx - 8 - k * 3, yb - 30 - k * 4, hx - 14 - k * 3, yb - 46 - k * 4, WHITE if k != 1 else D_[4])
+        c.line(hx, yb, tip, yb + 7, OL); c.line(tip, yb + 7, tip, yb + 7 - H, OL)
+        c.line(hx, yb - H, tip, yb + 7 - H, W_[3]); c.line(hx, yb - H - 1, tip, yb + 6 - H, OL)
+        c.vline(hx, yb - H, yb, OL)
+        km = yb + 4 - H // 2
+        c.rect(tip - side * 3, km, tip - side * 2, km + 2, G_[3])
     return R.finish((52, -40), [L_point(52, 6, 44, 34, 1.15), L_poly([(0, 50), (104, 50), (104, 70), (0, 70)], 0.3)],
                     pots=(52, 3, 0, 0), dark=True)
 
