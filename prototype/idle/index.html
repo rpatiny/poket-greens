@@ -1899,6 +1899,7 @@ function clientTick() {
   lastOrderSeen = Math.max(...S.orders.map((x) => x.id));
   const t = (CLIENT_SAY[o.who] || "Preciso de {n} de {seed}. Pago {pay}.").replace("{n}", o.n).replace("{seed}", E.SEEDS[o.seed].name).replace("{pay}", $$(o.pay));
   say({ name: o.who, emoji: o.emoji, t }, "estufa");
+  sfx("doorbell");
   if (tab === "estufa") renderPanel();
 }
 
@@ -1971,6 +1972,8 @@ function storyTick(dt) {
   story.chars += dt * 45;
   const T = fillName(L.t);
   const n = Math.min(T.length, Math.floor(story.chars));
+  if (n > (story.lastN || 0) && n % 2 === 0 && T[n - 1] && T[n - 1] !== " ") sfx("blip", L.who, 0.03);
+  story.lastN = n;
   $("dlgtext").textContent = T.slice(0, n);
   drawFace(L, Math.floor(story.chars / 3) % 2 === 0);
   if (n >= T.length) finishLine();
@@ -2058,6 +2061,68 @@ function say(line, tabName) {
   startStory([L], 0, null, 6);
   return true;
 }
+
+// ---------------------------------------------------------------- sons 8-bit gerados na hora (Web Audio)
+// Nenhum arquivo de áudio: cada efeito é feito de ondas quadradas/triangulares e ruído.
+let AC = null, MASTER = null, NOISE = null;
+const lastSfx = {};
+function audioOn() { return S && S.sound !== false; }
+function initAudio() {
+  if (AC || !audioOn()) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    MASTER = AC.createGain(); MASTER.gain.value = 0.32; MASTER.connect(AC.destination);
+    const len = AC.sampleRate * 0.5, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    NOISE = buf;
+  } catch (e) { AC = null; }
+}
+// uma nota: frequência (pode deslizar), duração, forma de onda, volume, atraso
+function tone(f, dur, type = "square", vol = 0.5, f2 = null, delay = 0) {
+  const t = AC.currentTime + delay, o = AC.createOscillator(), gn = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(gn); gn.connect(MASTER); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, vol = 0.3, freq = 2000, delay = 0, q = 1) {
+  const t = AC.currentTime + delay, src = AC.createBufferSource(), fl = AC.createBiquadFilter(), gn = AC.createGain();
+  src.buffer = NOISE; fl.type = "bandpass"; fl.frequency.value = freq; fl.Q.value = q;
+  gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(gn); gn.connect(MASTER); src.start(t); src.stop(t + dur + 0.02);
+}
+const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12);       // número MIDI -> Hz
+const SFX = {
+  water: () => { const f = 900 + Math.random() * 500; tone(f, 0.06, "triangle", 0.25, f * 1.8); },
+  harvest: () => [72, 76, 79, 84].forEach((n, i) => tone(NOTE(n), 0.09, "square", 0.22, null, i * 0.055)),
+  pop: () => { tone(NOTE(88), 0.05, "triangle", 0.25); tone(NOTE(95), 0.07, "triangle", 0.2, null, 0.04); },
+  sell: () => { tone(NOTE(83), 0.06, "square", 0.25); tone(NOTE(88), 0.18, "square", 0.25, null, 0.06); noise(0.05, 0.15, 6000, 0); },
+  buy: () => { tone(NOTE(79), 0.08, "triangle", 0.3); tone(NOTE(84), 0.08, "triangle", 0.3, null, 0.07); tone(NOTE(91), 0.16, "triangle", 0.3, null, 0.14); },
+  caught: () => { tone(220, 0.35, "sawtooth", 0.3, 70); noise(0.25, 0.2, 400); },
+  siren: () => { for (let i = 0; i < 4; i++) { tone(660, 0.22, "square", 0.22, 880, i * 0.44); tone(880, 0.22, "square", 0.22, 660, i * 0.44 + 0.22); } },
+  alarm: () => { for (let i = 0; i < 3; i++) tone(NOTE(84), 0.1, "square", 0.25, null, i * 0.16); },
+  doorbell: () => { tone(NOTE(76), 0.35, "triangle", 0.35); tone(NOTE(72), 0.5, "triangle", 0.35, null, 0.3); },
+  levelup: () => [67, 71, 74, 79, 83].forEach((n, i) => tone(NOTE(n), 0.08, "square", 0.18, null, i * 0.06)),
+  cash: (combo = 1) => { const n = 72 + Math.min(24, Math.floor(combo / 2)); tone(NOTE(n), 0.05, "square", 0.18); noise(0.04, 0.12, 3000); },
+  click: () => tone(1200, 0.025, "square", 0.12),
+  blip: (who) => tone(who === "vo" ? 1100 : who === "neto" ? 760 : 520, 0.03, "square", 0.08),
+  fiscal: () => { tone(NOTE(55), 0.25, "square", 0.25); tone(NOTE(52), 0.4, "square", 0.25, null, 0.22); },
+  bad: () => tone(160, 0.12, "square", 0.2, 120),
+};
+// toca um efeito (com freio para não embolar sons iguais em sequência)
+function sfx(name, arg, gap = 0.04) {
+  if (!audioOn()) return;
+  initAudio();
+  if (!AC || !SFX[name]) return;
+  if (AC.state === "suspended") AC.resume();
+  const now = performance.now() / 1000;
+  if (lastSfx[name] && now - lastSfx[name] < gap) return;
+  lastSfx[name] = now;
+  try { SFX[name](arg); } catch (e) {}
+}
+// o navegador só libera áudio depois do primeiro toque
+document.addEventListener("pointerdown", () => { initAudio(); if (AC && AC.state === "suspended") AC.resume(); }, { once: false, capture: true });
 
 // ---------------------------------------------------------------- vibração (celular)
 function buzz(p) { try { if (S && S.vibe !== false && navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
@@ -2586,7 +2651,7 @@ function draw() {
       for (let k = 0; k < gt.count; k++) {
         const i = gt.first + k, { p, f, st } = plantOf(i), cx = gt.x + 4 + HYDRO_SP / 2 + k * HYDRO_SP;
         const sk = st ? st.join(",") : "-";
-        if (stagePrev[i] !== undefined && stagePrev[i] !== sk && st) stagePop[i] = lastTime;
+        if (stagePrev[i] !== undefined && stagePrev[i] !== sk && st) { stagePop[i] = lastTime; sfx("pop", null, 0.08); }
         stagePrev[i] = sk;
         if (st) items.push({ x: cx - 16, y: gt.y + 4 - 40, w: 32, h: 40, foot: -19, dy: hop(i), key: "p:" + st.join(","), paint: paintPlant(st) });
         if (st && !first) first = items[items.length - 1];
@@ -2599,7 +2664,7 @@ function draw() {
       const { p, f, st } = plantOf(i);
       const pf = i % 3 === 2 ? 2 : i % 2;
       const sk = st ? st.join(",") : "-";
-      if (stagePrev[i] !== undefined && stagePrev[i] !== sk && st) stagePop[i] = lastTime;
+      if (stagePrev[i] !== undefined && stagePrev[i] !== sk && st) { stagePop[i] = lastTime; sfx("pop", null, 0.08); }
       stagePrev[i] = sk;
       // garrafa PET (se comprada) faz parte do sprite do vaso: ganha a luz e a profundidade da cena
       const pet = E.lvl(S, "regador") > 0 ? petWater(f) : -1, flip = i % 2 === 1;
@@ -2679,9 +2744,10 @@ $("scene").addEventListener("pointerdown", (e) => {
   const before = E.stockUnits(S);
   E.tap(S);
   splash();
+  sfx("water", null, 0.07);
   if (taps % 4 === 0) float("+" + E.tapPower(S).toFixed(1).replace(".", ",") + "s", x - 10, y, "#bcd95e");
   const got = E.stockUnits(S) - before;
-  if (got > 0) { float(`+${got} un`, x - 10, y - 14, "#fff0a6"); buzz(25); harvestPop = lastTime; }
+  if (got > 0) { float(`+${got} un`, x - 10, y - 14, "#fff0a6"); buzz(25); harvestPop = lastTime; sfx("harvest"); }
   if (++taps === 10) $("hint").style.opacity = 0;
   checkEvents();
 });
@@ -2695,8 +2761,8 @@ E.SALES.forEach((L, i) => {
     if (S.sta < E.saleSta(S, i) && S.saleCd <= 0) { toast(`Sem energia para vender no ${L.name} (precisa de ${E.saleSta(S, i)}⚡). Toma um café na Cidade ou venda menos.`, true); return; }
     const r = E.sell(S, i);
     if (!r) return;
-    if (r.caught) { toast(`Flagrante! Perdeu ${r.units} un e pagou multa.`, true); shake = 6; buzz([80, 40, 80]); }
-    else { float("+" + $$(r.money), W / 2 - 20, 34, "#f0c94f"); buzz(15); }
+    if (r.caught) { toast(`Flagrante! Perdeu ${r.units} un e pagou multa.`, true); shake = 6; buzz([80, 40, 80]); sfx("caught"); }
+    else { float("+" + $$(r.money), W / 2 - 20, 34, "#f0c94f"); buzz(15); sfx("sell"); }
     checkEvents(); refresh();
   };
   $("sbtns").appendChild(b);
@@ -2706,14 +2772,14 @@ E.SALES.forEach((L, i) => {
 let seenLog = 0, seenBusts = 0;
 function checkEvents() {
   if (S.busts > seenBusts) {
-    seenBusts = S.busts; shake = 10; buzz([250, 100, 250, 100, 400]);
+    seenBusts = S.busts; shake = 10; buzz([250, 100, 250, 100, 400]); sfx("siren");
     const b = S.lastBust || {};
     bustModal(b);
     renderPanel();
   }
-  if (S.fiscal && fiscalSeen !== S.fiscal.at && !document.querySelector(".modal")) { fiscalSeen = S.fiscal.at; fiscalModal(); }
+  if (S.fiscal && fiscalSeen !== S.fiscal.at && !document.querySelector(".modal")) { fiscalSeen = S.fiscal.at; fiscalModal(); sfx("fiscal"); }
   if (S.lastWarn && !story && !document.querySelector(".modal")) {
-    S.lastWarn = null; shake = 8; buzz([200, 80, 200]);
+    S.lastWarn = null; shake = 8; buzz([200, 80, 200]); sfx("alarm");
     startStory([
       { name: "Dona Cleide", emoji: "🙎‍♀️", t: "Eu vi o que você tá plantando aí, menino! A rua inteira tá comentando!" },
       { name: "Dona Cleide", emoji: "🙎‍♀️", t: "Da próxima vez eu conto TUDO pra sua avó. E chamo a polícia, ouviu?" },
@@ -2721,9 +2787,10 @@ function checkEvents() {
       { who: "neto", think: true, t: "(Preciso baixar a Paranoia: vender devagar, ir ao Spa... e não chamar atenção. Da próxima vez é cadeia.)" },
     ], 0, () => { renderPanel(); refresh(); });
   }
-  if (S.surprise && surpriseSeen !== S.surprise.at && !document.querySelector(".modal")) { surpriseSeen = S.surprise.at; surpriseModal(); }
+  if (S.surprise && surpriseSeen !== S.surprise.at && !document.querySelector(".modal")) { surpriseSeen = S.surprise.at; surpriseModal(); sfx("doorbell"); }
   while (seenLog < S.log.length) {
     const l = S.log[seenLog++];
+    if (l.kind === "attr") sfx("levelup", null, 0.5);
     if (l.kind === "attr" || l.kind === "city" || l.kind === "avo" || (l.kind === "order" && !l.text.includes(" quer "))) toast(l.text);
     if (l.kind === "order" && tab === "estufa") renderPanel();
   }
@@ -2733,6 +2800,7 @@ function checkEvents() {
 // ---------------------------------------------------------------- painéis
 let tab = "estufa";
 document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  sfx("click");
   tab = b.dataset.tab;
   document.querySelectorAll("nav button").forEach((x) => x.setAttribute("aria-selected", x === b));
   renderPanel();
@@ -2748,7 +2816,7 @@ function row({ ico, emoji, title, lv, desc, btn, cls = "", btnCls = "", enabled,
   d.firstElementChild.replaceWith(ico || el(`<div class="ico emo">${emoji || ""}</div>`));
   if (btn != null) {
     const b = el(`<button class="buy ${btnCls}">${btn}</button>`);
-    b.onclick = () => { if (onClick()) { renderPanel(); refresh(); checkEvents(); } };
+    b.onclick = () => { if (onClick()) { sfx("buy"); renderPanel(); refresh(); checkEvents(); } else sfx("bad"); };
     if (enabled) bind(() => (b.disabled = !enabled()));
     d.appendChild(b);
   } else d.appendChild(el("<span></span>"));
@@ -2877,6 +2945,7 @@ function lavagem() {
     billCombo = now - billLast < 0.6 ? Math.min(E.BILL_MAX, billCombo + 1) : 1;   // cada toque rápido: +1, até ×50
     billLast = now;
     const amt = E.countBills(S, billCombo);
+    if (amt > 0) sfx("cash", billCombo, 0.02); else sfx("bad");
     if (amt > 0) { got.textContent = "+" + $$(amt) + " limpos"; got.style.color = ""; }
     else { got.textContent = S.sta < 1 ? "Sem energia ⚡" : S.dirty <= E.reserve(S) ? "Só sobrou a reserva" : "Paranoia alta demais"; got.style.color = "#f2918a"; }
     comboEl.textContent = "×" + billCombo + (billCombo >= E.BILL_MAX ? " MÁX!" : "");
@@ -3149,9 +3218,13 @@ function perfil() {
     document.body.appendChild(m);
   };
   panel.appendChild(mode);
-  const vb = el(`<button class="buy" style="align-self:flex-start;background:#403d54;color:#fffbef">${S.vibe === false ? "📴 Vibração desligada" : "📳 Vibração ligada"}</button>`);
+  const prefs = el(`<div style="display:flex;gap:6px;flex-wrap:wrap"></div>`);
+  const sb2 = el(`<button class="buy" style="background:#403d54;color:#fffbef">${S.sound === false ? "🔇 Som desligado" : "🔊 Som ligado"}</button>`);
+  sb2.onclick = () => { S.sound = S.sound === false; if (S.sound) sfx("buy"); renderPanel(); save(); };
+  const vb = el(`<button class="buy" style="background:#403d54;color:#fffbef">${S.vibe === false ? "📴 Vibração desligada" : "📳 Vibração ligada"}</button>`);
   vb.onclick = () => { S.vibe = S.vibe === false; if (S.vibe) buzz(40); renderPanel(); save(); };
-  panel.appendChild(vb);
+  prefs.appendChild(sb2); prefs.appendChild(vb);
+  panel.appendChild(prefs);
   panel.appendChild(el(`<div class="card"><p>Nível <b class="big">${lvl}</b> · Respeito ${fmt(S.resp)} · preso ${S.timesArrested} vez(es)</p><p>Cada nível dá +1% no preço de venda.</p></div>`));
   h3("Atributos");
   const info = {
