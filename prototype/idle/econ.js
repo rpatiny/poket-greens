@@ -565,13 +565,16 @@
     s.ze = true;
     return true;
   }
+  // a cidade cobra conforme a sua fama: +10% por nível (nível 1 = preço da tabela)
+  const cityCost = (s, a) => Math.round(a.cost * Math.pow(1.1, Math.max(0, level(s) - 1)) * ez(s, "cost") * townScale(s));
   function startCity(s, id) {
     const a = CITY.find((x) => x.id === id);
     if (s.city) return false;
     const cost = staCost(s, a.sta);
-    if (s.clean < a.cost || s.sta < cost) return false;
+    const price = cityCost(s, a);
+    if (s.clean < price || s.sta < cost) return false;
     if (a.fx.para > 0 && !safe(s, a.fx.para)) return false;
-    s.clean -= a.cost;
+    s.clean -= price;
     s.sta -= cost;
     s.city = { id, end: s.time + a.time };
     return true;
@@ -826,7 +829,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, cityTap, cityTrains, leaveCity, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, cityCost, cityTap, cityTrains, leaveCity, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
