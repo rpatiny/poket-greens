@@ -62,6 +62,8 @@ canvas{display:block;width:100%;image-rendering:pixelated}
 .stockline b{color:var(--leaf-2);font-family:var(--num);font-size:13px}
 .sbtns{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .sb.tired{opacity:.45}
+#sellhome{width:100%;padding:9px 6px} #sellhome b{font-size:15px}
+#sellhome[hidden]{display:none}
 .row.greyed{opacity:.45;filter:grayscale(.7)}
 .sb .stc{color:#a6cbeb}
 .fx{display:inline-block;padding:0 4px;margin:2px 3px 0 0;font-size:11px;font-weight:bold;border:1px solid #1a1420}
@@ -176,6 +178,7 @@ body.tut.grow #hint{opacity:1}
   <div class="sell pad">
     <div class="stockline"><span>Estoque: <b id="units">0</b> un · vale <b id="value">$0</b></span><span id="cdtext"></span></div>
     <div class="sbtns" id="sbtns"></div>
+    <button class="sb" id="sellhome" hidden><b>💰 Vender tudo pros conhecidos</b><small>preço normal · −1⚡</small></button>
     <div class="cd"><i id="cd"></i></div>
   </div>
   <nav class="pad" role="tablist">
@@ -485,7 +488,7 @@ function drawPeople(id) {
 // ---------------------------------------------------------------- o neto pensando alto (objetivos e dicas)
 // Cada pensamento aparece uma vez, quando faz sentido, com pelo menos 25 s entre um e outro.
 const THOUGHTS = [
-  { id: "paranoia", when: () => E.paraActive(S), t: "(Na garagem do vizinho o pessoal da rua vê o movimento. Preciso ficar de olho na Paranoia: quanto mais eu vendo, mais ela sobe.)" },
+  { id: "paranoia", when: () => E.paraActive(S), t: "(Na garagem do vizinho o pessoal da rua vê o movimento. Agora dá pra escolher quanto vender: vender muito de uma vez paga mais, mas sobe a Paranoia.)" },
   { id: "batidas", when: () => E.raidsActive(S), t: "(Aqui no porão a coisa é séria: a polícia já ronda o bairro. Se a Paranoia passar de 80%, pode ter batida... e eu perco tudo.)" },
   { id: "vender", when: () => E.stockUnits(S) > 0 && S.saleCd <= 0 && S.runEarned === 0, t: "(Tenho folhas sobrando... dá pra vender um pouquinho no Discreto sem chamar atenção.)" },
   { id: "vaso2", when: () => S.pots.length < E.maxPots(S) && E.canPay(S, E.potCost(S)), t: "(Cabe mais um vasinho aqui no armário. Já tenho grana pra isso.)", tab: "estufa" },
@@ -1227,6 +1230,14 @@ E.SALES.forEach((L, i) => {
   $("sbtns").appendChild(b);
 });
 
+$("sellhome").onclick = () => {
+  if (S.sta < E.saleSta(S, 4) && S.saleCd <= 0) { toast("Sem energia pra vender agora. Descansa um pouco ou toma um café.", true); return; }
+  const r = E.sell(S, E.SALES.length - 1);
+  if (!r) return;
+  float("+" + $$(r.money), W / 2 - 20, 34, "#f0c94f"); buzz(15); sfx("sell");
+  checkEvents(); refresh();
+};
+
 // ---------------------------------------------------------------- eventos (batida, diário)
 let seenLog = 0, seenBusts = 0;
 function checkEvents() {
@@ -1737,7 +1748,12 @@ function refresh() {
   else { st.className = "status"; st.textContent = `Renda estimada ${$$(E.incomePerSec(S))}/s · Lenda ${S.legend}`; }
   $("units").textContent = fmt(E.stockUnits(S));
   $("value").textContent = $$(E.stockValue(S) * E.priceMult(S, 0));
-  document.querySelectorAll(".sb").forEach((b) => {
+  // em casa (sem Paranoia) um botão só; da Garagem em diante, os 5 níveis de venda
+  const home = !E.paraActive(S);
+  $("sbtns").style.display = home ? "none" : "";
+  $("sellhome").hidden = !home;
+  $("sellhome").disabled = S.saleCd > 0 || E.stockUnits(S) <= 0;
+  document.querySelectorAll("#sbtns .sb").forEach((b) => {
     const i = +b.dataset.l, L = E.SALES[i];
     b.disabled = S.saleCd > 0 || E.stockUnits(S) <= 0;
     const rk = Math.round(E.riskOf(S, i) * 100);

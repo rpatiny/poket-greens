@@ -251,7 +251,7 @@
   const raidsActive = (s) => s.place >= RAID_FROM;
   const riskOf = (s, lvlIdx) => !paraActive(s) ? 0 : Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004) * (1 + 0.1 * (s.town || 0));
   const paraOf = (s, lvlIdx) => !paraActive(s) ? 0 : SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
-  const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
+  const saleSta = (s, lvlIdx) => staCost(s, s.place >= PARA_FROM ? SALES[lvlIdx].sta : 1);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
   const maxPots = (s) => PLACES[s.place].pots;
   // vaso novo: segue o preço do lugar onde você está, subindo a cada vaso comprado ali.
@@ -359,7 +359,7 @@
     if (s.saleCd > 0 || stockUnits(s) <= 0) return null;
     const L = SALES[lvlIdx];
     if (!auto) {
-      const sc = staCost(s, L.sta);
+      const sc = saleSta(s, lvlIdx);
       if (s.sta < sc) return null;
       s.sta -= sc;
     }
