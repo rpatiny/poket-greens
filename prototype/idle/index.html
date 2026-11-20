@@ -260,6 +260,7 @@ body.tut.grow #hint{opacity:1}
   const EQUIP_LEVEL_MULT = 3; // cada nível extra custa 3x o anterior (nível 5 = 81x o preço inicial)
 
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).
+  const PLACE_MULT = 2.5; // imóveis mais caros (o jogo estava rápido demais)
   const PLACES = [
     ["Armário Grow", 0, 2, 0],
     ["Quartinho dos fundos", 150, 3, 0],
@@ -274,7 +275,7 @@ body.tut.grow #hint{opacity:1}
     ["Mina de Ouro Desativada", 350000000, 24, 2],
     ["Praia Particular", 1500000000, 30, 2],
     ["Bunker Desativado", 7000000000, 40, 2],
-  ].map(([name, cost, pots, tier], id) => ({ id, name, cost, pots, tier }));
+  ].map(([name, cost, pots, tier], id) => ({ id, name, cost: Math.round(cost * (id > 1 ? PLACE_MULT : id === 1 ? 1.5 : 1)), pots, tier }));
 
   // Venda (GDD): quantidade máxima, Paranoia, chance de flagrante e bônus de preço.
   // Venda: fatia do estoque que sai (pct), Paranoia, chance de flagrante e bônus de preço.
@@ -517,7 +518,7 @@ body.tut.grow #hint{opacity:1}
 
   // ---------------------------------------------------------------- atributos
   const XP_NEED = {
-    bot: (l) => 20 * Math.pow(l, 1.8),
+    bot: (l) => 32 * Math.pow(l, 1.9),
     lab: (l) => 40 * Math.pow(l, 1.8),
     fur: (l) => 6 * Math.pow(l, 1.8),
     seg: (l) => 10 * Math.pow(l, 1.8),
