@@ -463,8 +463,8 @@
     checkBust(s);
     return false;
   }
-  // Maquininha de contar notas: lava sem taxa, mas cansa. Combo de 1 a 50 (cada toque rápido soma +1).
-  const BILL_MAX = 50;
+  // Maquininha de contar notas: lava sem taxa, mas cansa. Combo de 1 a 3 (cada toque rápido soma +0,25).
+  const BILL_MAX = 3;
   const billValue = (s) => Math.max(10, incomePerSec(s) * 1.5);
   function countBills(s, combo) {
     const cost = staCost(s, R.billSta);

@@ -1399,19 +1399,19 @@ function lavagem() {
   mc.querySelector("[data-b]").addEventListener("pointerdown", (ev) => {
     ev.preventDefault();
     const now = performance.now() / 1000;
-    billCombo = now - billLast < 0.6 ? Math.min(E.BILL_MAX, billCombo + 1) : 1;   // cada toque rápido: +1, até ×50
+    billCombo = now - billLast < 0.5 ? Math.min(E.BILL_MAX, billCombo + 0.25) : 1;   // cada toque rápido: +0,25, até ×3
     billLast = now;
     const amt = E.countBills(S, billCombo);
     if (amt > 0) sfx("cash", billCombo, 0.02); else sfx("bad");
     if (amt > 0) { got.textContent = "+" + $$(amt) + " limpos"; got.style.color = ""; }
     else { got.textContent = S.sta < 1 ? "Sem energia ⚡" : S.dirty <= E.reserve(S) ? "Só sobrou a reserva" : "Paranoia alta demais"; got.style.color = "#f2918a"; }
-    comboEl.textContent = "×" + billCombo + (billCombo >= E.BILL_MAX ? " MÁX!" : "");
-    comboEl.style.color = billCombo >= E.BILL_MAX ? "#ff6b6b" : billCombo >= 25 ? "#f0a050" : billCombo >= 10 ? "#f0c94f" : "";
-    comboEl.style.fontSize = Math.min(28, 16 + billCombo * 0.25) + "px";
+    comboEl.textContent = "×" + billCombo.toFixed(2).replace(/\.?0+$/, "").replace(".", ",") + (billCombo >= E.BILL_MAX ? " MÁX!" : "");
+    comboEl.style.color = billCombo >= E.BILL_MAX ? "#ff6b6b" : billCombo >= 2 ? "#f0c94f" : "";
+    comboEl.style.fontSize = "";
     refresh();
   });
   bind(() => {
-    mc.querySelector("[data-v]").textContent = `${$$(E.billValue(S))} por toque (combo até ×50: não pare de tocar!) · −1⚡ · +0,15 Paranoia`;
+    mc.querySelector("[data-v]").textContent = `${$$(E.billValue(S))} por toque (até ×3 no combo) · −1⚡ · +0,15 Paranoia`;
     if (performance.now() / 1000 - billLast > 0.8 && billCombo > 1) { billCombo = 1; comboEl.textContent = "×1"; comboEl.style.color = ""; comboEl.style.fontSize = ""; }
   });
   panel.appendChild(mc);
