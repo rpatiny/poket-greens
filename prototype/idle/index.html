@@ -260,7 +260,7 @@ body.tut.grow #hint{opacity:1}
   const EQUIP_LEVEL_MULT = 3; // cada nível extra custa 3x o anterior (nível 5 = 81x o preço inicial)
 
   // Imóveis (GDD), em grana limpa. tier = visual (0 gambiarra, 1 profissional, 2 high-tech).
-  const PLACE_MULT = 2.5; // imóveis mais caros (o jogo estava rápido demais)
+  const PLACE_MULT = 3.5; // imóveis mais caros (o jogo estava rápido demais)
   const PLACES = [
     ["Armário Grow", 0, 2, 0],
     ["Quartinho dos fundos", 150, 3, 0],
@@ -275,7 +275,7 @@ body.tut.grow #hint{opacity:1}
     ["Mina de Ouro Desativada", 350000000, 24, 2],
     ["Praia Particular", 1500000000, 30, 2],
     ["Bunker Desativado", 7000000000, 40, 2],
-  ].map(([name, cost, pots, tier], id) => ({ id, name, cost: Math.round(cost * (id > 1 ? PLACE_MULT : id === 1 ? 1.5 : 1)), pots, tier }));
+  ].map(([name, cost, pots, tier], id) => ({ id, name, cost: Math.round(cost * (id > 1 ? PLACE_MULT : id === 1 ? 4 : 1)), pots, tier }));
 
   // Venda (GDD): quantidade máxima, Paranoia, chance de flagrante e bônus de preço.
   // Venda: fatia do estoque que sai (pct), Paranoia, chance de flagrante e bônus de preço.
@@ -442,7 +442,7 @@ body.tut.grow #hint{opacity:1}
   const maxPots = (s) => PLACES[s.place].pots;
   // vaso novo: segue o preço do lugar onde você está, subindo a cada vaso comprado ali.
   // Assim encher o cômodo custa parecido em todo lugar, em vez de explodir no fim do jogo.
-  const POT_MIN = 60, POT_SHARE = 0.12, POT_GROW = 1.35; // vaso: 12% do lugar (mín. $60), +35% a cada vaso ali
+  const POT_MIN = 150, POT_SHARE = 0.15, POT_GROW = 1.35; // vaso: 15% do lugar (mín. $150), +35% a cada vaso ali
   const potCost = (s) => {
     const prev = s.place > 0 ? PLACES[s.place - 1].pots : 0;
     const base = Math.max(POT_MIN, PLACES[s.place].cost * POT_SHARE) * townScale(s);
