@@ -722,6 +722,9 @@ body.tut.grow #hint{opacity:1}
     if (s.place + 1 === HOME_PLACE) { if (!canPay(s, pc)) return false; pay(s, pc); }
     else { if (s.clean < pc) return false; s.clean -= pc; }
     s.place++;
+    // lugar novo, ninguém conhece: a Paranoia zera (até o piso da ficha na polícia) e a ronda recomeça
+    s.para = s.ficha || 0;
+    s.raidT = 0;
     // os equipamentos do lugar antigo ficam para trás; só os de compra única vêm junto
     for (const e of EQUIP) if (!e.keep) delete s.equip[e.id];
     if (!seedOk(s, s.seed)) s.seed = bestSeed(s);
