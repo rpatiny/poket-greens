@@ -6,6 +6,9 @@
   // ---------------------------------------------------------------- catálogos
   // Sementes (números do GDD): preço (grana suja, pago a cada plantio), venda por unidade,
   // unidades por colheita, Botânica mínima, equipamentos exigidos e tempo de crescimento (s).
+  // venda e semente pela metade da tabela do GDD: o lucro de cada colheita cai pela metade
+  // (o jogo estava fácil demais), e cada semente continua melhor que a anterior
+  const SELL_MULT = 0.5;
   const SEEDS = [
     ["Alface Mística", 5, 8, 3, 1, [], 30],
     ["Hortelã Selvagem", 10, 15, 3, 2, [], 35],
@@ -25,7 +28,7 @@
     ["Aurora Boreal", 5e6, 1.5e7, 1, 23, ["ia", "co2", "led"], 420],
     ["Fruto do Éden", 2e7, 6.5e7, 1, 26, ["ia", "lab"], 600],
     ["Broto de Yggdrasil", 1e8, 3.5e8, 1, 30, ["lab", "ia", "cameras", "drone"], 900],
-  ].map(([name, price, sell, prod, bot, req, time], id) => ({ id, name, price, sell, prod, bot, req, time, frame: id }));
+  ].map(([name, price, sell, prod, bot, req, time], id) => ({ id, name, price: Math.ceil(price * SELL_MULT), sell: Math.round(sell * SELL_MULT), prod, bot, req, time, frame: id }));
 
   // Equipamentos (GDD): preço em grana limpa e bônus de produção. Cada um tem níveis
   // (o 1º libera sementes; os seguintes repetem o bônus) e um efeito extra.
