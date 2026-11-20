@@ -132,6 +132,8 @@ canvas.spark{display:inline-block;width:72px;height:18px;vertical-align:middle;i
 #dlgact .buy{font-size:12px;padding:6px 10px;white-space:normal;text-align:left;max-width:100%}
 #skip{position:absolute;right:8px;top:8px;z-index:7;font-size:11px;background:#1a1420d9;color:#fffbef;border:2px solid #1a1420;padding:3px 8px;cursor:pointer}
 #skip[hidden]{display:none}
+body.away .sell,body.away #panel{opacity:.25;pointer-events:none}
+body.away .sell{display:none}
 body.tut .sell,body.tut nav,body.tut #panel,body.tut header .meter,body.tut header .status{opacity:.12;pointer-events:none}
 body.tut #hint{opacity:0}
 body.tut.grow #hint{opacity:1}
@@ -174,6 +176,13 @@ body.tut.grow #hint{opacity:1}
     <button id="zoombtn" title="Zoom no cômodo">🔍</button>
     <div id="dlg" hidden><canvas id="dlgface" width="48" height="48"></canvas><div><b id="dlgname"></b><span id="dlgtext"></span><div id="dlgact"></div></div><span id="dlgmore">▼</span></div>
     <div id="tip" hidden role="status"><div class="who" aria-hidden="true">👵</div><div><div id="tiptext"></div><div class="acts"><button id="tipgo">Ver</button><button class="ghost" id="tipok">Entendi</button></div></div></div>
+  </div>
+  <div id="awaybox" class="pad" hidden>
+    <div class="card" style="border-color:#48a38a">
+      <p>📍 Você está no <b id="awayname"></b> · volta em <b id="awaytime"></b></p>
+      <p style="font-size:12px"><span id="awaytip"></span> <span id="awayze"></span></p>
+      <button class="buy" id="awayleave" style="margin-top:6px;background:#403d54;color:#fffbef">Voltar agora (sem o efeito)</button>
+    </div>
   </div>
   <div class="sell pad">
     <div class="stockline"><span>Estoque: <b id="units">0</b> un · vale <b id="value">$0</b></span><span id="cdtext"></span></div>
@@ -568,6 +577,8 @@ const SFX = {
   levelup: () => [67, 71, 74, 79, 83].forEach((n, i) => tone(NOTE(n), 0.08, "square", 0.18, null, i * 0.06)),
   cash: (combo = 1) => { const n = 72 + Math.min(24, Math.floor(combo / 2)); tone(NOTE(n), 0.05, "square", 0.18); noise(0.04, 0.12, 3000); },
   click: () => tone(1200, 0.025, "square", 0.12),
+  spaTap: () => { tone(NOTE(84 + Math.floor(Math.random() * 5) * 2), 0.25, "sine", 0.12); },
+  arcadeTap: () => { tone(NOTE(76 + Math.floor(Math.random() * 12)), 0.06, "square", 0.12, null); tone(NOTE(88), 0.04, "square", 0.08, null, 0.05); },
   blip: (who) => tone(who === "vo" ? 1100 : who === "neto" ? 760 : 520, 0.03, "square", 0.08),
   fiscal: () => { tone(NOTE(55), 0.25, "square", 0.25); tone(NOTE(52), 0.4, "square", 0.25, null, 0.22); },
   bad: () => tone(160, 0.12, "square", 0.2, 120),
@@ -585,6 +596,44 @@ function sfx(name, arg, gap = 0.04) {
 }
 // o navegador só libera áudio depois do primeiro toque
 document.addEventListener("pointerdown", () => { initAudio(); if (AC && AC.state === "suspended") AC.resume(); }, { once: false, capture: true });
+
+// ---------------------------------------------------------------- longe de casa (atividades da cidade)
+// Painel "Você está no ..." no lugar da barra de venda; música do rádio do Spa; bipinhos do Fliperama.
+let nextBeat = 0, beatN = 0, wasAway = false;
+const SPA_SONG = [72, 76, 79, 84, 79, 76, 74, 77, 81, 77, 74, 72, 76, 79, 83, 79];
+function awayTick(dt) {
+  const away = !!(S.city && !inTut());
+  document.body.classList.toggle("away", away);
+  $("awaybox").hidden = !away;
+  if (away) {
+    const a = E.CITY.find((x) => x.id === S.city.id);
+    $("awayname").textContent = a.name;
+    $("awaytime").textContent = dur(Math.max(0, S.city.end - S.time));
+    $("awayze").textContent = S.ze ? "O Zé continua vendendo pra você." : "Enquanto isso, ninguém vende.";
+    const trains = E.cityTrains(S.city.id);
+    $("awaytip").textContent = trains ? "Treino leva o tempo que leva." : "Toque na cena para o tempo passar mais rápido.";
+    $("hint").textContent = trains ? "treinando..." : "toque para o tempo passar";
+    if (!wasAway) { curRoom = -1; window.scrollTo({ top: 0, behavior: "smooth" }); }
+  } else if (wasAway) { curRoom = -1; $("hint").textContent = "toque para regar as plantas"; }
+  wasAway = away;
+  // música: no Spa, uma melodia calminha no rádio (acelera quando você toca); no Fliperama, bipinhos de jogo
+  if (!away || !audioOn() || !AC) return;
+  const now = AC.currentTime;
+  if (nextBeat < now) nextBeat = now + 0.05;
+  const id = S.city.id;
+  while (nextBeat < now + 0.12) {
+    if (id === "spa") {
+      const n = SPA_SONG[beatN % SPA_SONG.length];
+      tone(NOTE(n), 0.55, "triangle", 0.05, null, nextBeat - now);
+      if (beatN % 4 === 0) tone(NOTE(n - 24), 1.1, "sine", 0.05, null, nextBeat - now);
+      nextBeat += 0.42 / (1 + cityBoost * 0.6);
+    } else if (id === "fliperama") {
+      if (beatN % 3 === 0) tone(NOTE(84 + ((beatN * 5) % 12)), 0.05, "square", 0.025, null, nextBeat - now);
+      nextBeat += 0.22 / (1 + cityBoost * 0.6);
+    } else { nextBeat = now + 1; break; }
+    beatN++;
+  }
+}
 
 // ---------------------------------------------------------------- vibração (celular)
 function buzz(p) { try { if (S && S.vibe !== false && navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
@@ -1082,6 +1131,16 @@ function layout(n) {
 const fx = [];
 function float(s, x, y, c = "#fffbef") { fx.push({ s, x, y, c, t: 0 }); if (fx.length > 40) fx.shift(); }
 let shake = 0, lastTime = 0, lastTapT = -9, harvestPop = -9;
+// tempo das animações do lugar da cidade: corre mais rápido logo depois de cada toque
+let cityT = 0, cityBoost = 0;
+function drawAway(id) {
+  const m = SCENES.roomMeta(id); if (!m) return;
+  const a = E.CITY.find((x) => x.id === S.city.id);
+  const [x0, y0, w, h] = m.room, left = Math.max(0, S.city.end - S.time), f = 1 - left / a.time;
+  // barra de progresso no pé do cômodo
+  g.fillStyle = "#1a1420"; g.fillRect(x0 + 10, y0 + h - 9, w - 20, 5);
+  g.fillStyle = cityBoost > 0.2 ? "#bcd95e" : "#48a38a"; g.fillRect(x0 + 11, y0 + h - 8, Math.round((w - 22) * Math.min(1, f)), 3);
+}
 const stagePrev = {}, stagePop = {}, drops = [];
 // pulinho: toque = 1 px; estágio novo = 3 px; colheita = 2 px
 function hop(i) {
@@ -1093,14 +1152,16 @@ function hop(i) {
 }
 function draw() {
   const tier = E.PLACES[S.place].tier;
-  const roomId = S.tut === 0 ? 1 : S.place;            // a abertura acontece no seu quarto
+  const away = S.city && !inTut() ? "c_" + S.city.id : null;   // numa atividade: a cena vai para o lugar
+  const roomId = away || (S.tut === 0 ? 1 : S.place);  // a abertura acontece no seu quarto
   setRoom(roomId);
   g.save();
   g.fillStyle = "#120e16"; g.fillRect(0, 0, W, H);
   g.translate(-VX, -VY);
   if (shake > 0) g.translate(Math.round((Math.random() - 0.5) * shake), 0);
-  SCENES.background(g, roomId);
-  if (S.tut !== 0) {
+  SCENES.background(g, roomId, away ? cityT : undefined);
+  if (away) drawAway(roomId);
+  if (S.tut !== 0 && !away) {
   const hydro = E.lvl(S, "hidro") > 0;               // as calhas chegam com o sistema hidropônico
   const plantOf = (i) => { const p = S.pots[i]; return { p, f: p.on ? p.g / E.SEEDS[p.s].time : 0, st: p.on ? stageCell(p.s, p.on ? p.g / E.SEEDS[p.s].time : 0) : null }; };
   const paintPlant = (st) => (c) => { if (st && sprites.estagios) c.drawImage(sprites.estagios, st[0] * 32, st[1] * 40, 32, 40, 0, 0, 32, 40); };
@@ -1201,6 +1262,15 @@ $("scene").addEventListener("pointerdown", (e) => {
   if (story && story.lines[story.i].closeOnTap) { if (!story.full) finishLine(); nextLine(); }
   else if (story && inTut()) return;                   // na história, só a caixa de diálogo avança
   if (inTut() && S.tut < 3) return;
+  if (S.city && !inTut()) {
+    const r0 = cv.getBoundingClientRect();
+    const cut = E.cityTap(S);
+    cityBoost = Math.min(5, cityBoost + 1.2);
+    if (cut > 0) float("-" + cut.toFixed(1).replace(".", ",") + "s", ((e.clientX - r0.left) / r0.width) * W - 8, ((e.clientY - r0.top) / r0.height) * H, "#bcd95e");
+    else if (!S.seen || !S.seen.treino) { S.seen = S.seen || {}; S.seen.treino = 1; say({ who: "neto", think: true, t: "(Treino não tem atalho. Aqui não dá pra apressar.)" }); }
+    sfx(S.city.id === "fliperama" ? "arcadeTap" : S.city.id === "spa" ? "spaTap" : "click", null, 0.05);
+    return;
+  }
   const r = cv.getBoundingClientRect();
   const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
   const before = E.stockUnits(S);
@@ -1765,7 +1835,7 @@ function refresh() {
   });
   $("cd").style.width = S.saleCd > 0 ? pct(1 - S.saleCd / E.saleCooldown(S)) : "100%";
   $("cdtext").textContent = S.saleCd > 0 ? `próxima venda em ${Math.ceil(S.saleCd)}s` : E.stockUnits(S) > 0 ? "pronto para vender" : "";
-  $("place").textContent = S.tut === 0 ? "Seu quarto" : E.PLACES[S.place].name + (S.town ? " · " + E.townName(S.town) : "") + (S.ze ? " · Zé vendendo" : "");
+  $("place").textContent = S.city && !inTut() ? "📍 " + E.CITY.find((x) => x.id === S.city.id).name : S.tut === 0 ? "Seu quarto" : E.PLACES[S.place].name + (S.town ? " · " + E.townName(S.town) : "") + (S.ze ? " · Zé vendendo" : "");
   const busy = $("busy");
   if (S.city) { busy.hidden = false; busy.textContent = `${E.CITY.find((x) => x.id === S.city.id).name} ${dur(S.city.end - S.time)}`; }
   else if (S.laundry.length) { busy.hidden = false; busy.textContent = `Lavando ${S.laundry.length}`; }
@@ -1977,6 +2047,9 @@ function loop(now) {
   E.tick(S, dt * speedUp);
   checkEvents();
   storyTick(dt);
+  cityBoost = Math.max(0, cityBoost - dt * 2.5);
+  cityT += dt * (1 + cityBoost);
+  awayTick(dt);
   thinkTick(dt);
   clientTick();
   if (S.tut === 3 && !story && E.stockUnits(S) > 0) {
@@ -2009,6 +2082,7 @@ Promise.all(Object.keys(IMG).map(loadImg)).then(() => {
   $("skip").addEventListener("pointerdown", (e) => { e.stopPropagation(); skipTut(); });
   $("dlg").addEventListener("pointerdown", (e) => { if (e.target.closest("#dlgact")) return; e.stopPropagation(); e.preventDefault(); storyTap(); });
   resumeTut();
+  $("awayleave").onclick = () => { if (E.leaveCity(S)) { toast("Voltou pra casa."); renderPanel(); refresh(); save(); } };
   lastOrderSeen = S.orders && S.orders.length ? Math.max(...S.orders.map((x) => x.id)) : 0;
   $("zoombtn").addEventListener("pointerdown", (e) => { e.stopPropagation(); S.zoom = S.zoom === false; curRoom = -1; save(); toast(S.zoom !== false ? "Zoom no cômodo" : "Maquete inteira"); });
   requestAnimationFrame(loop);

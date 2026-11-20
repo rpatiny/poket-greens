@@ -165,7 +165,7 @@ class Room:
         c.tone(x0 + w - 3, fy, x0 + w - 1, y0 + h - 1, -1); c.tone(x0 + w - 6, fy, x0 + w - 4, y0 + h - 1, -1, dither=0)
         c.tone(x0, y0 + h - 3, x0 + w - 1, y0 + h - 1, -1); c.tone(x0, y0, x0 + w - 1, y0 + 1, -1)
         os.makedirs(OUT, exist_ok=True)
-        base = os.path.join(OUT, f"{s.idx:02d}")
+        base = os.path.join(OUT, s.idx if isinstance(s.idx, str) else f"{s.idx:02d}")
         bg = img(c)
         bg.save(base + ".png")
         sh = Cv(FW, FH)

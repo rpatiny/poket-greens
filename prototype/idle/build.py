@@ -26,6 +26,10 @@ meta = json.loads((SPR / "comodos" / "meta.json").read_text())
 for k, m in meta.items():
     n = f"comodos/{int(k):02d}"
     rooms[int(k)] = {"src": data_uri(n + ".png"), "srcS": data_uri(n + "_s.png"), "srcL": data_uri(n + "_l.png"), "meta": m}
+# lugares da cidade (Spa, Fliperama...): tools/arte/lugares.py
+for k, m in json.loads((SPR / "comodos" / "cidade.json").read_text()).items():
+    n = f"comodos/{k}"
+    rooms[k] = {"src": data_uri(n + ".png"), "srcS": data_uri(n + "_s.png"), "srcL": data_uri(n + "_l.png"), "meta": m}
 html = html.replace("__COMODOS__", json.dumps(rooms))
 html = html.replace("__SHIFT__", (SPR / "comodos" / "shift.json").read_text())
 (HERE / "index.html").write_text(html)

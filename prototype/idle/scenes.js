@@ -666,11 +666,11 @@
   }
 
   const cache = {};
-  function background(g, id) {
+  function background(g, id, tt) {
     if (ROOM[id]) {
       const r = ROOM[id];
       if (r.img.complete) g.drawImage(r.img, 0, 0);
-      anims(g, r.meta, performance.now() / 1000);
+      anims(g, r.meta, tt ?? performance.now() / 1000);
       return;
     }
     const png = PNG[id];
@@ -728,6 +728,77 @@
           const [x, y] = a, on = Math.floor(t * 2) % 2;
           R(x - 1, y, 14, 9, "#1a1420"); R(x, y + 1, 12, 7, on ? "#d95463" : "#6e1b3d");
           if (on) R(x + 3, y + 2, 4, 2, "#f2918a");
+        } else if (kind === "steam") {             // vapor subindo: [x, y, altura]
+          const [x, y, hh] = a;
+          for (let k = 0; k < 5; k++) {
+            const f = (t * 0.35 + k / 5) % 1, sx = x + Math.sin(t * 1.3 + k * 2) * 4;
+            g.fillStyle = `rgba(255,251,239,${0.6 * (1 - f)})`; g.fillRect(Math.round(sx - 1 - f * 2 + (k - 2) * 6), Math.round(y - f * hh), 3 + Math.round(f * 4), 2);
+          }
+        } else if (kind === "ripple") {            // ondinhas na banheira
+          const [x, y, r] = a;
+          for (let k = 0; k < 3; k++) { const f = (t * 0.5 + k / 3) % 1; g.strokeStyle = `rgba(255,251,239,${0.5 * (1 - f)})`; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y, 2 + f * r, 1 + f * r * 0.45, 0, 0, 7); g.stroke(); }
+        } else if (kind === "candle") {
+          const [x, y] = a, on = Math.sin(t * 17 + x) > -0.3;
+          R(x, y - 2, 1, 2, on ? "#fff0a6" : "#f0c94f"); if (on) R(x, y - 3, 1, 1, "#d1952e");
+        } else if (kind === "notes") {             // notinhas saindo do rádio
+          const [x, y] = a;
+          for (let k = 0; k < 4; k++) {
+            const f = (t * 0.45 + k / 4) % 1, nx = x - 2 - f * 34, ny = y + 6 - f * 6 + Math.sin(t * 3 + k * 2) * 2;   // flutuam para dentro do Spa
+            const col = ["#fffbef", "#fff0a6", "#f2918a", "#fffbef"][k];
+            g.globalAlpha = Math.min(1, (1 - f) * 1.5);
+            R(nx - 1, ny - 5, 4, 8, "#1a1420");                                 // contorno escuro
+            R(nx, ny, 2, 2, col); R(nx + 1, ny - 4, 1, 4, col); R(nx + 1, ny - 4, 2, 1, col);
+            g.globalAlpha = 1;
+          }
+        } else if (kind === "pinball") {           // mesa de pinball: flippers batendo, bola e luzes
+          const [x, y] = a;
+          const hit = (t * 1.6) % 1 < 0.18, hit2 = ((t * 1.6) + 0.5) % 1 < 0.18;
+          const flip = (px, py, dir, up) => { for (let r = 0; r < 6; r++) R(px + dir * r, py + (up ? -Math.round(r * 0.6) : Math.round(r * 0.3)), 1, 1, "#fffbef"); };
+          flip(x + 9, y + 49, 1, hit); flip(x + 20, y + 49, -1, hit2);
+          const bx = x + 15 + Math.sin(t * 2.3) * 9, by = y + 32 + Math.sin(t * 3.1) * 13;
+          R(bx, by, 2, 2, "#ebe9e1"); R(bx, by, 1, 1, "#fffbef");
+          for (const [lx, ly, k] of [[x + 9, y + 22, 0], [x + 20, y + 22, 1], [x + 14, y + 30, 2]]) if (Math.floor(t * 4 + k) % 3 === 0) { R(lx - 1, ly - 1, 3, 3, "#fff0a6"); }
+          const sc = Math.floor(t * 3) % 2; R(x + 5, y + 5, 20, 3, sc ? "#d95463" : "#f0c94f");
+        } else if (kind === "arcade") {            // tela do fliperama com um joguinho
+          const [x, y] = a;
+          R(x + 4, y + 6, 16, 11, "#132b38");
+          for (let k = 0; k < 4; k++) R(x + 5 + ((Math.floor(t * 4) + k * 4) % 14), y + 7 + (k % 2) * 2, 1, 1, ["#bcd95e", "#f2918a", "#a6cbeb", "#fff0a6"][k]);
+          R(x + 5 + Math.round((Math.sin(t * 2) + 1) * 6), y + 15, 3, 1, "#8fd4a8");
+          if (Math.floor(t * 6) % 7 === 0) R(x + 5 + ((Math.floor(t * 9)) % 14), y + 12, 1, 2, "#fffbef");
+        } else if (kind === "neon") {              // neon que pisca de vez em quando
+          const [x, y, w, h] = a, off = Math.floor(t * 3) % 11 === 0;
+          if (!off) { g.fillStyle = "rgba(217,84,99,0.12)"; g.fillRect(x - 3, y - 3, w + 6, h + 6); }
+          else { g.fillStyle = "rgba(26,20,32,0.45)"; g.fillRect(x, y, w, h); }
+        } else if (kind === "fridge" || kind === "tv") {
+          const [x, y, w, h] = a;
+          if (kind === "tv") { const cols = ["#3a5ea3", "#4a8f40", "#d95463", "#f0c94f"]; const k = Math.floor(t * 0.7) % 4; g.fillStyle = cols[k]; g.globalAlpha = 0.55; g.fillRect(x, y, w, h); g.globalAlpha = 1; R(x + 4 + Math.round((t * 6) % (w - 8)), y + h - 4, 4, 2, "#fffbef"); }
+          else { g.fillStyle = `rgba(166,203,234,${0.08 + 0.05 * Math.sin(t * 5)})`; g.fillRect(x, y, w, h); }
+        } else if (kind === "lamp") {
+          const [x, y] = a; g.fillStyle = `rgba(255,240,166,${0.1 + 0.03 * Math.sin(t * 3)})`; g.beginPath(); g.ellipse(x, y, 34, 18, 0, 0, 7); g.fill();
+        } else if (kind === "dust") {
+          const [x, y, w, h] = a; for (let k = 0; k < 10; k++) { const f = (t * 0.05 + k * 0.17) % 1; R(x + ((k * 53 + t * 3) % w), y + f * h, 1, 1, "rgba(255,240,166,0.55)"); }
+        } else if (kind === "page") {
+          const [x, y] = a, f = (t * 0.4) % 1; if (f < 0.3) { const px = x + Math.round(f / 0.3 * 8); R(px, y - 2, 1, 5, "#fffbef"); }
+        } else if (kind === "bag") {               // saco de pancada balançando
+          const [x, y] = a, sw = Math.sin(t * 3) * 3;
+          R(x + sw - 3, y, 7, 16, "#1a1420"); R(x + sw - 2, y + 1, 5, 14, "#a62e4a"); R(x + sw - 2, y + 1, 1, 14, "#d95463"); R(x + sw - 2, y + 7, 5, 1, "#6e1b3d");
+        } else if (kind === "belt") {              // esteira rolando
+          const [x, y, w, h] = a; for (let yy = 0; yy < h; yy += 4) R(x, y + ((yy + Math.floor(t * 20)) % h), w, 1, "#403d54");
+        } else if (kind === "streetlamp") {
+          const [x, y] = a, on = Math.sin(t * 7) > -0.85;
+          if (on) { g.fillStyle = "rgba(255,240,166,0.1)"; g.beginPath(); g.moveTo(x - 2, y + 4); g.lineTo(x + 4, y + 4); g.lineTo(x + 30, y + 70); g.lineTo(x - 28, y + 70); g.fill(); }
+          R(x - 2, y, 6, 3, on ? "#fff0a6" : "#94592a");
+        } else if (kind === "rain") {
+          const [x, y, w, h] = a;
+          for (let k = 0; k < 30; k++) { const f = (t * 1.2 + k * 0.137) % 1; R(x + ((k * 47) % w) - f * 6, y + f * h, 1, 3, "rgba(166,203,234,0.45)"); }
+        } else if (kind === "fountain") {          // jato d'água da fonte
+          const [x, y] = a;
+          for (let k = 0; k < 10; k++) { const f = (t * 0.8 + k / 10) % 1, dir = k % 2 ? 1 : -1; R(x + dir * f * 10, y - 12 - Math.sin(f * Math.PI) * 10 + f * 6, 1, 1, "#a6cbeb"); }
+          R(x - 1, y - 14, 2, 3, "#fffbef");
+        } else if (kind === "pigeon") {            // pombo ciscando
+          const [x, y] = a, hop = Math.floor(t * 2 + x) % 6 === 0 ? -1 : 0, peck = Math.floor(t * 4 + x) % 3 === 0;
+          const px = x + Math.round(Math.sin(t * 0.3 + x) * 12);
+          R(px - 3, y + hop - 2, 6, 4, "#1a1420"); R(px - 2, y + hop - 1, 4, 2, "#8f90a2"); R(px + 1, y + hop - (peck ? 0 : 2), 2, 2, "#646379"); R(px + 3, y + hop - (peck ? -1 : 1), 1, 1, "#d1952e");
         } else if (kind === "drip") {              // goteira: [x, teto, chão]
           const [x, y0, y1] = a, k = (t * 0.55) % 1;
           if (k < 0.75) R(x, y0 + (y1 - y0) * (k / 0.75), 1, 3, "#a6cbeb");

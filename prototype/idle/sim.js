@@ -83,9 +83,10 @@ function brain(s, p) {
   if (p.bills && s.sta > 50) for (let k = 0; k < 3; k++) E.countBills(s, 2);
   // 6) cidade: Spa se a Paranoia apertar; senão treina
   if (!s.city) {
-    if (s.para > 55 && s.clean > 150) E.startCity(s, "spa");
-    else if (s.para > 45 && s.clean > 15) E.startCity(s, "fliperama");
-    else if (s.sta > 40 && s.clean > 50) E.startCity(s, ["biblioteca", "praca", "biblioteca", s.para < 40 ? "beco" : "biblioteca", "academia"][Math.floor(s.time / 600) % 5]);
+    // com a Paranoia alta, prefere esperar baixar; só vai ao Fliperama (curto, dá pra apressar) se estiver muito alta
+    if (s.para > 75 && s.clean > 15 && !p.session) E.startCity(s, "fliperama");
+    // treina só de vez em quando (um jogador de verdade não fica o tempo todo fora de casa)
+    else if (s.sta > 60 && s.clean > 50 && (s.time % 1800) < 400) E.startCity(s, ["biblioteca", "praca", "biblioteca", s.para < 40 ? "beco" : "biblioteca", "academia"][Math.floor(s.time / 1800) % 5]);
     else if (s.sta < 30 && s.clean > 20) E.startCity(s, "bar");
   }
   // 7) começo: mendiga e visita a Vó
@@ -109,7 +110,7 @@ function run(name, p) {
       t += skip;
       continue;
     }
-    for (let k = 0; k < p.taps && t < (p.tapFor ?? Infinity); k++) E.tap(s);
+    for (let k = 0; k < p.taps && t < (p.tapFor ?? Infinity); k++) (s.city ? E.cityTap(s) : E.tap(s));
     E.tick(s, 1);
     brain(s, p);
     const gain = E.legendFor(s.runEarned);

@@ -333,7 +333,7 @@
 
   // ---------------------------------------------------------------- atributos
   const XP_NEED = {
-    bot: (l) => 32 * Math.pow(l, 1.9),
+    bot: (l) => 20 * Math.pow(l, 1.8),
     lab: (l) => 40 * Math.pow(l, 1.8),
     fur: (l) => 6 * Math.pow(l, 1.8),
     seg: (l) => 10 * Math.pow(l, 1.8),
@@ -349,6 +349,7 @@
 
   // ---------------------------------------------------------------- ações
   function tap(s) {
+    if (s.city) return 0;
     return growAll(s, tapPower(s));
   }
 
@@ -356,6 +357,7 @@
   const safe = (s, add) => s.para + add < 100;
 
   function sell(s, lvlIdx, auto = false) {
+    if (s.city && !auto) return null; // fora de casa: só o Zé vende
     if (s.saleCd > 0 || stockUnits(s) <= 0) return null;
     const L = SALES[lvlIdx];
     if (!auto) {
@@ -410,6 +412,7 @@
   const frontCost = (s, f) => Math.round(f.cost * Math.pow(2.5, frontLvl(s, f.id)) * ez(s, "cost") * townScale(s));
   const frontCap = (f, l, s) => (l ? f.cap * Math.pow(1.7, l - 1) * (s ? townScale(s) : 1) : 0); // $/min
   function buyFront(s, id) {
+    if (s.city) return false;
     const f = FRONTS.find((x) => x.id === id);
     if (frontLvl(s, id) >= FRONT_MAX) return false;
     const c = frontCost(s, f);
@@ -477,6 +480,7 @@
   const BILL_MAX = 3;
   const billValue = (s) => Math.max(10, incomePerSec(s) * 1.5);
   function countBills(s, combo) {
+    if (s.city) return 0;
     const cost = staCost(s, R.billSta);
     if (s.sta < cost) return 0;
     const amt = Math.min(Math.max(0, s.dirty - reserve(s)), billValue(s) * Math.max(1, Math.min(BILL_MAX, combo)));
@@ -489,6 +493,7 @@
   }
 
   function launder(s, methodId, fraction) {
+    if (s.city) return false;
     const m = LAUNDRY.find((x) => x.id === methodId);
     if (s.attrs.lab < m.lab) return false;
     const amount = Math.floor(s.dirty * fraction);
@@ -511,6 +516,7 @@
   }
   function bestSeed(s) { for (let i = SEEDS.length - 1; i >= 0; i--) if (seedOk(s, i)) return i; return 0; }
   function buyEquip(s, id) {
+    if (s.city) return false;
     const e = EQUIP.find((x) => x.id === id);
     if (equipBlock(s, e)) return false;
     const c = equipCost(s, e);
@@ -522,6 +528,7 @@
   const HOME_PLACE = 1; // o Quartinho é da sua casa: aceita grana suja
   const placeNeedsClean = (s, i = s.place + 1) => i !== HOME_PLACE;
   function buyPlace(s) {
+    if (s.city) return false;
     const next = PLACES[s.place + 1];
     const pc = placeCost(s);
     if (!next) return false;
@@ -537,6 +544,7 @@
     return true;
   }
   function buyPot(s) {
+    if (s.city) return false;
     if (s.pots.length >= maxPots(s)) return false;
     const c = potCost(s);
     if (!canPay(s, c)) return false;
@@ -568,6 +576,17 @@
     s.city = { id, end: s.time + a.time };
     return true;
   }
+  // cada toque adianta um pouquinho, como regar as plantas (2x o toque de rega): tocando sem parar,
+  // o tempo passa ~3-4x mais rápido
+  const cityTrains = (id) => { const fx = CITY.find((x) => x.id === id).fx; return !!(fx.bot || fx.lab || fx.fur || fx.seg); };
+  function cityTap(s) {
+    if (!s.city || cityTrains(s.city.id)) return 0;            // treino não tem atalho
+    const cut = R.tapSeconds * 2;
+    s.city.end -= cut;
+    return cut;
+  }
+  // voltar antes da hora: sem o efeito da atividade
+  function leaveCity(s) { if (!s.city) return false; s.city = null; return true; }
   function finishCity(s) {
     const a = CITY.find((x) => x.id === s.city.id);
     const fx = a.fx;
@@ -580,6 +599,7 @@
     checkBust(s);
   }
   function beg(s) {
+    if (s.city) return 0;
     const cost = staCost(s, 3 + Math.floor(rand(s) * 6));
     if (s.sta < cost) return 0;
     s.sta -= cost;
@@ -588,6 +608,7 @@
     return got;
   }
   function visitAvo(s) {
+    if (s.city) return false;
     if (s.time < s.avoT || !safe(s, 10)) return false;
     s.avoT = s.time + R.avoEvery;
     s.sta = Math.min(100, s.sta + 15);
@@ -598,6 +619,7 @@
     return true;
   }
   function borrow(s) {
+    if (s.city) return false;
     if (s.debt > 0 || !safe(s, 30)) return false;
     s.dirty += R.loan;
     s.debt = R.loanBack;
@@ -646,6 +668,7 @@
   // Advogado: baixa a ficha em 10 na hora. Fica 10x mais caro a cada 10% de ficha.
   const lawyerCost = (s) => Math.round(1000 * Math.pow(10, (s.ficha || 0) / 10) * ez(s, "cost") * townScale(s));
   function lawyer(s) {
+    if (s.city) return false;
     if (!s.ficha) return false;
     const c = lawyerCost(s);
     if (s.clean < c) return false;
@@ -690,6 +713,7 @@
     if (s.orderT >= R.orderEvery && s.orders.length < R.orderMax) { s.orderT = 0; newOrder(s); }
   }
   function deliver(s, id) {
+    if (s.city) return false;
     const i = s.orders.findIndex((o) => o.id === id);
     if (i < 0) return false;
     const o = s.orders[i];
@@ -802,7 +826,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, cityTap, cityTrains, leaveCity, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),
