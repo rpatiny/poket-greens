@@ -243,9 +243,14 @@
   const ez = (s, k) => (s.easy ? EASY[k] : 1);
   const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed")) * ez(s, "speed");
   const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap"));
-  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + SALES[lvlIdx].bonus) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price") * townScale(s);
-  const riskOf = (s, lvlIdx) => Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004) * (1 + 0.1 * (s.town || 0));
-  const paraOf = (s, lvlIdx) => SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
+  const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + (s.place >= PARA_FROM ? SALES[lvlIdx].bonus : 0)) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price") * townScale(s);
+  // A Paranoia entra aos poucos: em casa (Armário e Quartinho) ninguém repara; da Garagem em diante ela
+  // existe (sobe, cai, tem flagrante); a polícia só faz ronda e batida a partir do Porão.
+  const PARA_FROM = 2, RAID_FROM = 3;
+  const paraActive = (s) => s.place >= PARA_FROM;
+  const raidsActive = (s) => s.place >= RAID_FROM;
+  const riskOf = (s, lvlIdx) => !paraActive(s) ? 0 : Math.max(0, SALES[lvlIdx].risk - s.attrs.fur * 0.004) * (1 + 0.1 * (s.town || 0));
+  const paraOf = (s, lvlIdx) => !paraActive(s) ? 0 : SALES[lvlIdx].para * Math.max(0.2, 1 - fxSum(s, "calm") - s.attrs.fur * 0.01);
   const saleSta = (s, lvlIdx) => staCost(s, SALES[lvlIdx].sta);
   const staCost = (s, base) => (s.para >= 60 ? base * 2 : base);
   const maxPots = (s) => PLACES[s.place].pots;
@@ -609,7 +614,8 @@
   const legendFor = (earned) => (earned < 1e5 ? 0 : Math.floor(Math.pow(Math.log10(earned) - 4, 2)));
 
   function checkBust(s) {
-    if (s.cheat && s.cheat.noPolice) { s.para = Math.min(s.para, 99); return; }
+    if (!paraActive(s)) { s.para = 0; return; }
+    if ((s.cheat && s.cheat.noPolice) || !raidsActive(s)) { s.para = Math.min(s.para, 99); return; }
     if (s.para >= 100) bust(s, "A Paranoia chegou a 100%.");
   }
   // Batida: perde TUDO (grana suja e limpa, estoque, equipamentos, imóveis) e volta ao Armário.
@@ -728,6 +734,7 @@
     s.sta = Math.min(100, s.sta + R.staRegen * dt);
     const decay = s.para < R.paraCalm ? R.paraDecayLow : R.paraDecay;   // até 40% a cabeça esfria rápido
     s.para = Math.max(s.ficha || 0, s.para - decay * ez(s, "decay") * dt + (s.debt > 0 ? R.loanPara * dt : 0));
+    if (!paraActive(s)) s.para = 0;
     // ficha limpa aos poucos: a cada 5 de Lenda ganhos depois da última batida
     while (s.ficha > 0 && s.legend >= s.fichaLenda + R.fichaLenda) {
       s.ficha = Math.max(0, s.ficha - 5); s.fichaLenda += R.fichaLenda;
@@ -741,7 +748,7 @@
     runFronts(s, dt);
     fiscalCheck(s, dt);
     ordersTick(s, dt);
-    if (!s.away && !s.surprise && s.time > 600 && !(s.tut < 99)) {
+    if (!s.away && !s.surprise && s.time > 600 && !(s.tut < 99) && raidsActive(s)) {
       s.surpT += dt;
       if (s.surpT >= R.surpriseEvery) {
         s.surpT = 0;
@@ -766,7 +773,7 @@
     if (s.raidT >= R.raidEvery) {
       s.raidT = 0;
       const raid = R.raidChance * (1 - Math.min(0.6, fxSum(s, "guard") + s.attrs.seg * 0.005));
-      if (!(s.cheat && s.cheat.noPolice) && s.para > R.raidAt && rand(s) < raid) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
+      if (!(s.cheat && s.cheat.noPolice) && raidsActive(s) && s.para > R.raidAt && rand(s) < raid) bust(s, "A polícia fez uma ronda e achou o esconderijo.");
     }
     checkBust(s);
   }
@@ -792,7 +799,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),

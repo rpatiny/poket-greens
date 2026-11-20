@@ -485,6 +485,8 @@ function drawPeople(id) {
 // ---------------------------------------------------------------- o neto pensando alto (objetivos e dicas)
 // Cada pensamento aparece uma vez, quando faz sentido, com pelo menos 25 s entre um e outro.
 const THOUGHTS = [
+  { id: "paranoia", when: () => E.paraActive(S), t: "(Na garagem do vizinho o pessoal da rua vê o movimento. Preciso ficar de olho na Paranoia: quanto mais eu vendo, mais ela sobe.)" },
+  { id: "batidas", when: () => E.raidsActive(S), t: "(Aqui no porão a coisa é séria: a polícia já ronda o bairro. Se a Paranoia passar de 80%, pode ter batida... e eu perco tudo.)" },
   { id: "vender", when: () => E.stockUnits(S) > 0 && S.saleCd <= 0 && S.runEarned === 0, t: "(Tenho folhas sobrando... dá pra vender um pouquinho no Discreto sem chamar atenção.)" },
   { id: "vaso2", when: () => S.pots.length < E.maxPots(S) && E.canPay(S, E.potCost(S)), t: "(Cabe mais um vasinho aqui no armário. Já tenho grana pra isso.)", tab: "estufa" },
   { id: "quarto", when: () => S.place === 0 && S.pots.length >= E.maxPots(S) && E.canPay(S, E.placeCost(S) * 0.6), t: "(O armário tá ficando pequeno. Meu quarto é aqui do lado... pago com o que tenho mesmo.)", tab: "estufa" },
@@ -1722,11 +1724,13 @@ function refresh() {
   $("lvl").textContent = E.level(S);
   const p = Math.min(100, S.para);
   $("para").style.width = p + "%"; $("paran").textContent = Math.round(p) + "%";
+  document.querySelector(".meter.para").style.visibility = E.paraActive(S) ? "visible" : "hidden";
   $("ficha").style.width = (S.ficha || 0) + "%";   // ficha na polícia: a Paranoia não cai abaixo daqui
   $("sta").style.width = Math.min(100, S.sta) + "%"; $("stan").textContent = Math.floor(S.sta);
   const st = $("status");
   const nextRaid = E.R.raidEvery - S.raidT;
-  if (p > E.R.raidAt) { st.className = "status danger"; st.textContent = `🚨 Polícia rondando! Ronda em ${dur(nextRaid)}`; }
+  if (p > E.R.raidAt && !E.raidsActive(S)) { st.className = "status warn"; st.textContent = "Paranoia no alto · aqui ainda não tem ronda, no Porão tem"; }
+  else if (p > E.R.raidAt) { st.className = "status danger"; st.textContent = `🚨 Polícia rondando! Ronda em ${dur(nextRaid)}`; }
   else if (p >= 60) { st.className = "status warn"; st.textContent = "Paranoia alta: ⚡ custa o dobro · ronda acima de 80%"; }
   else if (S.debt > 0) { st.className = "status warn"; st.textContent = `🦈 Dívida: ${$$(S.debt)} (+3 Paranoia/min)`; }
   else if (S.pots.some((x) => !x.on)) { st.className = "status warn"; st.textContent = `Sem grana para replantar (${$$(E.seedPrice(S, S.seed))} por vaso). Venda o estoque, mendigue, visite a Vó ou encare o agiota (aba Cidade).`; }
@@ -1737,7 +1741,7 @@ function refresh() {
     const i = +b.dataset.l, L = E.SALES[i];
     b.disabled = S.saleCd > 0 || E.stockUnits(S) <= 0;
     const rk = Math.round(E.riskOf(S, i) * 100);
-    b.querySelector("[data-q]").textContent = (L.pct >= 1 ? "tudo" : Math.round(L.pct * 100) + "%") + " +" + Math.round(E.paraOf(S, i)) + "👁";
+    b.querySelector("[data-q]").textContent = (L.pct >= 1 ? "tudo" : Math.round(L.pct * 100) + "%") + (E.paraActive(S) ? " +" + Math.round(E.paraOf(S, i)) + "👁" : "");
     const r = b.querySelector("[data-r]");
     r.textContent = "−" + E.saleSta(S, i) + "⚡" + (rk ? "⚠" + rk + "%" : "");
     r.style.color = rk >= 10 ? "#f2918a" : rk ? "#f0c94f" : "";
