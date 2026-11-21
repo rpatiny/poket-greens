@@ -529,19 +529,24 @@
     s.equip[id] = lvl(s, id) + 1;
     return true;
   }
+  // freio: quem se muda toda hora chama atenção. Só dá para sair depois de um tempo no lugar atual
+  // (Quartinho 15 min, Garagem 20, Porão 25... até 1h; conta também com o app fechado)
+  const placeWork = (s) => (s.place === 0 ? 0 : Math.min(3600, 600 + 300 * s.place) * ez(s, "city"));
+  const placeWorkLeft = (s) => (s.cheat && s.cheat.on ? 0 : Math.max(0, placeWork(s) - (s.placeT || 0)));
   const HOME_PLACE = 1; // o Quartinho é da sua casa: aceita grana suja
   const placeNeedsClean = (s, i = s.place + 1) => i !== HOME_PLACE;
   function buyPlace(s) {
     if (s.city) return false;
     const next = PLACES[s.place + 1];
     const pc = placeCost(s);
-    if (!next) return false;
+    if (!next || placeWorkLeft(s) > 0) return false;
     if (s.place + 1 === HOME_PLACE) { if (!canPay(s, pc)) return false; pay(s, pc); }
     else { if (s.clean < pc) return false; s.clean -= pc; }
     s.place++;
     // lugar novo, ninguém conhece: a Paranoia zera (até o piso da ficha na polícia) e a ronda recomeça
     s.para = s.ficha || 0;
     s.raidT = 0;
+    s.placeT = 0;
     // os equipamentos do lugar antigo ficam para trás; só os de compra única vêm junto
     for (const e of EQUIP) if (!e.keep) delete s.equip[e.id];
     if (!seedOk(s, s.seed)) s.seed = bestSeed(s);
@@ -765,6 +770,7 @@
   // ---------------------------------------------------------------- tempo
   function tick(s, dt) {
     s.time += dt;
+    s.placeT = (s.placeT || 0) + dt;
     s.saleCd = Math.max(0, s.saleCd - dt);
     s.sta = Math.min(100, s.sta + R.staRegen * dt);
     const decay = s.para < R.paraCalm ? R.paraDecayLow : R.paraDecay;   // até 40% a cabeça esfria rápido
@@ -834,7 +840,7 @@
     SEEDS, EQUIP, PLACES, SALES, LAUNDRY, CITY, ATTRS, R,
     safe, newState, tick, tap, sell, launder, buyEquip, buyPlace, buyPot, chooseSeed, hireZe,
     startCity, beg, visitAvo, borrow, repay, retire, offline,
-    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, cityCost, cityTap, cityTrains, leaveCity, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
+    BILL_MAX, PARA_FROM, RAID_FROM, paraActive, raidsActive, TOWNS_ON, ORDERS_FROM, placeNeedsClean, HOME_PLACE, canPay, townScale, seedPrice, TOWNS, townName, townProd, canMoveTown, moveTown, deliver, newOrder, placeWork, placeWorkLeft, cityCost, cityTap, cityTrains, leaveCity, saleSta, placeCost, EASY, SURPRISE, surpriseAnswer, equipBlock, bestSeed, lawyer, lawyerCost, FRONTS, FRONT_MAX, frontLvl, frontCost, frontCap, frontOpen, buyFront,
     fiscalBribe, fiscalClose, fiscalRisk, countBills, billValue, marketFee, marketMult, reserve, level, legendMult, prodMult, speed, tapPower, priceMult, riskOf, paraOf, staCost, maxPots, potCost,
     equipCost, saleCooldown, stockUnits, stockValue, seedLocked, seedOk, incomePerSec, legendFor, lvl,
     xpNeed: (k, l) => XP_NEED[k](l),

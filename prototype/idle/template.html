@@ -1439,9 +1439,10 @@ function estufa() {
   });
   const np = E.PLACES[S.place + 1];
   if (np) row({
-    ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} ${E.placeNeedsClean(S) ? "Pago com grana limpa." : "É a sua casa: paga com qualquer grana."}<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>`,
+    ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} ${E.placeNeedsClean(S) ? "Pago com grana limpa." : "É a sua casa: paga com qualquer grana."}<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>` +
+      (E.placeWorkLeft(S) > 0 ? `<br><span class="req">🔒 Você acabou de chegar: quem se muda toda hora chama atenção. Fique mais ${Math.ceil(E.placeWorkLeft(S) / 60)} min no ${pl.name}.</span>` : ""),
     btn: $$(E.placeCost(S)), btnCls: E.placeNeedsClean(S) ? "clean" : "dirty",
-    enabled: () => (E.placeNeedsClean(S) ? S.clean : S.clean + S.dirty) >= E.placeCost(S), onClick: () => E.buyPlace(S),
+    enabled: () => E.placeWorkLeft(S) === 0 && (E.placeNeedsClean(S) ? S.clean : S.clean + S.dirty) >= E.placeCost(S), onClick: () => E.buyPlace(S),
   });
   // fim do jogo: mudar de cidade (recomeça mais forte, sem fim)
   if (E.TOWNS_ON && S.place === E.PLACES.length - 1) {
@@ -1808,7 +1809,7 @@ function perfil() {
 // redesenha o painel quando algo estrutural muda
 let structKey = "";
 const keyNow = () => [tab, S.seed, S.place, S.pots.length, S.laundry.length, S.city && S.city.id, S.ze, S.debt > 0, S.busts, S.legend,
-  Object.values(S.equip).join(","), Object.values(S.attrs).join(","), tab === "perfil" ? S.log.length : 0].join("|");
+  Object.values(S.equip).join(","), Object.values(S.attrs).join(","), tab === "perfil" ? S.log.length : 0, Math.ceil(E.placeWorkLeft(S) / 60)].join("|");
 
 // ---------------------------------------------------------------- HUD
 function refresh() {
