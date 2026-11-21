@@ -1148,7 +1148,7 @@ function drawAway(id) {
     g.drawImage(sprites.netoCity, fr * 28, row * 40, 28, 40, px, py, 28, 40);
   }
   const a = E.CITY.find((x) => x.id === S.city.id);
-  const [x0, y0, w, h] = m.room, left = Math.max(0, S.city.end - S.time), f = 1 - left / a.time;
+  const [x0, y0, w, h] = m.room, left = Math.max(0, S.city.end - S.time), f = 1 - left / (S.city.dur || a.time);
   // barra de progresso no pé do cômodo
   g.fillStyle = "#1a1420"; g.fillRect(x0 + 10, y0 + h - 9, w - 20, 5);
   g.fillStyle = cityBoost > 0.2 ? "#bcd95e" : "#48a38a"; g.fillRect(x0 + 11, y0 + h - 8, Math.round((w - 22) * Math.min(1, f)), 3);
@@ -1685,7 +1685,7 @@ function cidade() {
   if (S.city) {
     const a = E.CITY.find((x) => x.id === S.city.id);
     const c = el(`<div class="card"><p>Você está no <b>${a.name}</b>. Volta em <span data-t></span>.</p><div class="prog"><i></i></div></div>`);
-    bind(() => { c.querySelector("[data-t]").textContent = dur(S.city ? S.city.end - S.time : 0); c.querySelector("i").style.width = pct(S.city ? 1 - (S.city.end - S.time) / a.time : 1); });
+    bind(() => { c.querySelector("[data-t]").textContent = dur(S.city ? S.city.end - S.time : 0); c.querySelector("i").style.width = pct(S.city ? 1 - (S.city.end - S.time) / (S.city.dur || a.time) : 1); });
     panel.appendChild(c);
   }
   panel.appendChild(el(`<div class="card"><p>Na cidade você <b>recupera energia</b>, <b>baixa a Paranoia</b> ou <b>treina atributos</b>. Uma atividade por vez, paga com grana limpa.</p>
@@ -1713,7 +1713,7 @@ function cidade() {
     if (a.fx.resp) fx.push(`<span class="fx g">+${a.fx.resp} Respeito</span>`);
     if (a.fx.para > 0) fx.push(`<span class="fx r">+${a.fx.para}👁 Paranoia</span>`);
     if (a.sta) fx.push(`<span class="fx r">−${E.staCost(S, a.sta)}⚡ energia</span>`);
-    fx.push(`<span class="fx n">⏱ ${dur(a.time)}</span>`);
+    fx.push(`<span class="fx n">⏱ ${dur(a.time * (S.easy ? E.EASY.city : 1))}</span>`);
     row({
       emoji: { cafe: "☕", energetico: "🥤", bar: "🍺", biblioteca: "📚", academia: "🥊", beco: "🌑", praca: "🗣️", spa: "🧖", fliperama: "🕹️" }[a.id],
       title: a.name, desc: `<span class="flavor">${FLAVOR[a.id] || ""}</span><br>${fx.join("")}`,

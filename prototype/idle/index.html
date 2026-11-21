@@ -442,10 +442,10 @@ body.tut.grow #hint{opacity:1}
   // crescimento: tempo = base / (1 + Botânica × 5%) (GDD), mais equipamentos de velocidade
   // Modo fácil (para testar com amigos): cresce 3x mais rápido, vende 2x mais caro, tudo custa 30%,
   // atributos sobem 3x mais rápido, Paranoia cai 2x mais rápido e a espera entre vendas cai pela metade.
-  const EASY = { speed: 3, price: 2, cost: 0.15, xp: 4, decay: 2, cd: 0.5 };
+  const EASY = { speed: 3, price: 2, cost: 0.15, xp: 4, decay: 2, cd: 0.5, city: 0.2, tap: 3 };
   const ez = (s, k) => (s.easy ? EASY[k] : 1);
   const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed")) * ez(s, "speed");
-  const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap"));
+  const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap")) * ez(s, "tap");
   const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + (s.place >= PARA_FROM ? SALES[lvlIdx].bonus : 0)) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price") * townScale(s);
   // A Paranoia entra aos poucos: em casa (Armário e Quartinho) ninguém repara; da Garagem em diante ela
   // existe (sobe, cai, tem flagrante); a polícia só faz ronda e batida a partir do Porão.
@@ -779,7 +779,8 @@ body.tut.grow #hint{opacity:1}
     if (a.fx.para > 0 && !safe(s, a.fx.para)) return false;
     s.clean -= price;
     s.sta -= cost;
-    s.city = { id, end: s.time + a.time };
+    const dur = a.time * ez(s, "city");
+    s.city = { id, end: s.time + dur, dur };
     return true;
   }
   // cada toque adianta um pouquinho, como regar as plantas (2x o toque de rega): tocando sem parar,
@@ -787,7 +788,7 @@ body.tut.grow #hint{opacity:1}
   const cityTrains = (id) => { const fx = CITY.find((x) => x.id === id).fx; return !!(fx.bot || fx.lab || fx.fur || fx.seg); };
   function cityTap(s) {
     if (!s.city || cityTrains(s.city.id)) return 0;            // treino não tem atalho
-    const cut = R.tapSeconds * 2;
+    const cut = R.tapSeconds * 2 * ez(s, "tap");
     s.city.end -= cut;
     return cut;
   }
@@ -2804,7 +2805,7 @@ function drawAway(id) {
     g.drawImage(sprites.netoCity, fr * 28, row * 40, 28, 40, px, py, 28, 40);
   }
   const a = E.CITY.find((x) => x.id === S.city.id);
-  const [x0, y0, w, h] = m.room, left = Math.max(0, S.city.end - S.time), f = 1 - left / a.time;
+  const [x0, y0, w, h] = m.room, left = Math.max(0, S.city.end - S.time), f = 1 - left / (S.city.dur || a.time);
   // barra de progresso no pé do cômodo
   g.fillStyle = "#1a1420"; g.fillRect(x0 + 10, y0 + h - 9, w - 20, 5);
   g.fillStyle = cityBoost > 0.2 ? "#bcd95e" : "#48a38a"; g.fillRect(x0 + 11, y0 + h - 8, Math.round((w - 22) * Math.min(1, f)), 3);
@@ -3341,7 +3342,7 @@ function cidade() {
   if (S.city) {
     const a = E.CITY.find((x) => x.id === S.city.id);
     const c = el(`<div class="card"><p>Você está no <b>${a.name}</b>. Volta em <span data-t></span>.</p><div class="prog"><i></i></div></div>`);
-    bind(() => { c.querySelector("[data-t]").textContent = dur(S.city ? S.city.end - S.time : 0); c.querySelector("i").style.width = pct(S.city ? 1 - (S.city.end - S.time) / a.time : 1); });
+    bind(() => { c.querySelector("[data-t]").textContent = dur(S.city ? S.city.end - S.time : 0); c.querySelector("i").style.width = pct(S.city ? 1 - (S.city.end - S.time) / (S.city.dur || a.time) : 1); });
     panel.appendChild(c);
   }
   panel.appendChild(el(`<div class="card"><p>Na cidade você <b>recupera energia</b>, <b>baixa a Paranoia</b> ou <b>treina atributos</b>. Uma atividade por vez, paga com grana limpa.</p>
@@ -3369,7 +3370,7 @@ function cidade() {
     if (a.fx.resp) fx.push(`<span class="fx g">+${a.fx.resp} Respeito</span>`);
     if (a.fx.para > 0) fx.push(`<span class="fx r">+${a.fx.para}👁 Paranoia</span>`);
     if (a.sta) fx.push(`<span class="fx r">−${E.staCost(S, a.sta)}⚡ energia</span>`);
-    fx.push(`<span class="fx n">⏱ ${dur(a.time)}</span>`);
+    fx.push(`<span class="fx n">⏱ ${dur(a.time * (S.easy ? E.EASY.city : 1))}</span>`);
     row({
       emoji: { cafe: "☕", energetico: "🥤", bar: "🍺", biblioteca: "📚", academia: "🥊", beco: "🌑", praca: "🗣️", spa: "🧖", fliperama: "🕹️" }[a.id],
       title: a.name, desc: `<span class="flavor">${FLAVOR[a.id] || ""}</span><br>${fx.join("")}`,

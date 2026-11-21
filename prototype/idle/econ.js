@@ -239,10 +239,10 @@
   // crescimento: tempo = base / (1 + Botânica × 5%) (GDD), mais equipamentos de velocidade
   // Modo fácil (para testar com amigos): cresce 3x mais rápido, vende 2x mais caro, tudo custa 30%,
   // atributos sobem 3x mais rápido, Paranoia cai 2x mais rápido e a espera entre vendas cai pela metade.
-  const EASY = { speed: 3, price: 2, cost: 0.15, xp: 4, decay: 2, cd: 0.5 };
+  const EASY = { speed: 3, price: 2, cost: 0.15, xp: 4, decay: 2, cd: 0.5, city: 0.2, tap: 3 };
   const ez = (s, k) => (s.easy ? EASY[k] : 1);
   const speed = (s) => (1 + s.attrs.bot * 0.05) * (1 + fxSum(s, "speed")) * ez(s, "speed");
-  const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap"));
+  const tapPower = (s) => R.tapSeconds * speed(s) * (1 + fxSum(s, "tap")) * ez(s, "tap");
   const priceMult = (s, lvlIdx) => (1 + s.attrs.lab * 0.02) * (1 + (s.place >= PARA_FROM ? SALES[lvlIdx].bonus : 0)) * legendMult(s) * (1 + (level(s) - 1) * 0.01) * ez(s, "price") * townScale(s);
   // A Paranoia entra aos poucos: em casa (Armário e Quartinho) ninguém repara; da Garagem em diante ela
   // existe (sobe, cai, tem flagrante); a polícia só faz ronda e batida a partir do Porão.
@@ -576,7 +576,8 @@
     if (a.fx.para > 0 && !safe(s, a.fx.para)) return false;
     s.clean -= price;
     s.sta -= cost;
-    s.city = { id, end: s.time + a.time };
+    const dur = a.time * ez(s, "city");
+    s.city = { id, end: s.time + dur, dur };
     return true;
   }
   // cada toque adianta um pouquinho, como regar as plantas (2x o toque de rega): tocando sem parar,
@@ -584,7 +585,7 @@
   const cityTrains = (id) => { const fx = CITY.find((x) => x.id === id).fx; return !!(fx.bot || fx.lab || fx.fur || fx.seg); };
   function cityTap(s) {
     if (!s.city || cityTrains(s.city.id)) return 0;            // treino não tem atalho
-    const cut = R.tapSeconds * 2;
+    const cut = R.tapSeconds * 2 * ez(s, "tap");
     s.city.end -= cut;
     return cut;
   }
