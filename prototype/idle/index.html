@@ -214,7 +214,7 @@ body.tut.grow #hint{opacity:1}
   const SELL_MULT = 0.5;
   const SEEDS = [
     ["Alface Mística", 5, 8, 3, 1, [], 30],
-    ["Hortelã Selvagem", 10, 15, 3, 2, [], 35],
+    ["Hortelã Selvagem", 10, 15, 3, 1, [], 35],
     ["Manjericão do Olimpo", 20, 30, 4, 3, [], 45],
     ["Tomate Atômico", 50, 80, 4, 4, ["regador"], 55],
     ["Pimenta do Capeta", 120, 200, 3, 5, ["regador", "termometro"], 60],
@@ -475,10 +475,14 @@ body.tut.grow #hint{opacity:1}
     return 0;
   }
 
+  // algumas sementes pedem nível do jogador (Respeito), não Botânica: a Hortelã chega no Nível 2
+  const SEED_LEVEL = { 1: 2 };
   function seedLocked(s, seed) {
     const why = [];
     const bot = seed.bot + 6 * (s.town || 0);
     if (s.attrs.bot < bot) why.push(`Botânica ${bot}`);
+    const nv = SEED_LEVEL[seed.id];
+    if (nv && level(s) < nv) why.push(`Nível ${nv}`);
     for (const r of seed.req) if (!lvl(s, r)) why.push(EQUIP.find((e) => e.id === r).name);
     return why;
   }
