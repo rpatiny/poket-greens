@@ -274,12 +274,17 @@
 
   // algumas sementes pedem nível do jogador (Respeito), não Botânica: a Hortelã chega no Nível 2
   const SEED_LEVEL = { 1: 2 };
+  // as sementes melhores precisam de espaço: a semente i pede o lugar floor(i × 12/17)
+  // (Manjericão no Quartinho, Tomate e Pimenta na Garagem... Broto de Yggdrasil no Bunker)
+  const seedPlace = (i) => Math.floor((i * (PLACES.length - 1)) / (SEEDS.length - 1));
   function seedLocked(s, seed) {
     const why = [];
     const bot = seed.bot + 6 * (s.town || 0);
     if (s.attrs.bot < bot) why.push(`Botânica ${bot}`);
     const nv = SEED_LEVEL[seed.id];
     if (nv && level(s) < nv) why.push(`Nível ${nv}`);
+    const pl = seedPlace(seed.id);
+    if (s.place < pl) why.push(`precisa do ${PLACES[pl].name}`);
     for (const r of seed.req) if (!lvl(s, r)) why.push(EQUIP.find((e) => e.id === r).name);
     return why;
   }
@@ -529,9 +534,12 @@
     s.equip[id] = lvl(s, id) + 1;
     return true;
   }
-  // freio: quem se muda toda hora chama atenção. Só dá para sair depois de um tempo no lugar atual
-  // (Quartinho 15 min, Garagem 20, Porão 25... até 1h; conta também com o app fechado)
-  const placeWork = (s) => (s.place === 0 ? 0 : Math.min(3600, 600 + 300 * s.place) * ez(s, "city"));
+  // freio: o jogo é para durar dias. Cada lugar pede um tempo mínimo antes de você se mudar
+  // (conta com o app fechado). Tempo para SAIR de cada lugar, em minutos:
+  const PLACE_STAY = [0, 15, 30, 60, 120, 180, 240, 360, 480, 720, 960, 1200, 1440];
+  // lugar que você já conheceu (antes de uma batida ou de passar o ponto): só 1/10 do tempo
+  const PLACE_KNOWN = 0.1;
+  const placeWork = (s) => (PLACE_STAY[s.place] || 0) * 60 * ez(s, "city") * (s.place + 1 <= (s.maxPlace || 0) ? PLACE_KNOWN : 1);
   const placeWorkLeft = (s) => (s.cheat && s.cheat.on ? 0 : Math.max(0, placeWork(s) - (s.placeT || 0)));
   const HOME_PLACE = 1; // o Quartinho é da sua casa: aceita grana suja
   const placeNeedsClean = (s, i = s.place + 1) => i !== HOME_PLACE;
@@ -547,6 +555,7 @@
     s.para = s.ficha || 0;
     s.raidT = 0;
     s.placeT = 0;
+    s.maxPlace = Math.max(s.maxPlace || 0, s.place);
     // os equipamentos do lugar antigo ficam para trás; só os de compra única vêm junto
     for (const e of EQUIP) if (!e.keep) delete s.equip[e.id];
     if (!seedOk(s, s.seed)) s.seed = bestSeed(s);
@@ -760,7 +769,7 @@
     return gain;
   }
   function reset(s, keep) {
-    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, warned: s.warned, town: s.town || 0, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0 };
+    const persist = { time: s.time, rng: s.rng, log: s.log, busts: s.busts, timesArrested: s.timesArrested, resp: s.resp, xp: s.xp, cheat: s.cheat, easy: s.easy, warned: s.warned, town: s.town || 0, ficha: s.ficha || 0, fichaLenda: s.fichaLenda || 0, maxPlace: s.maxPlace || 0 };
     Object.assign(s, newState(), persist, keep);
     s.attrs.bot = Math.max(s.attrs.bot, 1);
     // Lenda dá um empurrão inicial: começa com mais grana suja
@@ -794,9 +803,11 @@
       if (s.surpT >= R.surpriseEvery) {
         s.surpT = 0;
         if (rand(s) < R.surpriseChance) {
-          const a = Math.floor(rand(s) * SURPRISE.length);
-          let b = Math.floor(rand(s) * (SURPRISE.length - 1)); if (b >= a) b++;
-          s.surprise = { opts: [a, b], at: s.time };
+          // sempre tem pelo menos uma saída: uma resposta furada e uma que não é batida, em ordem aleatória
+          const bad = SURPRISE.map((o, i) => i).filter((i) => SURPRISE[i].kind === "bust");
+          const good = SURPRISE.map((o, i) => i).filter((i) => SURPRISE[i].kind !== "bust");
+          const a = bad[Math.floor(rand(s) * bad.length)], b = good[Math.floor(rand(s) * good.length)];
+          s.surprise = { opts: rand(s) < 0.5 ? [a, b] : [b, a], at: s.time };
         }
       }
     }

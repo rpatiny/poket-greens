@@ -76,7 +76,10 @@ function brain(s, p) {
   // fim do jogo: muda de cidade
   if (p.towns && E.canMoveTown(s)) E.moveTown(s);
   // Vó: escolhe uma das duas explicações no chute
-  if (s.surprise) E.surpriseAnswer(s, Math.random() < 0.5 ? 0 : 1);
+  if (s.surprise) {   // quem já viu a Vó aprende: acerta 80% das vezes
+    const safe = E.SURPRISE[s.surprise.opts[0]].kind === "bust" ? 1 : 0;
+    E.surpriseAnswer(s, Math.random() < 0.8 ? safe : 1 - safe);
+  }
   // fiscal: suborna se der, senão fecha
   if (s.fiscal) { if (!E.fiscalBribe(s)) E.fiscalClose(s); }
   // maquininha (só quem joga ativo)
@@ -133,12 +136,13 @@ function run(name, p) {
 const base = { taps: 5, risk: 0.05, paraLimit: 70, retireAt: 1, bills: true };
 if (process.env.PACE) {
   // ritmo da progressão: sem passar o ponto, mostra quando cada semente e cada imóvel chegam
-  run("RITMO normal (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 14, all: true });
-  run("RITMO fácil (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 3, easy: true, all: true });
+  run("RITMO normal (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 24 * 7, all: true });
+  run("RITMO fácil (sem passar o ponto)", { ...base, retireAt: Infinity, hours: 48, easy: true, all: true });
+  run("RITMO casual: 15 min a cada 4h (sem passar o ponto)", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, retireAt: Infinity, hours: 24 * 14, all: true });
   process.exit(0);
 }
 run("Ativo cauteloso", { ...base, hours: 8 });
 run("Ativo arriscado", { ...base, risk: 0.3, paraLimit: 95, hours: 8 });
-run("Casual: 15 min a cada 4h", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, hours: 24 * 5 });
+run("Casual: 15 min a cada 4h", { ...base, taps: 3, session: { every: 4 * 3600, len: 900 }, hours: 24 * 10 });
 run("Idle: toca só nos 2 primeiros min", { ...base, tapFor: 120, hours: 24 });
 run("MODO FÁCIL · ativo cauteloso (2h)", { ...base, easy: true, hours: 2 });

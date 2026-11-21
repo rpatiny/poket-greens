@@ -230,6 +230,11 @@ function fmt(n) {
 }
 const $$ = (n) => "$" + fmt(n);
 const pct = (x) => Math.round(x * 100) + "%";
+// "12 min", "2h 05min"
+function waitText(t) {
+  const m = Math.ceil(t / 60), h = Math.floor(m / 60);
+  return h ? `${h}h ${String(m % 60).padStart(2, "0")}min` : `${m} min`;
+}
 function dur(t) {
   t = Math.max(0, Math.ceil(t));
   const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
@@ -1440,7 +1445,7 @@ function estufa() {
   const np = E.PLACES[S.place + 1];
   if (np) row({
     ico: icon("vasos", 64, 0, 32, 24), title: np.name, desc: `Cabem ${np.pots} plantas.${np.tier > pl.tier ? " Visual novo!" : ""} ${E.placeNeedsClean(S) ? "Pago com grana limpa." : "É a sua casa: paga com qualquer grana."}<br><span class="req">Os equipamentos ficam para trás (menos os de compra única).</span>` +
-      (E.placeWorkLeft(S) > 0 ? `<br><span class="req">🔒 Você acabou de chegar: quem se muda toda hora chama atenção. Fique mais ${Math.ceil(E.placeWorkLeft(S) / 60)} min no ${pl.name}.</span>` : ""),
+      (E.placeWorkLeft(S) > 0 ? `<br><span class="req">🔒 Você acabou de chegar: quem se muda toda hora chama atenção. Fique mais ${waitText(E.placeWorkLeft(S))} no ${pl.name}. Pode fechar o jogo: o tempo conta.</span>` : ""),
     btn: $$(E.placeCost(S)), btnCls: E.placeNeedsClean(S) ? "clean" : "dirty",
     enabled: () => E.placeWorkLeft(S) === 0 && (E.placeNeedsClean(S) ? S.clean : S.clean + S.dirty) >= E.placeCost(S), onClick: () => E.buyPlace(S),
   });
